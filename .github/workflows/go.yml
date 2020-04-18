@@ -10,6 +10,7 @@ jobs:
 
   build:
     env:
+      VERSION: dev
       AWS_DEFAULT_REGION: us-east-1
       AWS_DEFAULT_OUTPUT: json
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
@@ -35,8 +36,10 @@ jobs:
         set -x
         ls -l
         echo $(go version)
-        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="-s -w -X main.releaseVersion=v1.0.0" -o .
-        tar czvf mongodb-atlas-service-broker.tar.gz mongodb-atlas-service-broker
+        version=$(git describe --always --dirty)
+        echo "Building version=${version}"
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="-s -w -X main.releaseVersion=${version}" -o .
+        #tar czvf mongodb-atlas-service-broker.tar.gz mongodb-atlas-service-broker
         
     - name: Setup ECR
       run: |
