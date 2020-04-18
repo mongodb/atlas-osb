@@ -1,0 +1,7 @@
+apiVersion: servicecatalog.k8s.io/v1beta1
+kind: ServiceBinding
+metadata:
+  name: atlas-cluster-binding
+spec:
+  instanceRef:
+    name: atlas-cluster-instance
