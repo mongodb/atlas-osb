@@ -41,9 +41,6 @@ jobs:
         GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="-s -w -X main.releaseVersion=${version}" -o .
         #tar czvf mongodb-atlas-service-broker.tar.gz mongodb-atlas-service-broker
         
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1 
 
     - name: Build Container
       run: |
@@ -52,10 +49,6 @@ jobs:
           -t $CONTAINER_IMAGE \
           -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE .
 
-    - name: Push To ECR
-      run: |
-        set -x
-        docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
 
     - name: Render Amazon ECS task definition
       id: render-web-container
@@ -64,14 +57,6 @@ jobs:
         task-definition: aws-ecs-task-definition.json
         container-name: mongodb-atlas-service-broker
         image: ${{ github.repository }}:${{ github.sha }}        
-
-    - name: Deploy to Amazon ECS service
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.render-web-container.outputs.task-definition }}
-        service: mongodb-atlas-service-broker
-        cluster: mongodb-atlas-service-broker
-
 
     - name: Create Release
       if: github.event_name == 'release'
