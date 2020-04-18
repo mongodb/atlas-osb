@@ -50,14 +50,6 @@ jobs:
           -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE .
 
 
-    - name: Render Amazon ECS task definition
-      id: render-web-container
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: aws-ecs-task-definition.json
-        container-name: mongodb-atlas-service-broker
-        image: ${{ github.repository }}:${{ github.sha }}        
-
     - name: Create Release
       if: github.event_name == 'release'
       id: create_release
