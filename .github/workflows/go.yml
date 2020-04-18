@@ -41,10 +41,10 @@ jobs:
         GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="-s -w -X main.releaseVersion=${version}" -o .
         #tar czvf mongodb-atlas-service-broker.tar.gz mongodb-atlas-service-broker
         
-    - name: Setup ECR
-      run: |
-        $( aws ecr get-login --no-include-email )
-    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1 
+
     - name: Build Container
       run: |
         set -x
@@ -55,7 +55,6 @@ jobs:
     - name: Push To ECR
       run: |
         set -x
-        $( aws ecr get-login --no-include-email )
         docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
 
     - name: Render Amazon ECS task definition
