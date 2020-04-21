@@ -54,7 +54,7 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: atlas-osb/dev 
+        ECR_REPOSITORY: cluster-dev 
         IMAGE_TAG: ${{ github.sha }}
       run: |
         # Build a docker container and
@@ -65,16 +65,13 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    - name: Logout of Amazon ECR
-      if: always()
-      run: docker logout ${{ steps.login-ecr.outputs.registry }}
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: test/ci/github/aws-ecs-task-definition.json
-        container-name: atlas-osb
+        container-name: "mongodb-atlas-service-broker"
         image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
@@ -83,4 +80,11 @@ jobs:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: atlas-osb
         cluster: atlas-osb
+        service: tiledocs
+        cluster: mytiledocs
+        wait-for-service-stability: true
+
+    - name: Logout of Amazon ECR
+      if: always()
+      run: docker logout ${{ steps.login-ecr.outputs.registry }}
         wait-for-service-stability: true
