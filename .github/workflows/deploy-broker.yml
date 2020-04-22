@@ -67,7 +67,7 @@ jobs:
     - name: Logout of Amazon ECR
       if: always()
       run: docker logout ${{ steps.login-ecr.outputs.registry }}
-        wait-for-service-stability: true
+      wait-for-service-stability: true
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
