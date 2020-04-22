@@ -72,14 +72,14 @@ jobs:
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: taskDef
-      uses: aws-actions/amazon-ecs-render-taskDefinition@v1
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         taskDefinition: test/ci/github/aws-ecs-task-definition.json
         container-name: "mongodb-atlas-service-broker"
         image: ${{ steps.buildImage.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-taskDefinition@v1
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         taskDefinition: ${{ steps.taskDef.outputs.taskDefinition }}
         service: atlas-osb
