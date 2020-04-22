@@ -14,8 +14,8 @@
 #    Replace the values for `service` and `cluster` in the workflow below with your service and cluster names.
 #
 # 3. Store your ECS task definition as a JSON file in your repository.
-#    The format should follow the output of `aws ecs register-task-definition --generate-cli-skeleton`.
-#    Replace the value of `task-definition` in the workflow below with your JSON file's name.
+#    The format should follow the output of `aws ecs register-taskDefinition --generate-cli-skeleton`.
+#    Replace the value of `taskDefinition` in the workflow below with your JSON file's name.
 #    Replace the value of `container-name` in the workflow below with the name of the container
 #    in the `containerDefinitions` section of the task definition.
 #
@@ -46,13 +46,13 @@ jobs:
         aws-region: us-east-2
 
     - name: Login to Amazon ECR
-      id: login-ecr
+      id: loginEcr
       uses: aws-actions/amazon-ecr-login@master
 
     - name: Build, tag, and push image to Amazon ECR
-      id: build-image
+      id: buildImage
       env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REGISTRY: ${{ steps.loginEcr.outputs.registry }}
         ECR_REPOSITORY: atlas-osb/dev 
         IMAGE_TAG: ${{ github.sha }}
       run: |
@@ -63,24 +63,26 @@ jobs:
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+    - name: test
+      run: env
 
     - name: Logout of Amazon ECR
       if: always()
-      run: docker logout ${{ steps.login-ecr.outputs.registry }}
+      run: docker logout ${{ steps.loginEcr.outputs.registry }}
       wait-for-service-stability: true
 
     - name: Fill in the new image ID in the Amazon ECS task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      id: taskDef
+      uses: aws-actions/amazon-ecs-render-taskDefinition@v1
       with:
-        task-definition: test/ci/github/aws-ecs-task-definition.json
+        taskDefinition: test/ci/github/aws-ecs-task-definition.json
         container-name: "mongodb-atlas-service-broker"
-        image: ${{ steps.build-image.outputs.image }}
+        image: ${{ steps.buildImage.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      uses: aws-actions/amazon-ecs-deploy-taskDefinition@v1
       with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        taskDefinition: ${{ steps.taskDef.outputs.taskDefinition }}
         service: atlas-osb
         cluster: atlas-osb
         wait-for-service-stability: true
