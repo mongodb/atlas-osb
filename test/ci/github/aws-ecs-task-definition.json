@@ -3,7 +3,6 @@
       { 
          "essential": true,
          "image": "",
-         },
          "name": "mongodb-atlas-service-broker",
          "portMappings": [ 
             { 
@@ -33,7 +32,7 @@
         "logDriver": "awslogs",
         "secretOptions": null,
         "options": {
-          "awslogs-group": "/ecs/cluster-dev",
+          "awslogs-group": "/ecs/atlas-osb",
           "awslogs-region": "us-east-2",
           "awslogs-stream-prefix": "ecs"
         }
@@ -80,7 +79,7 @@
       "dockerLabels": null,
       "systemControls": null,
       "privileged": null,
-      "name": "tiledocs"
+      "name": "atlas-osb"
     }
   ],
   "placementConstraints": [],
