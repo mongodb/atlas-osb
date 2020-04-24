@@ -67,7 +67,7 @@ jobs:
       run: env
 
     - name: Fill in the new image ID in the Amazon ECS task definition
-      id: taskDef
+      id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: test/ci/github/ecs-task-definition.json
