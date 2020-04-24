@@ -71,7 +71,7 @@ jobs:
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: test/ci/github/ecs-task-definition.json
-        container-name: "mongodb-atlas-service-broker"
+        container-name: "mongodb-atlas-service-broker-container"
         image: ${{ steps.buildImage.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
