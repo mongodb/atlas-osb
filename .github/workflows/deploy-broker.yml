@@ -46,13 +46,13 @@ jobs:
         aws-region: us-east-2
 
     - name: Login to Amazon ECR
-      id: loginEcr
+      id: login-ecr
       uses: aws-actions/amazon-ecr-login@master
 
     - name: Build, tag, and push image to Amazon ECR
-      id: buildImage
+      id: build-image
       env:
-        ECR_REGISTRY: ${{ steps.loginEcr.outputs.registry }}
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: atlas-osb/dev 
         IMAGE_TAG: ${{ github.sha }}
       run: |
@@ -72,18 +72,18 @@ jobs:
       with:
         task-definition: test/ci/github/ecs-task-definition.json
         container-name: "mongodb-atlas-service-broker-container"
-        image: ${{ steps.buildImage.outputs.image }}
+        image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
-        taskDefinition: ${{ steps.taskDef.outputs.taskDefinition }}
+        task-definition: ${{ steps.task-def.outputs.taskDefinition }}
         service: atlas-osb
         cluster: atlas-osb
         wait-for-service-stability: true
 
     - name: Logout of Amazon ECR
       if: always()
-      run: docker logout ${{ steps.loginEcr.outputs.registry }}
+      run: docker logout ${{ steps.login-ecr.outputs.registry }}
 
 
