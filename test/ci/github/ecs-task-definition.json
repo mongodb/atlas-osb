@@ -15,7 +15,16 @@
                     "protocol": "tcp"
                 }
             ],
-            "environment": null,
+            "environment": [
+                {
+                    "name": "BROKER_HOST",
+                    "value": "0.0.0.0"
+                },
+                {
+                    "name": "BROKER_PORT",
+                    "value": "4000"
+                }
+            ],
             "secrets": null,
             "mountPoints": null,
             "volumesFrom": null,
