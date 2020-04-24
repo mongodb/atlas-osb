@@ -70,7 +70,7 @@ jobs:
       id: taskDef
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        task-definition: test/ci/github/aws-ecs-task-definition.json
+        task-definition: test/ci/github/ecs-task-definition.json
         container-name: "mongodb-atlas-service-broker"
         image: ${{ steps.buildImage.outputs.image }}
 
