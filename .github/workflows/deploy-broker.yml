@@ -66,10 +66,6 @@ jobs:
     - name: test
       run: env
 
-    - name: Logout of Amazon ECR
-      if: always()
-      run: docker logout ${{ steps.loginEcr.outputs.registry }}
-
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: taskDef
       uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -85,4 +81,9 @@ jobs:
         service: atlas-osb
         cluster: atlas-osb
         wait-for-service-stability: true
+
+    - name: Logout of Amazon ECR
+      if: always()
+      run: docker logout ${{ steps.loginEcr.outputs.registry }}
+
 
