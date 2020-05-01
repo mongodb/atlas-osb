@@ -63,7 +63,8 @@ jobs:
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-    - name: test
+
+    - name: Print environment variables
       run: env
 
     - name: Fill in the new image ID in the Amazon ECS task definition
@@ -78,12 +79,10 @@ jobs:
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: atlas-osb
+        service: atlas-broker
         cluster: atlas-osb
         wait-for-service-stability: true
 
     - name: Logout of Amazon ECR
       if: always()
       run: docker logout ${{ steps.login-ecr.outputs.registry }}
-
-
