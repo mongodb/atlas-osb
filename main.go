@@ -82,6 +82,16 @@ func startBrokerServer() {
 	}
 	defer logger.Sync() // Flushes buffer, if any
 
+	// Dump out VCAP_SERVICES for Cloud Foundry debugging
+	vcapServices, hasVCap := os.LookupEnv("VCAP_SERVICES")
+	if hasVCap {
+		logger.Infow("Detected VCAP", "VCAP_SERVICES", vcapServices)
+	} else {
+		logger.Info("No VCAP found")
+	}
+
+	// TODO !!! add in -c arbitrary service parameters and see if in env VCPA vars
+
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	var broker *atlasbroker.Broker
@@ -107,7 +117,7 @@ func startBrokerServer() {
 	tlsEnabled, tlsCertPath, tlsKeyPath := getTLSConfig(logger)
 
 	host := getEnvOrDefault("BROKER_HOST", DefaultServerHost)
-	port := getIntEnvOrDefault("BROKER_PORT", DefaultServerPort)
+	port := getIntEnvOrDefault("BROKER_PORT", getIntEnvOrDefault("PORT", DefaultServerPort))
 
 	// Replace with NONE if not set
 	if !hasWhitelist {
