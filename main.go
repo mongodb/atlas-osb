@@ -13,7 +13,6 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	atlasbroker "github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	"github.com/pivotal-cf/brokerapi"
 )
@@ -83,26 +82,27 @@ func startBrokerServer() {
 	}
 	defer logger.Sync() // Flushes buffer, if any
 
-	credhub, err := broker.CredHubCredentials()
-	if err != nil {
-		logger.Warnf("could not load multi-project credentials from CredHub: %v", err)
-		logger.Warn("continuing in single-project mode")
+	// Dump out VCAP_SERVICES for Cloud Foundry debugging
+	vcapServices, hasVCap := os.LookupEnv("VCAP_SERVICES")
+	if hasVCap {
+		logger.Infow("Detected VCAP", "VCAP_SERVICES", vcapServices)
+	} else {
+		logger.Info("No VCAP found")
 	}
 
-	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
-	autoPlans := getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
+	// TODO !!! add in -c arbitrary service parameters and see if in env VCPA vars
 
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	var broker *atlasbroker.Broker
 	if !hasWhitelist {
-		broker = atlasbroker.NewBroker(logger, credhub, baseURL, nil, autoPlans)
+		broker = atlasbroker.NewBroker(logger)
 	} else {
 		whitelist, err := atlasbroker.ReadWhitelistFile(pathToWhitelistFile)
 		if err != nil {
 			panic(err)
 		}
-		broker = atlasbroker.NewBroker(logger, credhub, baseURL, whitelist, autoPlans)
+		broker = atlasbroker.NewBrokerWithWhitelist(logger, whitelist)
 	}
 
 	router := mux.NewRouter()
@@ -110,17 +110,14 @@ func startBrokerServer() {
 
 	// The auth middleware will convert basic auth credentials into an Atlas
 	// client.
-	if credhub != nil {
-		router.Use(atlasbroker.AuthMiddleware(*credhub.Broker))
-	} else {
-		router.Use(atlasbroker.SimpleAuthMiddleware(baseURL))
-	}
+	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
+	router.Use(atlasbroker.AuthMiddleware(baseURL))
 
 	// Configure TLS from environment variables.
 	tlsEnabled, tlsCertPath, tlsKeyPath := getTLSConfig(logger)
 
 	host := getEnvOrDefault("BROKER_HOST", DefaultServerHost)
-	port := getIntEnvOrDefault("BROKER_PORT", DefaultServerPort)
+	port := getIntEnvOrDefault("BROKER_PORT", getIntEnvOrDefault("PORT", DefaultServerPort))
 
 	// Replace with NONE if not set
 	if !hasWhitelist {
