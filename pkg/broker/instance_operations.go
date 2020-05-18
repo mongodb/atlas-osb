@@ -26,10 +26,14 @@ const (
 func (b Broker) Provision(ctx context.Context, instanceID string, details brokerapi.ProvisionDetails, asyncAllowed bool) (spec brokerapi.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
-	client, err := atlasClientFromContext(ctx)
-	if err != nil {
+	gid := groupID(details.PlanID)
+	c, ok := b.credHub[gid]
+	if !ok {
+		err = atlas.ErrUnauthorized
 		return
 	}
+
+	client := atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
 
 	// Async needs to be supported for provisioning to work.
 	if !asyncAllowed {
@@ -38,7 +42,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details broker
 	}
 
 	// Construct a cluster definition from the instance ID, service, plan, and params.
-	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
+	cluster, err := clusterFromParams(client, b.credHub, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		b.logger.Errorw("Couldn't create cluster from the passed parameters", "error", err, "instance_id", instanceID, "details", details)
 		return
@@ -65,10 +69,14 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details broker
 func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool) (spec brokerapi.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
-	client, err := atlasClientFromContext(ctx)
-	if err != nil {
+	gid := groupID(details.PlanID)
+	c, ok := b.credHub[gid]
+	if !ok {
+		err = atlas.ErrUnauthorized
 		return
 	}
+
+	client := atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
 
 	// Async needs to be supported for provisioning to work.
 	if !asyncAllowed {
@@ -87,7 +95,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi
 	}
 
 	// Construct a cluster from the instance ID, service, plan, and params.
-	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
+	cluster, err := clusterFromParams(client, b.credHub, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
@@ -126,10 +134,14 @@ func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details brokerapi.DeprovisionDetails, asyncAllowed bool) (spec brokerapi.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	client, err := atlasClientFromContext(ctx)
-	if err != nil {
+	gid := groupID(details.PlanID)
+	c, ok := b.credHub[gid]
+	if !ok {
+		err = atlas.ErrUnauthorized
 		return
 	}
+
+	client := atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
 
 	// Async needs to be supported for provisioning to work.
 	if !asyncAllowed {
@@ -165,10 +177,14 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec broker
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details brokerapi.PollDetails) (resp brokerapi.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
-	client, err := atlasClientFromContext(ctx)
-	if err != nil {
+	gid := groupID(details.PlanID)
+	c, ok := b.credHub[gid]
+	if !ok {
+		err = atlas.ErrUnauthorized
 		return
 	}
+
+	client := atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
 
 	cluster, err := client.GetCluster(NormalizeClusterName(instanceID))
 	if err != nil && err != atlas.ErrClusterNotFound {
@@ -232,7 +248,7 @@ func NormalizeClusterName(name string) string {
 // clusterFromParams will construct a cluster object from an instance ID,
 // service, plan, and raw parameters. This way users can pass all the
 // configuration available for clusters in the Atlas API as "cluster" in the params.
-func clusterFromParams(client atlas.Client, instanceID string, serviceID string, planID string, rawParams []byte) (*atlas.Cluster, error) {
+func clusterFromParams(client atlas.Client, ch map[string]Credentials, instanceID string, serviceID string, planID string, rawParams []byte) (*atlas.Cluster, error) {
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
 		Cluster *atlas.Cluster `json:"cluster"`
@@ -262,7 +278,7 @@ func clusterFromParams(client atlas.Client, instanceID string, serviceID string,
 				return nil, err
 			}
 
-			instanceSize, err := findInstanceSizeByPlanID(provider, planID)
+			instanceSize, _, err := findInstanceSizeGroupIDByPlanID(provider, ch, planID)
 			if err != nil {
 				return nil, err
 			}
