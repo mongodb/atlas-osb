@@ -1,10 +1,7 @@
 package broker
 
 import (
-	"context"
-	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
@@ -22,20 +19,26 @@ var _ brokerapi.ServiceBroker = Broker{}
 type Broker struct {
 	logger    *zap.SugaredLogger
 	whitelist Whitelist
+	credHub   map[string]Credentials
+	baseURL   string
 }
 
 // NewBroker creates a new Broker with a logger.
-func NewBroker(logger *zap.SugaredLogger) *Broker {
+func NewBroker(logger *zap.SugaredLogger, credHub map[string]Credentials, baseURL string) *Broker {
 	return &Broker{
-		logger: logger,
+		logger:  logger,
+		credHub: credHub,
+		baseURL: baseURL,
 	}
 }
 
 // NewBrokerWithWhitelist creates a new Broker with a given logger and a
 // whitelist for allowed providers and their plans.
-func NewBrokerWithWhitelist(logger *zap.SugaredLogger, whitelist Whitelist) *Broker {
+func NewBrokerWithWhitelist(logger *zap.SugaredLogger, credHub map[string]Credentials, baseURL string, whitelist Whitelist) *Broker {
 	return &Broker{
 		logger:    logger,
+		credHub:   credHub,
+		baseURL:   baseURL,
 		whitelist: whitelist,
 	}
 }
@@ -52,44 +55,25 @@ var ContextKeyAtlasClient = ContextKey("atlas-client")
 // using basic auth. The credentials parsed into an Atlas client which is
 // attached to the request context. This client can later be retrieved by the
 // broker from the context.
-func AuthMiddleware(baseURL string) mux.MiddlewareFunc {
+func AuthMiddleware(credhub map[string]Credentials) mux.MiddlewareFunc {
+	bc := credhub["broker"]
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			username, password, ok := r.BasicAuth()
-
-			// The username contains both the group ID and public key
-			// formatted as "<PUBLIC_KEY>@<GROUP_ID>".
-			splitUsername := strings.Split(username, "@")
-
-			// If the credentials are invalid we respond with 401 Unauthorized.
-			// The username needs have the correct format and the password must
-			// not be empty.
-			validUsername := len(splitUsername) == 2
-			validPassword := password != ""
-			if !(ok && validUsername && validPassword) {
+			if !ok {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
-			// Create a new client with the extracted API credentials and
-			// attach it to the request context.
-			client := atlas.NewClient(baseURL, splitUsername[1], splitUsername[0], password)
-			ctx := context.WithValue(r.Context(), ContextKeyAtlasClient, client)
+			if bc.PublicKey != username || bc.APIKey != password {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 
-			next.ServeHTTP(w, r.WithContext(ctx))
+			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-// atlasClientFromContext will retrieve an Atlas client stored inside the
-// provided context.
-func atlasClientFromContext(ctx context.Context) (atlas.Client, error) {
-	client, ok := ctx.Value(ContextKeyAtlasClient).(atlas.Client)
-	if !ok {
-		return nil, errors.New("no Atlas client in context")
-	}
-
-	return client, nil
 }
 
 // atlasToAPIError converts an Atlas error to a OSB response error.

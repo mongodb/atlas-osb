@@ -13,6 +13,7 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	atlasbroker "github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	"github.com/pivotal-cf/brokerapi"
 )
@@ -82,17 +83,24 @@ func startBrokerServer() {
 	}
 	defer logger.Sync() // Flushes buffer, if any
 
+	credhub, err := broker.CredHubCredentials()
+	if err != nil {
+		panic(err)
+	}
+
+	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
+
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	var broker *atlasbroker.Broker
 	if !hasWhitelist {
-		broker = atlasbroker.NewBroker(logger)
+		broker = atlasbroker.NewBroker(logger, credhub, baseURL)
 	} else {
 		whitelist, err := atlasbroker.ReadWhitelistFile(pathToWhitelistFile)
 		if err != nil {
 			panic(err)
 		}
-		broker = atlasbroker.NewBrokerWithWhitelist(logger, whitelist)
+		broker = atlasbroker.NewBrokerWithWhitelist(logger, credhub, baseURL, whitelist)
 	}
 
 	router := mux.NewRouter()
@@ -100,8 +108,7 @@ func startBrokerServer() {
 
 	// The auth middleware will convert basic auth credentials into an Atlas
 	// client.
-	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
-	router.Use(atlasbroker.AuthMiddleware(baseURL))
+	router.Use(atlasbroker.AuthMiddleware(credhub))
 
 	// Configure TLS from environment variables.
 	tlsEnabled, tlsCertPath, tlsKeyPath := getTLSConfig(logger)
