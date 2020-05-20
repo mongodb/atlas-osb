@@ -24,7 +24,7 @@ type ConnectionDetails struct {
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details brokerapi.BindDetails, asyncAllowed bool) (spec brokerapi.Binding, err error) {
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	gid := groupID(details.PlanID)
+	gid := groupID(details.PlanID, b.credHub)
 	c, ok := b.credHub[gid]
 	if !ok {
 		err = atlas.ErrUnauthorized
@@ -93,7 +93,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details brokerapi.UnbindDetails, asyncAllowed bool) (spec brokerapi.UnbindSpec, err error) {
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	gid := groupID(details.PlanID)
+	gid := groupID(details.PlanID, b.credHub)
 	c, ok := b.credHub[gid]
 	if !ok {
 		err = atlas.ErrUnauthorized
