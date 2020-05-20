@@ -26,7 +26,7 @@ const (
 func (b Broker) Provision(ctx context.Context, instanceID string, details brokerapi.ProvisionDetails, asyncAllowed bool) (spec brokerapi.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
-	gid := groupID(details.PlanID)
+	gid := groupID(details.PlanID, b.credHub)
 	c, ok := b.credHub[gid]
 	if !ok {
 		err = atlas.ErrUnauthorized
@@ -69,7 +69,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details broker
 func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool) (spec brokerapi.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
-	gid := groupID(details.PlanID)
+	gid := groupID(details.PlanID, b.credHub)
 	c, ok := b.credHub[gid]
 	if !ok {
 		err = atlas.ErrUnauthorized
@@ -134,7 +134,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details brokerapi.DeprovisionDetails, asyncAllowed bool) (spec brokerapi.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	gid := groupID(details.PlanID)
+	gid := groupID(details.PlanID, b.credHub)
 	c, ok := b.credHub[gid]
 	if !ok {
 		err = atlas.ErrUnauthorized
@@ -177,7 +177,7 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec broker
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details brokerapi.PollDetails) (resp brokerapi.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
-	gid := groupID(details.PlanID)
+	gid := groupID(details.PlanID, b.credHub)
 	c, ok := b.credHub[gid]
 	if !ok {
 		err = atlas.ErrUnauthorized

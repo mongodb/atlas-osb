@@ -132,14 +132,28 @@ func findProviderByServiceID(client atlas.Client, serviceID string) (*atlas.Prov
 	return nil, apiresponses.NewFailureResponse(errors.New("Invalid service ID"), http.StatusBadRequest, "invalid-service-id")
 }
 
-func groupID(planID string) string {
+func groupID(planID string, creds map[string]Credentials) string {
 	parts := strings.Split(planID, "-")
-	return parts[len(parts)-1]
+	groupName := parts[len(parts)-1]
+
+	// TODO: we need to make this more robust
+	for id, c := range creds {
+		if id == groupName || c.DisplayName == groupName {
+			return id
+		}
+	}
+
+	return ""
 }
 
 func findInstanceSizeGroupIDByPlanID(provider *atlas.Provider, ch map[string]Credentials, planID string) (*atlas.InstanceSize, string, error) {
 	for _, instanceSize := range provider.InstanceSizes {
 		for groupID := range ch {
+			// TODO: separate from other creds
+			if groupID == "broker" {
+				continue
+			}
+
 			if planIDForInstanceSize(provider, instanceSize, groupID) == planID {
 				return &instanceSize, groupID, nil
 			}
@@ -155,10 +169,19 @@ func plansForProvider(provider *atlas.Provider, ch map[string]Credentials) []bro
 	var plans []brokerapi.ServicePlan
 
 	for _, instanceSize := range provider.InstanceSizes {
-		for groupID := range ch {
+		for groupID, creds := range ch {
+			if groupID == "broker" {
+				continue
+			}
+
+			id := groupID
+			if creds.DisplayName != "" {
+				id = creds.DisplayName
+			}
+
 			plan := brokerapi.ServicePlan{
 				ID:          planIDForInstanceSize(provider, instanceSize, groupID),
-				Name:        fmt.Sprintf("%s-%s", instanceSize.Name, groupID),
+				Name:        fmt.Sprintf("%s-%s", instanceSize.Name, id),
 				Description: fmt.Sprintf("Instance size %q", instanceSize.Name),
 			}
 			plans = append(plans, plan)

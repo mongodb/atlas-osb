@@ -8,8 +8,9 @@ import (
 )
 
 type Credentials struct {
-	PublicKey string `json:"public_key"`
-	APIKey    string `json:"api_key"`
+	PublicKey   string `json:"public_key"`
+	APIKey      string `json:"api_key"`
+	DisplayName string `json:"display_name"`
 }
 
 type CredHub struct {
