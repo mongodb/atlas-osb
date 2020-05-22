@@ -1,0 +1,19 @@
+name: 'Atlas broker testing'
+description: 'uses for cleaning environments after/before testing'
+inputs:
+  pcf_url:
+    description: "PCF url uses for pcf command"
+    required: true
+  pcf_user:
+    description: "PCF user uses for pcf command"
+    required: true
+  pcf_password:
+    description: "PCF password uses for pcf command"
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.pcf_user }}
+    - ${{ inputs.pcf_password }}
+    - ${{ inputs.pcf_url }}
