@@ -18,9 +18,9 @@ cf create-org $org_name && cf target -o $org_name
 cf create-space $space_name && cf target -s $space_name
 
 echo "Create service-broker"
-create_atlas_service_broker_from_repo  mongodb-atlas-$branch_name atlas-osb-app-$branch_name
+create_atlas_service_broker_from_repo mongodb-atlas-$branch_name atlas-osb-app-$branch_name
 
-cf enable-service-access mongodb-atlas-aws -p M10 -o $org_name
+#cf enable-service-access mongodb-atlas-aws -b mongodb-atlas-$branch_name -p M10 -o $org_name #sample
 cf marketplace
 
 create_service aws-atlas-test-instance-$branch_name
@@ -43,4 +43,3 @@ cf restart test-app-$branch_name
 
 #we can hide "prepare app" with
 #cf push APP_NAME --docker-image [REGISTRY_HOST:PORT/]IMAGE[:TAG] [--docker-username USERNAME] [-c COMMAND] [-f MANIFEST_PATH | --no-manifest] [--no-start] [-i NUM_INSTANCES] [-k DISK] [-m MEMORY] [-t HEALTH_TIMEOUT] [-u (process | port | http)] [--no-route | --random-route | --hostname HOST | --no-hostname] [-d DOMAIN] [--route-path ROUTE_PATH] [--var KEY=VALUE]... [--vars-file VARS_FILE_PATH]...
-
