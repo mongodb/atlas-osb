@@ -14,10 +14,9 @@ import (
 
 // ConnectionDetails will be returned when a new binding is created.
 type ConnectionDetails struct {
-	Username         string `json:"username"`
-	Password         string `json:"password"`
-	URI              string `json:"uri"`
-	ConnectionString string `json:"connectionString"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	URI      string `json:"uri"`
 }
 
 // Bind will create a new database user with a username matching the binding ID
@@ -79,14 +78,12 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	}
 
 	b.logger.Infow("Successfully created Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
-	b.logger.Infow("New User ConnectionString", "connectionString", cluster.ConnectionStrings)
-	cs, err := json.Marshal(cluster.ConnectionStrings)
+
 	spec = brokerapi.Binding{
 		Credentials: ConnectionDetails{
-			Username:         bindingID,
-			Password:         password,
-			URI:              cluster.SrvAddress,
-			ConnectionString: string(cs),
+			Username: bindingID,
+			Password: password,
+			URI:      cluster.SrvAddress,
 		},
 	}
 	return

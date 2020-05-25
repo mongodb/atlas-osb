@@ -3,6 +3,6 @@ kind: Secret
 metadata:
   name: atlas-service-broker-auth
 type: Opaque
-stringData:
-  username: "wwkzdiwj@5ea0477597999053a5f9cbec"
-  password: 62bff0f6-ff2e-471d-9e36-6efd5fa24239
+data:
+  username: 
+  password:

@@ -23,8 +23,8 @@ var (
 
 // Cluster represents a single cluster in Atlas.
 type Cluster struct {
-	Name                     string            `json:"name"`
-	Labels                   []Label           `json:"labels,omitempty"`
+	Name string `json:"name"`
+
 	AutoScaling              AutoScalingConfig `json:"autoScaling,omitempty"`
 	BackupEnabled            bool              `json:"backupEnabled,omitempty"`
 	BIConnector              BIConnectorConfig `json:"biConnector,omitempty"`
@@ -38,33 +38,13 @@ type Cluster struct {
 	ProviderSettings         *ProviderSettings `json:"providerSettings"`
 
 	// Read-only attributes
-	StateName         string            `json:"stateName,omitempty"`
-	SrvAddress        string            `json:"srvAddress,omitempty"`
-	ConnectionStrings ConnectionStrings `json:"connectionStrings,omitempty"`
-}
-
-// ConnectionStrings is a set of connection strings that your applications
-// use to connect to this cluster.
-type ConnectionStrings struct {
-	Standard        string `json:"standard,omitempty"`
-	StandardSrv     string `json:"standardSrv,omitempty"`
-	Private         string `json:"private,omitempty"`
-	PrivateSrv      string `json:"privateSrv,omitempty"`
-	MongoURIUpdated string `json:"mongoURIUpdated,omitempty"`
-	Name            string `json:"name,omitempty"`
-	//AzurePrivateLink
-	//AzurePrivateLink
+	StateName  string `json:"stateName,omitempty"`
+	SrvAddress string `json:"srvAddress,omitempty"`
 }
 
 // AutoScalingConfig represents the autoscaling settings for a cluster.
 type AutoScalingConfig struct {
 	DiskGBEnabled bool `json:"diskGBEnabled,omitempty"`
-}
-
-// Labels represents the labels for the cluster.
-type Label struct {
-	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
 }
 
 // BIConnectorConfig represents the BI connector settings for a cluster.
