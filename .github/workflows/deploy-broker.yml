@@ -21,7 +21,7 @@ jobs:
           pcf_password: ${{ secrets.PCF_PASSWORD }}
 
       - name: Create CF org, space, broker, service and push app)
-          id: prepare-step
+        id: prepare-step
         uses: ./.github/actions/prepare-cf
         with:
           pcf_url: ${{ secrets.PCF_URL }}
