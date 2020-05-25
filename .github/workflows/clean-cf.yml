@@ -8,7 +8,7 @@ name: Clean CF
 
 jobs:
   clean-cf:
-    name: Prepare CF for testing
+    name: Prepare CF for testing. Cleanup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
