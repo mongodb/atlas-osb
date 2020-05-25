@@ -21,8 +21,8 @@ inputs:
     description: "private key for our working projectID/groupID"
     required: true
 outputs:
-  app-url:
-    description: 'Applications url'
+  app_url:
+    description: 'Application url'
 runs:
   using: 'docker'
   image: 'Dockerfile'
