@@ -33,6 +33,9 @@ git clone https://github.com/cloudfoundry-samples/spring-music.git
 cd spring-music
 ./gradlew clean assemble
 cf push test-app-$branch_name --no-start
+cf set-env test-app-$branch_name JAVA_OPTS "-Dspring.profiles.active=mongodb"
+cf bind-service test-app-$branch_name aws-atlas-test-instance-$branch_name
+
 u=$(cf env test-app-$branch_name | awk '$1 ~ /"uri"\:/{print substr($2, 16, length($2)-17) }')
 uname=$(cf env test-app-$branch_name | awk '$1 ~ /username/{print substr($2, 2, length($2)-3) }')
 p=$(cf env test-app-$branch_name | awk '$1 ~ /password/{print substr($2, 2, length($2)-3) }')
@@ -42,6 +45,7 @@ awk '/generate-ddl: true/ { print; print "  data:"; print "    mongodb:"; print 
 
 ./gradlew clean assemble
 cf push test-app-$branch_name --no-start
-cf set-env test-app-$branch_name JAVA_OPTS "-Dspring.profiles.active=mongodb"
-cf bind-service test-app-$branch_name aws-atlas-test-instance-$branch_name
+cf env test-app-$branch_name
 cf restart test-app-$branch_name
+app_url=$(cf app test-app-$branch_name | awk '$1 ~ /routes:/{print $2}')
+echo "::set-output name=app_url::$app_url"
