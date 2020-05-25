@@ -117,11 +117,11 @@ check_app_started() {
   until [[ $app == "started" ]]; do
     app=$(cf apps | grep "$app_name " | awk  '/started/{print "started"}')
     if [[ $try -lt 0 ]]; then
-      echo "ERROR: unbinding is getting too long"
+      echo "ERROR: too many tries"
       exit 1
     fi
-    let "try--"
     echo "checking application status ($try)"
+    let "try--"
   done
   echo "Application started"
 }

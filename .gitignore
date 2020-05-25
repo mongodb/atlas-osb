@@ -1,2 +1,7 @@
 act/
 test-run/
+
+.env
+.actrc
+.secrets
+event.json
