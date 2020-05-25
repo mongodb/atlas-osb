@@ -24,14 +24,10 @@ type ConnectionDetails struct {
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details brokerapi.BindDetails, asyncAllowed bool) (spec brokerapi.Binding, err error) {
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	gid := groupID(details.PlanID, b.credHub)
-	c, ok := b.credHub[gid]
-	if !ok {
-		err = atlas.ErrUnauthorized
+	client, err := b.getClient(ctx, details.PlanID)
+	if err != nil {
 		return
 	}
-
-	client := atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
 
 	// The service_id and plan_id are required to be valid per the specification, despite
 	// not being used for bindings. We look them up to ensure they can be found in the catalog.
@@ -40,7 +36,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return
 	}
 
-	_, _, err = findInstanceSizeGroupIDByPlanID(provider, b.credHub, details.PlanID)
+	_, err = findInstanceSizeByPlanID(provider, b.credHub, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -93,14 +89,10 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details brokerapi.UnbindDetails, asyncAllowed bool) (spec brokerapi.UnbindSpec, err error) {
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	gid := groupID(details.PlanID, b.credHub)
-	c, ok := b.credHub[gid]
-	if !ok {
-		err = atlas.ErrUnauthorized
+	client, err := b.getClient(ctx, details.PlanID)
+	if err != nil {
 		return
 	}
-
-	client := atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
 
 	// Fetch the cluster from Atlas to ensure it exists.
 	_, err = client.GetCluster(NormalizeClusterName(instanceID))

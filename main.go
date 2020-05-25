@@ -85,7 +85,8 @@ func startBrokerServer() {
 
 	credhub, err := broker.CredHubCredentials()
 	if err != nil {
-		panic(err)
+		logger.Warnf("could not load multi-project credentials from CredHub: %v", err)
+		logger.Warn("continuing in single-project mode")
 	}
 
 	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
@@ -108,7 +109,11 @@ func startBrokerServer() {
 
 	// The auth middleware will convert basic auth credentials into an Atlas
 	// client.
-	router.Use(atlasbroker.AuthMiddleware(credhub))
+	if credhub != nil {
+		router.Use(atlasbroker.AuthMiddleware(*credhub.Broker))
+	} else {
+		router.Use(atlasbroker.SimpleAuthMiddleware(baseURL))
+	}
 
 	// Configure TLS from environment variables.
 	tlsEnabled, tlsCertPath, tlsKeyPath := getTLSConfig(logger)
