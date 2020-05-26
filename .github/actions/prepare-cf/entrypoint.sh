@@ -9,14 +9,13 @@ echo "init"
 INSTALL_TIMEOUT=40 #service deploy timeout
 branch_name=$(echo $GITHUB_REF | awk -F'/' '{print $3}')
 #branch_name=$(echo $GITHUB_REF | awk -F'\' '{print $4}') #TODO windows
-org_name="atlas-test-org"
+org_name="atlas-test-$branch_name"
 make_pcf_metadata $INPUT_PCF_URL $INPUT_PCF_USER $INPUT_PCF_PASSWORD
 
 echo "Login. Create ORG and SPACE depended on the branch name"
 cf_login
-space_name="test-space"-$branch_name
 cf create-org $org_name && cf target -o $org_name
-cf create-space $space_name && cf target -s $space_name
+cf create-space $org_name && cf target -s $org_name
 
 echo "Create service-broker"
 create_atlas_service_broker_from_repo mongodb-atlas-$branch_name atlas-osb-app-$branch_name
@@ -30,7 +29,7 @@ echo "Simple app"
 git clone https://github.com/leo-ri/simple-ruby.git
 cf push simple-app-$branch_name --no-start
 cf bind-service simple-app-$branch_name aws-atlas-test-instance-$branch_name
-cf restage simple-app-$branch_name
+cf restart simple-app-$branch_name
 app_url=$(cf app simple-app-$branch_name | awk '$1 ~ /routes:/{print $2}')
 echo "::set-output name=app_url::$app_url"
 
