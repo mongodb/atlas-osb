@@ -47,9 +47,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details broker
 
 	contextParams := &ContextParams{}
 	_ = json.Unmarshal(details.RawContext, contextParams)
-	instanceID = contextParams.InstanceName
-	b.logger.Infow("Here is proper cluster name", "instance_name", contextParams.InstanceName)
-	b.logger.Infof("Here is proper cluster name ---->%s<---", contextParams.InstanceName)
+	b.logger.Infow("Creating cluster", "instance_name", contextParams.InstanceName)
 	// TODO - add this context info about k8s/namespace or pcf space into labels
 	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
@@ -109,7 +107,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi
 	contextParams := &ContextParams{}
 	_ = json.Unmarshal(details.RawContext, contextParams)
 
-	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, contextParams.InstanceName, details.RawParameters)
+	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
