@@ -107,7 +107,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi
 	contextParams := &ContextParams{}
 	_ = json.Unmarshal(details.RawContext, contextParams)
 
-	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, contextParams.InstanceName, details.RawParameters)
+	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
