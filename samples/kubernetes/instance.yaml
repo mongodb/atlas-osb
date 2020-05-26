@@ -3,8 +3,8 @@ kind: ServiceInstance
 metadata:
   name: atlas-cluster-instance
 spec:
-  clusterServiceClassExternalName: mongodb-atlas-aws
-  clusterServicePlanExternalName: M10
+  serviceClassExternalName: mongodb-atlas-aws
+  servicePlanExternalName: M10
   parameters:
     cluster:
       providerSettings:
