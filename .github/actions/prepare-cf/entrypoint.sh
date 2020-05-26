@@ -27,6 +27,7 @@ create_service aws-atlas-test-instance-$branch_name
 
 echo "Simple app"
 git clone https://github.com/leo-ri/simple-ruby.git
+cd simple-ruby
 cf push simple-app-$branch_name --no-start
 cf bind-service simple-app-$branch_name aws-atlas-test-instance-$branch_name
 cf restart simple-app-$branch_name
