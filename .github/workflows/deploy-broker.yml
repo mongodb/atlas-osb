@@ -1,88 +1,63 @@
-# This workflow will build and push a new container image to Amazon ECR,
-# and then will deploy a new task definition to Amazon ECS, when a release is created
-#
-# To use this workflow, you will need to complete the following set-up steps:
-#
-# 1. Create an ECR repository to store your images.
-#    For example: `aws ecr create-repository --repository-name my-ecr-repo --region us-east-2`.
-#    Replace the value of `ECR_REPOSITORY` in the workflow below with your repository's name.
-#    Replace the value of `aws-region` in the workflow below with your repository's region.
-#
-# 2. Create an ECS task definition, an ECS cluster, and an ECS service.
-#    For example, follow the Getting Started guide on the ECS console:
-#      https://us-east-2.console.aws.amazon.com/ecs/home?region=us-east-2#/firstRun
-#    Replace the values for `service` and `cluster` in the workflow below with your service and cluster names.
-#
-# 3. Store your ECS task definition as a JSON file in your repository.
-#    The format should follow the output of `aws ecs register-taskDefinition --generate-cli-skeleton`.
-#    Replace the value of `taskDefinition` in the workflow below with your JSON file's name.
-#    Replace the value of `container-name` in the workflow below with the name of the container
-#    in the `containerDefinitions` section of the task definition.
-#
-# 4. Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
-#    See the documentation for each action used below for the recommended IAM policies for this IAM user,
-#    and best practices on handling the access key credentials.
+#Atlas-osb. PAS sample
 
 on: [push]
     #  release:
     #types: [created]
 
-name: Deploy to Amazon ECS
+name: Prepare CF. Base scenario.
 
 jobs:
-  deploy:
-    name: Deploy
+  deploy-to-cf:
+    name: Prepare CF. Base scenario.
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+      - uses: actions/checkout@master
+      
+      - name: Cleanup ENV for current branch
+        uses: ./.github/actions/cleanup-cf
+        with:
+          pcf_url: ${{ secrets.PCF_URL }}
+          pcf_user: ${{ secrets.PCF_USER }}
+          pcf_password: ${{ secrets.PCF_PASSWORD }}
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-2
+      - name: Create CF org, space, broker, service and push app)
+        id: prepare-step
+        uses: ./.github/actions/prepare-cf
+        with:
+          pcf_url: ${{ secrets.PCF_URL }}
+          pcf_user: ${{ secrets.PCF_USER }}
+          pcf_password: ${{ secrets.PCF_PASSWORD }}
+          atlas_project_id: ${{ secrets.ATLAS_PROJECT_ID }}
+          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@master
-
-    - name: Build, tag, and push image to Amazon ECR
-      id: build-image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: atlas-osb/dev 
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        # Build a docker container and
-        # push it to ECR so that it can
-        # be deployed to ECS.
-        echo "image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
-    - name: Print environment variables
-      run: env
-
-    - name: Fill in the new image ID in the Amazon ECS task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: test/ci/github/ecs-task-definition.json
-        container-name: "mongodb-atlas-service-broker-container"
-        image: ${{ steps.build-image.outputs.image }}
-
-    - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: atlas-broker
-        cluster: atlas-osb
-        wait-for-service-stability: true
-
-    - name: Logout of Amazon ECR
-      if: always()
-      run: docker logout ${{ steps.login-ecr.outputs.registry }}
+      - name: Check application. Add album
+        id: check-app
+        env:
+          APP_URL: ${{ steps.prepare-step.outputs.app_url }}
+        run: |
+          APP_URL=${APP_URL}/service/mongo/test3
+          echo "working with "$APP_URL
+          #curl -H "Content-Type: application/json" -X PUT -d '{"_class":"org.cloudfoundry.samples.music.domain.Album", "artist": "Tenno", "title": "Journey", "releaseYear": "2019", "genre": "chillhop" }' $APP_URL/albums
+          status=$(curl -X PUT -d '{"data":"sometest130"}' ${APP_URL})
+          if [[ $status != "success" ]]; then
+              echo "Error: check application"
+              exit 1
+          fi
+          result=$(echo $(curl -X GET ${APP_URL}))
+          if [ "${result}" = '{"data":"sometest130"}' ]; then
+              echo "Application is working"
+              echo "Cleaning data.."
+              curl -X DELETE ${APP_URL}
+          else
+              echo "GET ${APP_URL} finished with result: ${result}"
+              echo "FAILED. Application doesn't work"
+              exit 1
+          fi
+          # curl -X PUT -d '{"data":"sometest130"}' http://simple.apps.sanmarcos.cf-app.com/service/mongo/test3
+          # result=$(curl -X GET $APP_URL/albums -s | awk '/Tenno/{print "true"}')
+          # echo $result
+          # if [[ -z $result ]]; then
+          #   echo "FAILED. Curl check: Text is not found"
+          #   exit 1
+          # fi
