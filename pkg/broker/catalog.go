@@ -182,6 +182,7 @@ func plansForProvider(provider *atlas.Provider, ch *credentials) []brokerapi.Ser
 				Description: fmt.Sprintf("Instance size %q", instanceSize.Name),
 			}
 			plans = append(plans, plan)
+			continue
 		}
 
 		for groupID, creds := range ch.Projects {
