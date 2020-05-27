@@ -44,7 +44,11 @@ func CredHubCredentials() (*credentials, error) {
 		return nil, fmt.Errorf("cannot unmarshal VCAP_SERVICES: %v", err)
 	}
 
-	result := credentials{}
+	result := credentials{
+		Projects: map[string]credential{},
+		Orgs:     map[string]credential{},
+	}
+
 	for _, c := range services.CredHub {
 		for k, v := range c.Credentials.Projects {
 			result.Projects[k] = v
@@ -83,16 +87,16 @@ func EnvCredentials() (credentials, error) {
 }
 
 func (c credentials) validate() error {
-	if c.Broker == nil && len(c.Projects)+len(c.Orgs) > 0 {
-		return errors.New("found project credentials, but no broker credentials - this is not supported")
+	if c.Broker == nil {
+		return errors.New("no broker credentials specified")
 	}
 
-	if c.Broker != nil && len(c.Projects)+len(c.Orgs) == 0 {
-		return errors.New("found broker credentials, but no project credentials - this is not supported")
+	if len(c.Projects)+len(c.Orgs) == 0 {
+		return errors.New("no Project/Org credentials specified")
 	}
 
-	if c.Broker == nil && len(c.Projects)+len(c.Orgs) == 0 {
-		return errors.New("no credentials specified")
+	if len(c.Projects) == 0 && len(c.Orgs) != 0 {
+		return errors.New("Org credentials are not implemented yet")
 	}
 
 	return nil
