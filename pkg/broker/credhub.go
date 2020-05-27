@@ -83,12 +83,16 @@ func EnvCredentials() (credentials, error) {
 }
 
 func (c credentials) validate() error {
-	if c.Broker == nil && len(c.Projects) > 0 {
+	if c.Broker == nil && len(c.Projects)+len(c.Orgs) > 0 {
 		return errors.New("found project credentials, but no broker credentials - this is not supported")
 	}
 
-	if c.Broker != nil && len(c.Projects) == 0 {
+	if c.Broker != nil && len(c.Projects)+len(c.Orgs) == 0 {
 		return errors.New("found broker credentials, but no project credentials - this is not supported")
+	}
+
+	if c.Broker == nil && len(c.Projects)+len(c.Orgs) == 0 {
+		return errors.New("no credentials specified")
 	}
 
 	return nil
