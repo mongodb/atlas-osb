@@ -1,16 +1,16 @@
 FROM ubuntu:bionic
-ENV BBL_VERSION=7.1.0 \
-    GOLANG_VERSION=1.11.4 \
-    PATH=/go/bin:/usr/local/go/bin:/root/google-cloud-sdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    GOPATH=/go \
-    TILE_GENERATOR_VERSION=12.0.8 \
-    YQ_VERSION=2.2.0 \
-    DUMB_INIT_VERSION=1.2.2 \
+ENV TILE_GENERATOR_VERSION=12.0.8 \
+    YQ_VERSION=3.3.0 \
     PIVNET_CLI_VERSION=0.0.55 \
-    CF_CLI_VERSION=6.41.0 \
     CREDHUB_CLI_VERSION=2.2.0 \
     OM_VERSION=4.0.1 \
-    BOSH_CLI_VERSION=5.4.0
+    BOSH_CLI_VERSION=5.4.0 \
+    BBL_VERSION=7.1.0 \
+    DUMB_INIT_VERSION=1.2.2 \
+    GOLANG_VERSION=1.13.3 \
+    CF_CLI_VERSION=6.51.0 \
+    PATH=/go/bin:/usr/local/go/bin:/root/google-cloud-sdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    GOPATH=/go
 RUN set -xe && \
     echo '#!/bin/sh' > /usr/sbin/policy-rc.d && \
     echo 'exit 101' >> /usr/sbin/policy-rc.d && \
@@ -31,13 +31,13 @@ RUN set -xe && \
     ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive && \
-    apt-get install -y --no-install-recommends build-essential git ruby-dev openssh-client unzip wget curl rsync vim-nox python openjdk-8-jdk && \
+    apt-get install -y --no-install-recommends build-essential git ruby-dev openssh-client unzip wget curl rsync vim-nox python openjdk-8-jdk jq && \
     apt-get autoremove && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 && \
-    mv jq-linux64 /usr/local/bin/jq && \
-    chmod +x /usr/local/bin/jq && \
+    rm -rf /var/lib/apt/lists/*
+RUN wget https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -O yq && \
+    mv yq /usr/local/bin/yq && \
+    chmod +x /usr/local/bin/yq && \
     wget https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-${BOSH_CLI_VERSION}-linux-amd64 -O bosh && \
     mv bosh /usr/local/bin/bosh && \
     chmod +x /usr/local/bin/bosh && \
@@ -57,24 +57,20 @@ RUN apt-get update && \
     wget https://github.com/pivotal-cf/pivnet-cli/releases/download/v${PIVNET_CLI_VERSION}/pivnet-linux-amd64-${PIVNET_CLI_VERSION} -O pivnet && \
     mv pivnet /usr/local/bin/pivnet && \
     chmod +x /usr/local/bin/pivnet && \
-    wget https://github.com/Yelp/dumb-init/releases/download/v${DUMB_INIT_VERSION}/dumb-init_${DUMB_INIT_VERSION}_amd64 -O dumb-init && \
-    mv dumb-init /usr/local/bin/dumb-init && \
-    chmod +x /usr/local/bin/dumb-init && \
-    wget https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -O yq && \
-    mv yq /usr/local/bin/yq && \
-    chmod +x /usr/local/bin/yq && \
     wget https://github.com/cf-platform-eng/tile-generator/releases/download/v${TILE_GENERATOR_VERSION}/pcf_linux-64bit -O pcf && \
     mv pcf /usr/local/bin/pcf && \
     chmod +x /usr/local/bin/pcf && \
     wget https://github.com/cf-platform-eng/tile-generator/releases/download/v${TILE_GENERATOR_VERSION}/tile_linux-64bit -O tile && \
     mv tile /usr/local/bin/tile && \
     chmod +x /usr/local/bin/tile && \
-    curl -sSL https://sdk.cloud.google.com | bash && \
     wget https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz -P /tmp && \
     tar xzf /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz -C /usr/local && \
     mkdir $GOPATH && \
     go get -u github.com/onsi/ginkgo/... && \
     wget https://github.com/cloudfoundry/bosh-bootloader/releases/download/v${BBL_VERSION}/bbl-v${BBL_VERSION}_linux_x86-64 -O bbl && \
     mv bbl /usr/local/bin/bbl && \
-    chmod +x /usr/local/bin/bbl
+    chmod +x /usr/local/bin/bbl 
+    # wget https://github.com/Yelp/dumb-init/releases/download/v${DUMB_INIT_VERSION}/dumb-init_${DUMB_INIT_VERSION}_amd64 -O dumb-init && \
+    # mv dumb-init /usr/local/bin/dumb-init && \
+    # chmod +x /usr/local/bin/dumb-init && \
 CMD ["/bin/bash"]

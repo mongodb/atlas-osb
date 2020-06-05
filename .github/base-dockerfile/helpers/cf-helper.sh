@@ -32,7 +32,6 @@ wait_service_status_change() {
   done
 }
 
-
 delete_service_app_if_exists() {
   local instance_name=$1
   local app_name=$2
