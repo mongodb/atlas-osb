@@ -69,14 +69,14 @@ func CredHubCredentials() (*credentials, error) {
 }
 
 func EnvCredentials() (credentials, error) {
-	env, found := os.LookupEnv("ATLAS_CREDENTIALS")
+	env, found := os.LookupEnv("BROKER_APIKEYS")
 	if !found {
-		return credentials{}, fmt.Errorf("env CREDENTIALS not specified")
+		return credentials{}, fmt.Errorf("env BROKER_APIKEYS not specified")
 	}
 
 	creds := credentials{}
 	if err := json.Unmarshal([]byte(env), &creds); err != nil {
-		return credentials{}, fmt.Errorf("cannot unmarshal VCAP_SERVICES: %v", err)
+		return credentials{}, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
 	}
 
 	if err := creds.validate(); err != nil {

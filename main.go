@@ -90,18 +90,19 @@ func startBrokerServer() {
 	}
 
 	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
+	autoPlans := getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
 
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	var broker *atlasbroker.Broker
 	if !hasWhitelist {
-		broker = atlasbroker.NewBroker(logger, credhub, baseURL)
+		broker = atlasbroker.NewBroker(logger, credhub, baseURL, nil, autoPlans)
 	} else {
 		whitelist, err := atlasbroker.ReadWhitelistFile(pathToWhitelistFile)
 		if err != nil {
 			panic(err)
 		}
-		broker = atlasbroker.NewBrokerWithWhitelist(logger, credhub, baseURL, whitelist)
+		broker = atlasbroker.NewBroker(logger, credhub, baseURL, whitelist, autoPlans)
 	}
 
 	router := mux.NewRouter()

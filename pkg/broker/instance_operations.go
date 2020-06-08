@@ -263,7 +263,7 @@ func (b Broker) clusterFromParams(client atlas.Client, instanceID string, servic
 			}
 
 			var instanceSize *atlas.InstanceSize
-			if b.credHub == nil {
+			if !b.autoPlans || b.credHub == nil {
 				instanceSize, err = b.findInstanceSizeByPlanID(provider, planID)
 			} else {
 				instanceSize, err = b.findInstanceSizeByPlanIDAugmented(provider, planID)

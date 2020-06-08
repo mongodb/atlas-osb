@@ -106,7 +106,7 @@ func (b Broker) service(provider *atlas.Provider) (service brokerapi.Service) {
 	catalogName := fmt.Sprintf("mongodb-atlas-%s", strings.ToLower(provider.Name))
 
 	var plans []brokerapi.ServicePlan
-	if b.credHub == nil {
+	if !b.autoPlans || b.credHub == nil {
 		plans = b.plansForProvider(provider)
 	} else {
 		plans = b.plansForProviderAugmented(provider)

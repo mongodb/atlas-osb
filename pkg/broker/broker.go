@@ -24,25 +24,17 @@ type Broker struct {
 	whitelist Whitelist
 	credHub   *credentials
 	baseURL   string
+	autoPlans bool
 }
 
 // NewBroker creates a new Broker with a logger.
-func NewBroker(logger *zap.SugaredLogger, credHub *credentials, baseURL string) *Broker {
-	return &Broker{
-		logger:  logger,
-		credHub: credHub,
-		baseURL: baseURL,
-	}
-}
-
-// NewBrokerWithWhitelist creates a new Broker with a given logger and a
-// whitelist for allowed providers and their plans.
-func NewBrokerWithWhitelist(logger *zap.SugaredLogger, credHub *credentials, baseURL string, whitelist Whitelist) *Broker {
+func NewBroker(logger *zap.SugaredLogger, credHub *credentials, baseURL string, whitelist Whitelist, autoPlans bool) *Broker {
 	return &Broker{
 		logger:    logger,
 		credHub:   credHub,
 		baseURL:   baseURL,
 		whitelist: whitelist,
+		autoPlans: autoPlans,
 	}
 }
 
