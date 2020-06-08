@@ -36,7 +36,12 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return
 	}
 
-	_, err = findInstanceSizeByPlanID(provider, b.credHub, details.PlanID)
+	if b.credHub == nil {
+		_, err = b.findInstanceSizeByPlanID(provider, details.PlanID)
+	} else {
+		_, err = b.findInstanceSizeByPlanIDAugmented(provider, details.PlanID)
+	}
+
 	if err != nil {
 		return
 	}

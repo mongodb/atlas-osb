@@ -141,7 +141,11 @@ func atlasToAPIError(err error) error {
 func (b Broker) getClient(ctx context.Context, planID string) (atlas.Client, error) {
 	client, err := atlasClientFromContext(ctx)
 	if err != nil {
-		gid := groupID(planID, b.credHub)
+		gid, err := groupID(planID, b.credHub)
+		if err != nil {
+			return nil, err
+		}
+
 		c, ok := b.credHub.Projects[gid]
 		if !ok {
 			return nil, atlas.ErrUnauthorized
