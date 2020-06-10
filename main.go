@@ -165,17 +165,6 @@ func getTLSConfig(logger *zap.SugaredLogger) (bool, string, string) {
 	return hasCertPath && hasKeyPath, certPath, keyPath
 }
 
-// getEnvOrPanic will try getting an environment variable and fail with a
-// helpful error message in case it doesn't exist.
-func getEnvOrPanic(name string) string {
-	value, exists := os.LookupEnv(name)
-	if !exists {
-		panic(fmt.Sprintf(`Could not find environment variable "%s"`, name))
-	}
-
-	return value
-}
-
 // getEnvOrDefault will try getting an environment variable and return a default
 // value in case it doesn't exist.
 func getEnvOrDefault(name string, def string) string {
