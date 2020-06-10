@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +16,7 @@ func TestMissingAsync(t *testing.T) {
 
 	// Try provisioning an instance without async support
 	instanceID := "instance"
-	_, err := broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	_, err := broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, false)
@@ -24,20 +24,20 @@ func TestMissingAsync(t *testing.T) {
 	assert.EqualError(t, err, apiresponses.ErrAsyncRequired.Error())
 	assert.Len(t, client.Clusters, 0, "Expected no clusters to be created")
 
-	broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
 
 	// Try updating existing cluster without async support
-	_, err = broker.Update(ctx, instanceID, brokerapi.UpdateDetails{
+	_, err = broker.Update(ctx, instanceID, domain.UpdateDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, false)
 
 	assert.EqualError(t, err, apiresponses.ErrAsyncRequired.Error())
 
-	_, err = broker.Deprovision(ctx, instanceID, brokerapi.DeprovisionDetails{
+	_, err = broker.Deprovision(ctx, instanceID, domain.DeprovisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, false)
@@ -49,7 +49,7 @@ func TestProvision(t *testing.T) {
 	broker, client, ctx := setupTest()
 
 	instanceID := "instance"
-	res, err := broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	res, err := broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
@@ -112,7 +112,7 @@ func TestProvisionParams(t *testing.T) {
 	}}`
 
 	instanceID := "instance"
-	_, err := broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	_, err := broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:        testPlanID,
 		ServiceID:     testServiceID,
 		RawParameters: []byte(params),
@@ -169,13 +169,13 @@ func TestProvisionAlreadyExisting(t *testing.T) {
 
 	// Provision a first instance
 	instanceID := "instance"
-	broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
 
 	// Try provisioning a second instance with the same ID
-	_, err := broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	_, err := broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
@@ -187,12 +187,12 @@ func TestUpdate(t *testing.T) {
 	broker, client, ctx := setupTest()
 
 	instanceID := "instance"
-	broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		ServiceID: testServiceID,
 		PlanID:    testPlanID,
 	}, true)
 
-	res, err := broker.Update(ctx, instanceID, brokerapi.UpdateDetails{
+	res, err := broker.Update(ctx, instanceID, domain.UpdateDetails{
 		PlanID:    "aosb-cluster-plan-aws-m20",
 		ServiceID: testServiceID,
 	}, true)
@@ -222,7 +222,7 @@ func TestUpdateWithoutPlan(t *testing.T) {
 	}`
 
 	instanceID := "instance"
-	broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		ServiceID:     testServiceID,
 		PlanID:        testPlanID,
 		RawParameters: []byte(params),
@@ -245,7 +245,7 @@ func TestUpdateWithoutPlan(t *testing.T) {
 		}
 	}`
 
-	res, err := broker.Update(ctx, instanceID, brokerapi.UpdateDetails{
+	res, err := broker.Update(ctx, instanceID, domain.UpdateDetails{
 		ServiceID:     testServiceID,
 		RawParameters: []byte(updateParams),
 	}, true)
@@ -268,24 +268,24 @@ func TestUpdateNonexistent(t *testing.T) {
 	broker, _, ctx := setupTest()
 
 	instanceID := "instance"
-	_, err := broker.Update(ctx, instanceID, brokerapi.UpdateDetails{
+	_, err := broker.Update(ctx, instanceID, domain.UpdateDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
 
-	assert.Error(t, err, brokerapi.ErrInstanceDoesNotExist.Error())
+	assert.Error(t, err, apiresponses.ErrInstanceDoesNotExist.Error())
 }
 
 func TestDeprovision(t *testing.T) {
 	broker, client, ctx := setupTest()
 
 	instanceID := "instance"
-	broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
 
-	res, err := broker.Deprovision(ctx, instanceID, brokerapi.DeprovisionDetails{}, true)
+	res, err := broker.Deprovision(ctx, instanceID, domain.DeprovisionDetails{}, true)
 
 	assert.NoError(t, err)
 	assert.True(t, res.IsAsync)
@@ -297,12 +297,12 @@ func TestDeprovisionWithoutAsync(t *testing.T) {
 	broker, client, ctx := setupTest()
 
 	instanceID := "instance"
-	broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
 
-	_, err := broker.Deprovision(ctx, instanceID, brokerapi.DeprovisionDetails{}, false)
+	_, err := broker.Deprovision(ctx, instanceID, domain.DeprovisionDetails{}, false)
 
 	assert.EqualError(t, err, apiresponses.ErrAsyncRequired.Error())
 	assert.NotEmpty(t, client.Clusters[instanceID], "Expected cluster to not have been removed")
@@ -312,7 +312,7 @@ func TestDeprovisionNonexistent(t *testing.T) {
 	broker, _, ctx := setupTest()
 
 	instanceID := "instance"
-	_, err := broker.Deprovision(ctx, instanceID, brokerapi.DeprovisionDetails{}, true)
+	_, err := broker.Deprovision(ctx, instanceID, domain.DeprovisionDetails{}, true)
 
 	assert.EqualError(t, err, apiresponses.ErrInstanceDoesNotExist.Error())
 }
@@ -321,68 +321,68 @@ func TestLastOperationProvision(t *testing.T) {
 	broker, client, ctx := setupTest()
 
 	instanceID := "instance"
-	broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
 
 	// Set the cluster state to idle
 	client.SetClusterState(instanceID, atlas.ClusterStateIdle)
-	resp, err := broker.LastOperation(ctx, instanceID, brokerapi.PollDetails{
+	resp, err := broker.LastOperation(ctx, instanceID, domain.PollDetails{
 		OperationData: OperationProvision,
 	})
 
 	// State of cluster should be "succeeded"
 	assert.NoError(t, err)
-	assert.Equal(t, brokerapi.Succeeded, resp.State)
+	assert.Equal(t, domain.Succeeded, resp.State)
 
 	// Set the cluster state to creating
 	client.SetClusterState(instanceID, atlas.ClusterStateCreating)
-	resp, err = broker.LastOperation(ctx, instanceID, brokerapi.PollDetails{
+	resp, err = broker.LastOperation(ctx, instanceID, domain.PollDetails{
 		OperationData: OperationProvision,
 	})
 
 	// State of cluster should be "in progress"
 	assert.NoError(t, err)
-	assert.Equal(t, brokerapi.InProgress, resp.State)
+	assert.Equal(t, domain.InProgress, resp.State)
 }
 
 func TestLastOperationDeprovision(t *testing.T) {
 	broker, client, ctx := setupTest()
 
 	instanceID := "instance"
-	broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		PlanID:    testPlanID,
 		ServiceID: testServiceID,
 	}, true)
 
 	// Set the cluster state to deleted
 	client.SetClusterState(instanceID, atlas.ClusterStateDeleted)
-	resp, err := broker.LastOperation(ctx, instanceID, brokerapi.PollDetails{
+	resp, err := broker.LastOperation(ctx, instanceID, domain.PollDetails{
 		OperationData: OperationDeprovision,
 	})
 
 	// State of cluster should be "succeeded"
 	assert.NoError(t, err)
-	assert.Equal(t, brokerapi.Succeeded, resp.State)
+	assert.Equal(t, domain.Succeeded, resp.State)
 
 	// Set the cluster state to deleting
 	client.SetClusterState(instanceID, atlas.ClusterStateDeleting)
-	resp, err = broker.LastOperation(ctx, instanceID, brokerapi.PollDetails{
+	resp, err = broker.LastOperation(ctx, instanceID, domain.PollDetails{
 		OperationData: OperationDeprovision,
 	})
 
 	// State of cluster should be "in progress"
 	assert.NoError(t, err)
-	assert.Equal(t, brokerapi.InProgress, resp.State)
+	assert.Equal(t, domain.InProgress, resp.State)
 
 	// Fully remove cluster (causing a not found error)
 	client.Clusters[instanceID] = nil
-	resp, err = broker.LastOperation(ctx, instanceID, brokerapi.PollDetails{
+	resp, err = broker.LastOperation(ctx, instanceID, domain.PollDetails{
 		OperationData: OperationDeprovision,
 	})
 
 	// State of cluster should be "succeeded"
 	assert.NoError(t, err)
-	assert.Equal(t, brokerapi.Succeeded, resp.State)
+	assert.Equal(t, domain.Succeeded, resp.State)
 }

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
 
@@ -29,7 +29,7 @@ type ContextParams struct {
 
 // Provision will create a new Atlas cluster with the instance ID as its name.
 // The process is always async.
-func (b Broker) Provision(ctx context.Context, instanceID string, details brokerapi.ProvisionDetails, asyncAllowed bool) (spec brokerapi.ProvisionedServiceSpec, err error) {
+func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
 	client, err := b.getClient(ctx, details.PlanID)
@@ -70,7 +70,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details broker
 
 	b.logger.Infow("Successfully started Atlas creation process", "instance_id", instanceID, "cluster", resultingCluster)
 
-	return brokerapi.ProvisionedServiceSpec{
+	return domain.ProvisionedServiceSpec{
 		IsAsync:       true,
 		OperationData: OperationProvision,
 		DashboardURL:  client.GetDashboardURL(resultingCluster.Name),
@@ -78,7 +78,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details broker
 }
 
 // Update will change the configuration of an existing Atlas cluster asynchronously.
-func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool) (spec brokerapi.UpdateServiceSpec, err error) {
+func (b Broker) Update(ctx context.Context, instanceID string, details domain.UpdateDetails, asyncAllowed bool) (spec domain.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
 	client, err := b.getClient(ctx, details.PlanID)
@@ -134,7 +134,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi
 
 	b.logger.Infow("Successfully started Atlas cluster update process", "instance_id", instanceID, "cluster", resultingCluster)
 
-	return brokerapi.UpdateServiceSpec{
+	return domain.UpdateServiceSpec{
 		IsAsync:       true,
 		OperationData: OperationUpdate,
 		DashboardURL:  client.GetDashboardURL(resultingCluster.Name),
@@ -142,7 +142,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi
 }
 
 // Deprovision will destroy an Atlas cluster asynchronously.
-func (b Broker) Deprovision(ctx context.Context, instanceID string, details brokerapi.DeprovisionDetails, asyncAllowed bool) (spec brokerapi.DeprovisionServiceSpec, err error) {
+func (b Broker) Deprovision(ctx context.Context, instanceID string, details domain.DeprovisionDetails, asyncAllowed bool) (spec domain.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
 	client, err := b.getClient(ctx, details.PlanID)
@@ -165,7 +165,7 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details brok
 
 	b.logger.Infow("Successfully started Atlas cluster deletion process", "instance_id", instanceID)
 
-	return brokerapi.DeprovisionServiceSpec{
+	return domain.DeprovisionServiceSpec{
 		IsAsync:       true,
 		OperationData: OperationDeprovision,
 	}, nil
@@ -173,15 +173,15 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details brok
 
 // GetInstance is currently not supported as specified by the
 // InstancesRetrievable setting in the service catalog.
-func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec brokerapi.GetInstanceDetailsSpec, err error) {
+func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
 	b.logger.Infow("Fetching instance", "instance_id", instanceID)
-	err = brokerapi.NewFailureResponse(fmt.Errorf("Unknown instance ID %s", instanceID), 404, "get-instance")
+	err = apiresponses.NewFailureResponse(fmt.Errorf("Unknown instance ID %s", instanceID), 404, "get-instance")
 	return
 }
 
 // LastOperation should fetch the state of the provision/deprovision
 // of a cluster.
-func (b Broker) LastOperation(ctx context.Context, instanceID string, details brokerapi.PollDetails) (resp brokerapi.LastOperation, err error) {
+func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
 	client, err := b.getClient(ctx, details.PlanID)
@@ -198,38 +198,38 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details br
 
 	b.logger.Infow("Found existing cluster", "cluster", cluster)
 
-	state := brokerapi.LastOperationState(brokerapi.Failed)
+	state := domain.LastOperationState(domain.Failed)
 
 	switch details.OperationData {
 	case OperationProvision:
 		switch cluster.StateName {
 		// Provision has succeeded if the cluster is in state "idle".
 		case atlas.ClusterStateIdle:
-			state = brokerapi.Succeeded
+			state = domain.Succeeded
 		case atlas.ClusterStateCreating:
-			state = brokerapi.InProgress
+			state = domain.InProgress
 		}
 	case OperationDeprovision:
 		// The Atlas API may return a 404 response if a cluster is deleted or it
 		// will return the cluster with a state of "DELETED". Both of these
 		// scenarios indicate that a cluster has been successfully deleted.
 		if err == atlas.ErrClusterNotFound || cluster.StateName == atlas.ClusterStateDeleted {
-			state = brokerapi.Succeeded
+			state = domain.Succeeded
 		} else if cluster.StateName == atlas.ClusterStateDeleting {
-			state = brokerapi.InProgress
+			state = domain.InProgress
 		}
 	case OperationUpdate:
 		// We assume that the cluster transitions to the "UPDATING" state
 		// in a synchronous manner during the update request.
 		switch cluster.StateName {
 		case atlas.ClusterStateIdle:
-			state = brokerapi.Succeeded
+			state = domain.Succeeded
 		case atlas.ClusterStateUpdating:
-			state = brokerapi.InProgress
+			state = domain.InProgress
 		}
 	}
 
-	return brokerapi.LastOperation{
+	return domain.LastOperation{
 		State: state,
 	}, nil
 }

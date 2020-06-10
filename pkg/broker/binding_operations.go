@@ -9,7 +9,8 @@ import (
 	"fmt"
 
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
 
 // ConnectionDetails will be returned when a new binding is created.
@@ -22,7 +23,7 @@ type ConnectionDetails struct {
 
 // Bind will create a new database user with a username matching the binding ID
 // and a randomly generated password. The user credentials will be returned back.
-func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details brokerapi.BindDetails, asyncAllowed bool) (spec brokerapi.Binding, err error) {
+func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details domain.BindDetails, asyncAllowed bool) (spec domain.Binding, err error) {
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
 	client, err := b.getClient(ctx, details.PlanID)
@@ -81,7 +82,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	b.logger.Infow("Successfully created Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
 	b.logger.Infow("New User ConnectionString", "connectionString", cluster.ConnectionStrings)
 	cs, err := json.Marshal(cluster.ConnectionStrings)
-	spec = brokerapi.Binding{
+	spec = domain.Binding{
 		Credentials: ConnectionDetails{
 			Username:         bindingID,
 			Password:         password,
@@ -94,7 +95,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 // Unbind will delete the database user for a specific binding. The database
 // user should have the binding ID as its username.
-func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details brokerapi.UnbindDetails, asyncAllowed bool) (spec brokerapi.UnbindSpec, err error) {
+func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details domain.UnbindDetails, asyncAllowed bool) (spec domain.UnbindSpec, err error) {
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
 	client, err := b.getClient(ctx, details.PlanID)
@@ -120,22 +121,22 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 
 	b.logger.Infow("Successfully deleted Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
 
-	spec = brokerapi.UnbindSpec{}
+	spec = domain.UnbindSpec{}
 	return
 }
 
 // GetBinding is currently not supported as specified by the
 // BindingsRetrievable setting in the service catalog.
-func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec brokerapi.GetBindingSpec, err error) {
+func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec domain.GetBindingSpec, err error) {
 	b.logger.Infow("Retrieving binding", "instance_id", instanceID, "binding_id", bindingID)
 
-	err = brokerapi.NewFailureResponse(fmt.Errorf("Unknown binding ID %s", bindingID), 404, "get-binding")
+	err = apiresponses.NewFailureResponse(fmt.Errorf("Unknown binding ID %s", bindingID), 404, "get-binding")
 	return
 }
 
 // LastBindingOperation should fetch the status of the last creation/deletion
 // of a database user.
-func (b Broker) LastBindingOperation(ctx context.Context, instanceID string, bindingID string, details brokerapi.PollDetails) (brokerapi.LastOperation, error) {
+func (b Broker) LastBindingOperation(ctx context.Context, instanceID string, bindingID string, details domain.PollDetails) (domain.LastOperation, error) {
 	panic("not implemented")
 }
 
