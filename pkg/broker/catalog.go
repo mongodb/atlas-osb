@@ -47,7 +47,7 @@ var (
 	}
 
 	apiKeyRegexp = regexp.MustCompile(`^[-\w]+$`)
-	planIDRegexp = regexp.MustCompile(idPrefix + `-plan-(\w+)-([-\w]+)`)
+	planIDRegexp = regexp.MustCompile(idPrefix + `-plan-(\w+)-(\w+)-([-\w]+)`)
 )
 
 // applyWhitelist filters a given service, returning the service with only the
@@ -144,7 +144,11 @@ func findProviderByServiceID(client atlas.Client, serviceID string) (*atlas.Prov
 
 func groupID(planID string, creds *credentials) (string, error) {
 	m := planIDRegexp.FindStringSubmatch(planID)
-	groupName := m[2]
+	if m != nil {
+		return "", fmt.Errorf("plan ID %q is not in correct format", planID)
+	}
+
+	groupName := m[3]
 
 	// TODO: we need to make this more robust
 	for id, c := range creds.Projects {
