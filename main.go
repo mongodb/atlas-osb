@@ -13,6 +13,7 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	atlasbroker "github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	"github.com/pivotal-cf/brokerapi"
 )
@@ -82,17 +83,32 @@ func startBrokerServer() {
 	}
 	defer logger.Sync() // Flushes buffer, if any
 
+	creds, err := broker.EnvCredentials()
+	if err != nil {
+		logger.Warnf("Сould not load multi-project credentials from env: %v", err)
+		logger.Warn("Continuing with CredHub...")
+
+		creds, err = broker.CredHubCredentials()
+		if err != nil {
+			logger.Warnf("Could not load multi-project credentials from CredHub: %v", err)
+			logger.Warn("Continuing in single-project mode...")
+		}
+	}
+
+	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
+	autoPlans := getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
+
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	var broker *atlasbroker.Broker
 	if !hasWhitelist {
-		broker = atlasbroker.NewBroker(logger)
+		broker = atlasbroker.NewBroker(logger, creds, baseURL, nil, autoPlans)
 	} else {
 		whitelist, err := atlasbroker.ReadWhitelistFile(pathToWhitelistFile)
 		if err != nil {
 			panic(err)
 		}
-		broker = atlasbroker.NewBrokerWithWhitelist(logger, whitelist)
+		broker = atlasbroker.NewBroker(logger, creds, baseURL, whitelist, autoPlans)
 	}
 
 	router := mux.NewRouter()
@@ -100,8 +116,11 @@ func startBrokerServer() {
 
 	// The auth middleware will convert basic auth credentials into an Atlas
 	// client.
-	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
-	router.Use(atlasbroker.AuthMiddleware(baseURL))
+	if creds != nil {
+		router.Use(atlasbroker.AuthMiddleware(*creds.Broker))
+	} else {
+		router.Use(atlasbroker.SimpleAuthMiddleware(baseURL))
+	}
 
 	// Configure TLS from environment variables.
 	tlsEnabled, tlsCertPath, tlsKeyPath := getTLSConfig(logger)

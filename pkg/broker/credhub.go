@@ -68,22 +68,22 @@ func CredHubCredentials() (*credentials, error) {
 	return &result, nil
 }
 
-func EnvCredentials() (credentials, error) {
+func EnvCredentials() (*credentials, error) {
 	env, found := os.LookupEnv("BROKER_APIKEYS")
 	if !found {
-		return credentials{}, fmt.Errorf("env BROKER_APIKEYS not specified")
+		return nil, fmt.Errorf("env BROKER_APIKEYS not specified")
 	}
 
 	creds := credentials{}
 	if err := json.Unmarshal([]byte(env), &creds); err != nil {
-		return credentials{}, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
+		return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
 	}
 
 	if err := creds.validate(); err != nil {
-		return credentials{}, err
+		return nil, err
 	}
 
-	return creds, nil
+	return &creds, nil
 }
 
 func (c credentials) validate() error {
