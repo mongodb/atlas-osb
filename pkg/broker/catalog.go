@@ -144,7 +144,7 @@ func findProviderByServiceID(client atlas.Client, serviceID string) (*atlas.Prov
 
 func groupID(planID string, creds *credentials) (string, error) {
 	m := planIDRegexp.FindStringSubmatch(planID)
-	if m != nil {
+	if m == nil {
 		return "", fmt.Errorf("plan ID %q is not in correct format", planID)
 	}
 
