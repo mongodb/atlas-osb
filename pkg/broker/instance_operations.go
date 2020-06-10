@@ -21,6 +21,12 @@ const (
 	InstanceSizeNameM5   = "M5"
 )
 
+type ContextParams struct {
+	InstanceName string `json:"instance_name"`
+	Namespace    string `json:"namespace"`
+	Platform     string `json:"platform"`
+}
+
 // Provision will create a new Atlas cluster with the instance ID as its name.
 // The process is always async.
 func (b Broker) Provision(ctx context.Context, instanceID string, details brokerapi.ProvisionDetails, asyncAllowed bool) (spec brokerapi.ProvisionedServiceSpec, err error) {
@@ -38,14 +44,24 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details broker
 	}
 
 	// Construct a cluster definition from the instance ID, service, plan, and params.
+	contextParams := &ContextParams{}
+	_ = json.Unmarshal(details.RawContext, contextParams)
+	b.logger.Infow("Creating cluster", "instance_name", contextParams.InstanceName)
+	// TODO - add this context info about k8s/namespace or pcf space into labels
 	cluster, err := b.clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		b.logger.Errorw("Couldn't create cluster from the passed parameters", "error", err, "instance_id", instanceID, "details", details)
 		return
 	}
 
+	// Add default labels
+	// TODO - append the env info k8s, pcf, etc
+	var defaultLabel = atlas.Label{Key: "Infrastructure Tool", Value: "MongoDB Atlas Service Broker"}
+	cluster.Labels = make([]atlas.Label, 1)
+	cluster.Labels[0] = defaultLabel
 	// Create a new Atlas cluster from the generated definition
 	resultingCluster, err := client.CreateCluster(*cluster)
+
 	if err != nil {
 		b.logger.Errorw("Failed to create Atlas cluster", "error", err, "cluster", cluster)
 		err = atlasToAPIError(err)
@@ -87,6 +103,9 @@ func (b Broker) Update(ctx context.Context, instanceID string, details brokerapi
 	}
 
 	// Construct a cluster from the instance ID, service, plan, and params.
+	contextParams := &ContextParams{}
+	_ = json.Unmarshal(details.RawContext, contextParams)
+
 	cluster, err := b.clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return

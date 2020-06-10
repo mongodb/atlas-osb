@@ -120,7 +120,7 @@ func startBrokerServer() {
 	tlsEnabled, tlsCertPath, tlsKeyPath := getTLSConfig(logger)
 
 	host := getEnvOrDefault("BROKER_HOST", DefaultServerHost)
-	port := getIntEnvOrDefault("BROKER_PORT", DefaultServerPort)
+	port := getIntEnvOrDefault("BROKER_PORT", getIntEnvOrDefault("PORT", DefaultServerPort))
 
 	// Replace with NONE if not set
 	if !hasWhitelist {
