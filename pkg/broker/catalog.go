@@ -153,7 +153,7 @@ func groupID(planID string, creds *credentials) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("cannot find group for plan ID %q")
+	return "", fmt.Errorf("cannot find group for plan ID %q", planID)
 }
 
 func (b Broker) findInstanceSizeByPlanID(provider *atlas.Provider, planID string) (*atlas.InstanceSize, error) {

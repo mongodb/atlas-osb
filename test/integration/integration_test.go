@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Setup the broker which will be used
-	broker = brokerlib.NewBrokerWithWhitelist(zap.NewNop().Sugar(), whitelist)
+	broker = brokerlib.NewBroker(zap.NewNop().Sugar(), nil, "", whitelist, false)
 
 	result := m.Run()
 

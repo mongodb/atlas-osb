@@ -124,17 +124,17 @@ func setupTest() (*Broker, MockAtlasClient, context.Context) {
 	}
 	ctx := context.WithValue(context.Background(), ContextKeyAtlasClient, client)
 
-	broker := NewBroker(zap.NewNop().Sugar())
+	broker := NewBroker(zap.NewNop().Sugar(), nil, "", nil, false)
 	return broker, client, ctx
 }
 
-func TestAuthMiddleware(t *testing.T) {
+func TestSimpleAuthMiddleware(t *testing.T) {
 	baseURL := "http://baseURL"
 	groupID := "group-id"
 	publicKey := "public-key"
 	privateKey := "private-key"
 
-	middleware := AuthMiddleware(baseURL)
+	middleware := SimpleAuthMiddleware(baseURL)
 
 	// On successful auth the middleware will run testHandler which ensures
 	// the context was set up correctly.
