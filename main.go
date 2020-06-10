@@ -83,10 +83,16 @@ func startBrokerServer() {
 	}
 	defer logger.Sync() // Flushes buffer, if any
 
-	credhub, err := broker.CredHubCredentials()
+	creds, err := broker.EnvCredentials()
 	if err != nil {
-		logger.Warnf("could not load multi-project credentials from CredHub: %v", err)
-		logger.Warn("continuing in single-project mode")
+		logger.Warnf("Сould not load multi-project credentials from env: %v", err)
+		logger.Warn("Continuing with CredHub...")
+
+		creds, err = broker.CredHubCredentials()
+		if err != nil {
+			logger.Warnf("Could not load multi-project credentials from CredHub: %v", err)
+			logger.Warn("Continuing in single-project mode...")
+		}
 	}
 
 	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
@@ -96,13 +102,13 @@ func startBrokerServer() {
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	var broker *atlasbroker.Broker
 	if !hasWhitelist {
-		broker = atlasbroker.NewBroker(logger, credhub, baseURL, nil, autoPlans)
+		broker = atlasbroker.NewBroker(logger, creds, baseURL, nil, autoPlans)
 	} else {
 		whitelist, err := atlasbroker.ReadWhitelistFile(pathToWhitelistFile)
 		if err != nil {
 			panic(err)
 		}
-		broker = atlasbroker.NewBroker(logger, credhub, baseURL, whitelist, autoPlans)
+		broker = atlasbroker.NewBroker(logger, creds, baseURL, whitelist, autoPlans)
 	}
 
 	router := mux.NewRouter()
@@ -110,8 +116,8 @@ func startBrokerServer() {
 
 	// The auth middleware will convert basic auth credentials into an Atlas
 	// client.
-	if credhub != nil {
-		router.Use(atlasbroker.AuthMiddleware(*credhub.Broker))
+	if creds != nil {
+		router.Use(atlasbroker.AuthMiddleware(*creds.Broker))
 	} else {
 		router.Use(atlasbroker.SimpleAuthMiddleware(baseURL))
 	}
