@@ -2,18 +2,18 @@
 
 source ".github/base-dockerfile/helpers/tmp-helper.sh"
 source ".github/base-dockerfile/helpers/cf-helper.sh"
+source ".github/base-dockerfile/helpers/params.sh"
 
 echo "CleanUP: delete service broker, service, unbind app"
 INSTALL_TIMEOUT=40 #service deploy timeout
-branch_name=$(echo $GITHUB_REF | awk -F'/' '{print $3}')
-echo $branch_name
-org_name="atlas-test-$branch_name"
+
 make_pcf_metadata $INPUT_PCF_URL $INPUT_PCF_USER $INPUT_PCF_PASSWORD
 
-cf_login $org_name $org_name
+cf_login $ORG_NAME $ORG_NAME
 
-delete_service_app_if_exists aws-atlas-test-instance-$branch_name simple-app-$branch_name
-cf delete-service-broker mongodb-atlas-$branch_name -f
-delete_application test-app-$branch_name
-delete_application simple-app-$branch_name
-delete_application atlas-osb-app-$branch_name
+delete_service_app_if_exists $SERVICE_ATLAS $TEST_SIMPLE_APP
+cf delete-service-broker $BROKER -f
+delete_application $TEST_SPRING_APP
+delete_application $TEST_SIMPLE_APP
+delete_application $BROKER_APP
+cf delete-service $CREDHUB -f
