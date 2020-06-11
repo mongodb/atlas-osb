@@ -1,0 +1,36 @@
+# action.yml
+name: 'Atlas broker testing'
+description: 'uses for preparing environments for testing'
+inputs:
+  pcf_url:
+    description: "PCF url uses for pcf command"
+    required: true
+  pcf_user:
+    description: "PCF user uses for pcf command"
+    required: true
+  pcf_password:
+    description: "PCF password uses for pcf command"
+    required: true
+  atlas_project_id:
+    description: "for now we should provide our working projectID/groupID in Atlas"
+    required: true
+  atlas_public_key:
+    description: "public key for our working projectID/groupID"
+    required: true
+  atlas_private_key:
+    description: "private key for our working projectID/groupID"
+    required: true
+outputs:
+  app_url:
+    description: 'Application url'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.pcf_user }}
+    - ${{ inputs.pcf_password }}
+    - ${{ inputs.pcf_url }}
+    - ${{ inputs.atlas_project_id }}
+    - ${{ inputs.atlas_public_key }}
+    - ${{ inputs.atlas_private_key }}
+    - ${{ inputs.credhub_file}}

@@ -22,7 +22,7 @@ jobs:
 
       - name: Create CF org, space, broker, service and push app)
         id: prepare
-        uses: ./.github/actions/prepare-cf
+        uses: ./.github/actions/prepare-credhub
         with:
           pcf_url: ${{ secrets.PCF_URL }}
           pcf_user: ${{ secrets.PCF_USER }}
@@ -30,6 +30,7 @@ jobs:
           atlas_project_id: ${{ secrets.ATLAS_PROJECT_ID }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
+          credhub_file: ${{ secrets.CREDHUB_FILE }}
 
       - name: Check application. Add album
         id: check
