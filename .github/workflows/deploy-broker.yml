@@ -28,6 +28,7 @@ jobs:
           pcf_user: ${{ secrets.PCF_USER }}
           pcf_password: ${{ secrets.PCF_PASSWORD }}
           atlas_project_id: ${{ secrets.ATLAS_PROJECT_ID }}
+          atlas_project_id_bay: ${{ secrets.ATLAS_PROJECT_ID_BAY }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
           credhub_file: ${{ secrets.CREDHUB_FILE }}
