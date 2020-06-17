@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-type credential struct {
+type Credential struct {
 	PublicKey   string `json:"public_key"`
 	APIKey      string `json:"api_key"`
 	DisplayName string `json:"display_name"`
@@ -19,8 +19,8 @@ type brokerAuth struct {
 }
 
 type credentials struct {
-	Projects map[string]credential `json:"projects"`
-	Orgs     map[string]credential `json:"orgs"`
+	Projects map[string]Credential `json:"projects"`
+	Orgs     map[string]Credential `json:"orgs"`
 	Broker   *brokerAuth           `json:"broker"`
 }
 
@@ -45,8 +45,8 @@ func CredHubCredentials() (*credentials, error) {
 	}
 
 	result := credentials{
-		Projects: map[string]credential{},
-		Orgs:     map[string]credential{},
+		Projects: map[string]Credential{},
+		Orgs:     map[string]Credential{},
 	}
 
 	for _, c := range services.CredHub {

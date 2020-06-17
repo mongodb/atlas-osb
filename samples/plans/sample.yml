@@ -1,0 +1,29 @@
+name: MyPlan
+description: "This is a sample plan for a project, cluster, database user, and secure connection."
+apiKeys:
+- name: {{ .Project.Name }}-ApiKey
+  privateKey: {{ .APIKey.PrivateKey }}
+  publicKey: {{ .APIKey.PublicKey }}
+  orgId: {{ .Project.OrgID }}
+project:
+  name: {{ .Project.Name }}
+  orgId: {{ .Project.OrgID }}
+clusters:
+- name: {{ .Project.Name }}-Cluster
+  groupId: {{ .Project.ID }}
+databaseUsers:
+- username: "test-user"
+  password: "test-password"
+  databaseName: "admin"
+  groupId: {{ .Project.ID }}
+  roles:
+  - roleName: "readWrite"
+    collectionName: {{ .CollectionName }}
+    databaseName: {{ .DatabaseName }}
+ipWhitelists:
+- ipAddress: "0.0.0.0/1"
+  comment: "everything"
+  groupId: {{ .Project.ID }}
+- ipAddress: "128.0.0.0/1"
+  comment: "everything"
+  groupId: {{ .Project.ID }}

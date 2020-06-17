@@ -4,18 +4,21 @@ go 1.11
 
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
+	github.com/Sectorbob/mlab-ns2 v0.0.0-20171030222938-d3aa0c295a8a
 	github.com/drewolson/testflight v1.0.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/goccy/go-yaml v1.7.12
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/kubernetes-incubator/service-catalog v0.2.1
 	github.com/kubernetes-sigs/service-catalog v0.2.1
+	github.com/mongodb/go-client-mongodb-atlas v0.3.0
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pivotal-cf/brokerapi v5.1.0+incompatible
 	github.com/pkg/errors v0.8.1 // indirect
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.4.0
 	github.com/tidwall/pretty v1.0.0 // indirect
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect

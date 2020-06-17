@@ -4,18 +4,16 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
-
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-
-	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	atlasbroker "github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	"github.com/pivotal-cf/brokerapi"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // releaseVersion should be set by the linker at compile time.
@@ -31,7 +29,7 @@ const (
 	DefaultServerPort = 4000
 )
 
-func main() {
+func mainold() {
 	// Add --help and -h flag.
 	helpDescription := "Print information about the MongoDB Atlas Service Broker and helpful links."
 	helpFlag := flag.Bool("help", false, helpDescription)
