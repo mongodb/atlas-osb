@@ -10,6 +10,7 @@ echo "init"
 INSTALL_TIMEOUT=40 #service deploy timeout
 branch_name=$(echo $GITHUB_REF | awk -F'/' '{print $3}')
 make_pcf_metadata $INPUT_PCF_URL $INPUT_PCF_USER $INPUT_PCF_PASSWORD
+#make_sample_credhub_config ./credhub-config.json
 echo $INPUT_CREDHUB_FILE > ./credhub-config.json
 
 echo "Login. Create ORG and SPACE depended on the branch name"
