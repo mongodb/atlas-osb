@@ -32,7 +32,7 @@ type ContextParams struct {
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
-	client, err := atlasClientFromContext(ctx)
+	client, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -44,12 +44,11 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	}
 
 	// Construct a cluster definition from the instance ID, service, plan, and params.
-
 	contextParams := &ContextParams{}
 	_ = json.Unmarshal(details.RawContext, contextParams)
 	b.logger.Infow("Creating cluster", "instance_name", contextParams.InstanceName)
 	// TODO - add this context info about k8s/namespace or pcf space into labels
-	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
+	cluster, err := b.clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		b.logger.Errorw("Couldn't create cluster from the passed parameters", "error", err, "instance_id", instanceID, "details", details)
 		return
@@ -82,7 +81,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 func (b Broker) Update(ctx context.Context, instanceID string, details domain.UpdateDetails, asyncAllowed bool) (spec domain.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
-	client, err := atlasClientFromContext(ctx)
+	client, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -107,7 +106,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	contextParams := &ContextParams{}
 	_ = json.Unmarshal(details.RawContext, contextParams)
 
-	cluster, err := clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
+	cluster, err := b.clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
@@ -146,7 +145,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details domain.DeprovisionDetails, asyncAllowed bool) (spec domain.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	client, err := atlasClientFromContext(ctx)
+	client, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -185,7 +184,7 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
-	client, err := atlasClientFromContext(ctx)
+	client, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -252,7 +251,7 @@ func NormalizeClusterName(name string) string {
 // clusterFromParams will construct a cluster object from an instance ID,
 // service, plan, and raw parameters. This way users can pass all the
 // configuration available for clusters in the Atlas API as "cluster" in the params.
-func clusterFromParams(client atlas.Client, instanceID string, serviceID string, planID string, rawParams []byte) (*atlas.Cluster, error) {
+func (b Broker) clusterFromParams(client atlas.Client, instanceID string, serviceID string, planID string, rawParams []byte) (*atlas.Cluster, error) {
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
 		Cluster *atlas.Cluster `json:"cluster"`
@@ -277,12 +276,12 @@ func clusterFromParams(client atlas.Client, instanceID string, serviceID string,
 
 		instanceSizeName := params.Cluster.ProviderSettings.InstanceSizeName
 		if instanceSizeName != InstanceSizeNameM2 && instanceSizeName != InstanceSizeNameM5 {
-			provider, err := findProviderByServiceID(client, serviceID)
+			provider, err := b.catalog.findProviderByServiceID(serviceID)
 			if err != nil {
 				return nil, err
 			}
 
-			instanceSize, err := findInstanceSizeByPlanID(provider, planID)
+			instanceSize, err := b.catalog.findInstanceSizeByPlanID(provider, planID)
 			if err != nil {
 				return nil, err
 			}

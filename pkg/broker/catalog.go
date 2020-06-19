@@ -1,245 +1,88 @@
 package broker
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
-	"strings"
 
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
 
-// idPrefix will be prepended to service and plan IDs to ensure their uniqueness.
-const idPrefix = "aosb-cluster"
+type catalog struct {
+	services  []domain.Service
+	providers map[string]atlas.Provider
+	plans     map[string]domain.ServicePlan
+}
 
-// providerNames contains all the available cloud providers on which clusters
-// may be provisioned. The available instance sizes for each provider are
-// fetched dynamically from the Atlas API.
-var (
-	providerNames = []string{"AWS", "GCP", "AZURE", "TENANT"}
+func newCatalog() *catalog {
+	return &catalog{
+		services:  []domain.Service{},
+		providers: map[string]atlas.Provider{},
+		plans:     map[string]domain.ServicePlan{},
+	}
+}
 
-	// Hardcode the instance sizes for shared instances
-	sharedService = domain.Service{
-		ID:                   "aosb-cluster-service-tenant",
-		Name:                 "mongodb-atlas-tenant",
-		Description:          "Atlas cluster hosted on \"TENANT\"",
-		Bindable:             true,
-		InstancesRetrievable: false,
-		BindingsRetrievable:  false,
-		Metadata:             nil,
-		PlanUpdatable:        true,
-		Plans: []domain.ServicePlan{
-			domain.ServicePlan{
-				ID:          "aosb-cluster-plan-tenant-m2",
-				Name:        "M2",
-				Description: "Instance size \"M2\"",
-			},
-			domain.ServicePlan{
-				ID:          "aosb-cluster-plan-tenant-m5",
-				Name:        "M5",
-				Description: "Instance size \"M5\"",
-			},
-		},
+func (c catalog) findInstanceSizeByPlanID(provider *atlas.Provider, planID string) (*atlas.InstanceSize, error) {
+	p, found := c.plans[planID]
+	if !found {
+		return nil, fmt.Errorf("plan ID %q not found in catalog", planID)
 	}
 
-	apiKeyRegexp = regexp.MustCompile(`^[-\w]+$`)
-	planIDRegexp = regexp.MustCompile(idPrefix + `-plan-(\w+)-(\w+)-([-\w]+)`)
-)
+	szi, found := p.Metadata.AdditionalMetadata["instanceSize"]
+	if !found {
+		return nil, fmt.Errorf("instance size not found in metadata for plan %q", planID)
+	}
+
+	sz, ok := szi.(*atlas.InstanceSize)
+	if !ok {
+		return nil, fmt.Errorf("incorrect metadata type: expected %T, found %T", (*atlas.InstanceSize)(nil), szi)
+	}
+
+	return sz, nil
+}
+
+func (c *catalog) findGroupIDByPlanID(planID string) (string, error) {
+	p, found := c.plans[planID]
+	if !found {
+		return "", fmt.Errorf("plan ID %q not found in catalog", planID)
+	}
+
+	gidi, found := p.Metadata.AdditionalMetadata["groupID"]
+	if !found {
+		return "", fmt.Errorf("group ID not found in metadata for plan %q", planID)
+	}
+
+	gid, ok := gidi.(string)
+	if !ok {
+		return "", fmt.Errorf("incorrect metadata type: expected string, found %T", gidi)
+	}
+
+	return gid, nil
+}
+
+func (c *catalog) findProviderByServiceID(serviceID string) (*atlas.Provider, error) {
+	p, found := c.providers[serviceID]
+	if !found {
+		return nil, apiresponses.NewFailureResponse(errors.New("Invalid service ID"), http.StatusBadRequest, "invalid-service-id")
+	}
+	return &p, nil
+}
 
 // applyWhitelist filters a given service, returning the service with only the
 // whitelisted plans.
-func applyWhitelist(svc domain.Service, whitelistedPlans []string) domain.Service {
-	whitelistedSvc := svc
-	plans := []domain.ServicePlan{}
-	for _, plan := range whitelistedSvc.Plans {
-		for _, name := range whitelistedPlans {
+func (c *catalog) applyWhitelist(plans []domain.ServicePlan, whitelist []string) []domain.ServicePlan {
+	whitelistedPlans := []domain.ServicePlan{}
+
+	for _, plan := range plans {
+		for _, name := range whitelist {
 			if plan.Name == name {
-				plans = append(plans, plan)
+				whitelistedPlans = append(plans, plan)
 				break
 			}
 		}
 	}
 
-	whitelistedSvc.Plans = plans
-	return whitelistedSvc
-}
-
-// Services generates the service catalog which will be presented to consumers of the API.
-func (b Broker) Services(ctx context.Context) ([]domain.Service, error) {
-	b.logger.Info("Retrieving service catalog")
-
-	services := []domain.Service{}
-	client := atlas.NewClient(b.baseURL, "", "", "")
-
-	for _, providerName := range providerNames {
-		var svc domain.Service
-		if providerName == "TENANT" {
-			svc = sharedService
-		} else {
-			provider, err := client.GetProvider(providerName)
-			if err != nil {
-				return services, err
-			}
-
-			svc = b.service(provider)
-		}
-
-		whitelistedPlans, isWhitelisted := b.whitelist[providerName]
-		if b.whitelist == nil || isWhitelisted {
-			if isWhitelisted {
-				svc = applyWhitelist(svc, whitelistedPlans)
-			}
-			services = append(services, svc)
-		}
-	}
-
-	return services, nil
-}
-
-func (b Broker) service(provider *atlas.Provider) (service domain.Service) {
-	// Create a CLI-friendly and user-friendly name. Will be displayed in the
-	// marketplace generated by the service catalog.
-	catalogName := fmt.Sprintf("mongodb-atlas-%s", strings.ToLower(provider.Name))
-
-	var plans []domain.ServicePlan
-	if !b.autoPlans || b.credHub == nil {
-		plans = b.plansForProvider(provider)
-	} else {
-		plans = b.plansForProviderAugmented(provider)
-	}
-
-	service = domain.Service{
-		ID:                   serviceIDForProvider(provider),
-		Name:                 catalogName,
-		Description:          fmt.Sprintf(`Atlas cluster hosted on "%s"`, provider.Name),
-		Bindable:             true,
-		InstancesRetrievable: false,
-		BindingsRetrievable:  false,
-		Metadata:             nil,
-		PlanUpdatable:        true,
-		Plans:                plans,
-	}
-
-	return service
-}
-
-func findProviderByServiceID(client atlas.Client, serviceID string) (*atlas.Provider, error) {
-	for _, providerName := range providerNames {
-		provider, err := client.GetProvider(providerName)
-		if err != nil {
-			return nil, err
-		}
-
-		if serviceIDForProvider(provider) == serviceID {
-			return provider, nil
-		}
-	}
-
-	return nil, apiresponses.NewFailureResponse(errors.New("Invalid service ID"), http.StatusBadRequest, "invalid-service-id")
-}
-
-func groupID(planID string, creds *credentials) (string, error) {
-	m := planIDRegexp.FindStringSubmatch(planID)
-	if m == nil {
-		return "", fmt.Errorf("plan ID %q is not in correct format", planID)
-	}
-
-	groupName := m[3]
-
-	// TODO: we need to make this more robust
-	for id, c := range creds.Projects {
-		if id == groupName || c.DisplayName == groupName {
-			return id, nil
-		}
-	}
-
-	return "", fmt.Errorf("cannot find group for plan ID %q", planID)
-}
-
-func (b Broker) findInstanceSizeByPlanID(provider *atlas.Provider, planID string) (*atlas.InstanceSize, error) {
-	for _, instanceSize := range provider.InstanceSizes {
-		if planIDForInstanceSize(provider, instanceSize, "") == planID {
-			return &instanceSize, nil
-		}
-	}
-
-	return nil, apiresponses.NewFailureResponse(errors.New("Invalid plan ID"), http.StatusBadRequest, "invalid-plan-id")
-}
-
-func (b Broker) findInstanceSizeByPlanIDAugmented(provider *atlas.Provider, planID string) (*atlas.InstanceSize, error) {
-	for _, instanceSize := range provider.InstanceSizes {
-		for groupID := range b.credHub.Projects {
-			if planIDForInstanceSize(provider, instanceSize, groupID) == planID {
-				return &instanceSize, nil
-			}
-		}
-	}
-
-	return nil, apiresponses.NewFailureResponse(errors.New("Invalid plan ID"), http.StatusBadRequest, "invalid-plan-id")
-}
-
-// plansForProvider will convert the available instance sizes for a provider
-// to service plans for the broker.
-func (b Broker) plansForProvider(provider *atlas.Provider) []domain.ServicePlan {
-	var plans []domain.ServicePlan
-
-	for _, instanceSize := range provider.InstanceSizes {
-		plan := domain.ServicePlan{
-			ID:          planIDForInstanceSize(provider, instanceSize, ""),
-			Name:        instanceSize.Name,
-			Description: fmt.Sprintf("Instance size %q", instanceSize.Name),
-		}
-		plans = append(plans, plan)
-		continue
-	}
-
-	return plans
-}
-
-func (b Broker) plansForProviderAugmented(provider *atlas.Provider) []domain.ServicePlan {
-	var plans []domain.ServicePlan
-
-	for _, instanceSize := range provider.InstanceSizes {
-		for groupID, creds := range b.credHub.Projects {
-			id := groupID
-			if creds.DisplayName != "" {
-				id = creds.DisplayName
-			}
-
-			plan := domain.ServicePlan{
-				ID:          planIDForInstanceSize(provider, instanceSize, groupID),
-				Name:        fmt.Sprintf("%s-%s", instanceSize.Name, id),
-				Description: fmt.Sprintf("Instance size %q", instanceSize.Name),
-				Metadata: &domain.ServicePlanMetadata{
-					AdditionalMetadata: map[string]interface{}{
-						"groupID": groupID,
-					},
-				},
-			}
-			plans = append(plans, plan)
-		}
-	}
-
-	return plans
-}
-
-// serviceIDForProvider will generate a globally unique ID for a provider.
-func serviceIDForProvider(provider *atlas.Provider) string {
-	return fmt.Sprintf("%s-service-%s", idPrefix, strings.ToLower(provider.Name))
-}
-
-// planIDForInstanceSize will generate a globally unique ID for an instance size
-// on a specific provider.
-func planIDForInstanceSize(provider *atlas.Provider, instanceSize atlas.InstanceSize, groupID string) string {
-	result := fmt.Sprintf("%s-plan-%s-%s", idPrefix, strings.ToLower(provider.Name), strings.ToLower(instanceSize.Name))
-
-	if groupID == "" {
-		return result
-	}
-
-	return fmt.Sprintf("%s-%s", result, groupID)
+	return whitelistedPlans
 }

@@ -1,4 +1,4 @@
-package broker
+package credentials
 
 import (
 	"encoding/json"
@@ -7,33 +7,33 @@ import (
 	"os"
 )
 
-type Credential struct {
+type credential struct {
 	PublicKey   string `json:"public_key"`
 	APIKey      string `json:"api_key"`
 	DisplayName string `json:"display_name"`
 }
 
-type brokerAuth struct {
+type BrokerAuth struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-type credentials struct {
-	Projects map[string]Credential `json:"projects"`
-	Orgs     map[string]Credential `json:"orgs"`
-	Broker   *brokerAuth           `json:"broker"`
+type Credentials struct {
+	Projects map[string]credential `json:"projects"`
+	Orgs     map[string]credential `json:"orgs"`
+	Broker   *BrokerAuth           `json:"broker"`
 }
 
 type credHub struct {
 	BindingName string      `json:"binding_name"`
-	Credentials credentials `json:"credentials"`
+	Credentials Credentials `json:"credentials"`
 }
 
 type services struct {
 	CredHub []credHub `json:"credhub"`
 }
 
-func CredHubCredentials() (*credentials, error) {
+func FromCredHub() (*Credentials, error) {
 	env, found := os.LookupEnv("VCAP_SERVICES")
 	if !found {
 		return nil, fmt.Errorf("env VCAP_SERVICES not specified")
@@ -44,9 +44,9 @@ func CredHubCredentials() (*credentials, error) {
 		return nil, fmt.Errorf("cannot unmarshal VCAP_SERVICES: %v", err)
 	}
 
-	result := credentials{
-		Projects: map[string]Credential{},
-		Orgs:     map[string]Credential{},
+	result := Credentials{
+		Projects: map[string]credential{},
+		Orgs:     map[string]credential{},
 	}
 
 	for _, c := range services.CredHub {
@@ -68,13 +68,13 @@ func CredHubCredentials() (*credentials, error) {
 	return &result, nil
 }
 
-func EnvCredentials() (*credentials, error) {
+func FromEnv() (*Credentials, error) {
 	env, found := os.LookupEnv("BROKER_APIKEYS")
 	if !found {
 		return nil, fmt.Errorf("env BROKER_APIKEYS not specified")
 	}
 
-	creds := credentials{}
+	creds := Credentials{}
 	if err := json.Unmarshal([]byte(env), &creds); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
 	}
@@ -86,7 +86,7 @@ func EnvCredentials() (*credentials, error) {
 	return &creds, nil
 }
 
-func (c credentials) validate() error {
+func (c *Credentials) validate() error {
 	if c.Broker == nil {
 		return errors.New("no broker credentials specified")
 	}
@@ -95,7 +95,7 @@ func (c credentials) validate() error {
 		return errors.New("no Project/Org credentials specified")
 	}
 
-	if len(c.Projects) == 0 && len(c.Orgs) != 0 {
+	if len(c.Orgs) != 0 {
 		return errors.New("Org credentials are not implemented yet")
 	}
 
