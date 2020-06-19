@@ -59,8 +59,6 @@ func (b *Broker) Services(ctx context.Context) ([]domain.Service, error) {
 func (b *Broker) buildCatalog() error {
 	b.catalog = newCatalog()
 
-	client := atlas.NewClient(b.baseURL, "", "", "")
-
 	for _, providerName := range providerNames {
 		whitelistedPlans, isWhitelisted := b.whitelist[providerName]
 		if b.whitelist != nil && !isWhitelisted {
@@ -72,7 +70,8 @@ func (b *Broker) buildCatalog() error {
 		if providerName == "TENANT" {
 			svc = sharedService
 		} else {
-			provider, err := client.GetProvider(providerName)
+			// TODO: reimplement?
+			provider, err := atlas.NewClient(b.baseURL, "", "", "").GetProvider(providerName)
 			if err != nil {
 				return err
 			}
@@ -126,7 +125,7 @@ func (b *Broker) buildPlansForProvider(provider *atlas.Provider) []domain.Servic
 	case MultiGroupAutoPlans:
 		return b.buildPlansForProviderAuto(provider)
 	case DynamicPlans:
-		panic("not implemented yet")
+		return b.buildPlansForProviderDynamic(provider)
 	default:
 		panic("unknown broker mode")
 	}
@@ -178,6 +177,17 @@ func (b *Broker) buildPlansForProviderAuto(provider *atlas.Provider) []domain.Se
 	}
 
 	return plans
+}
+
+func (b *Broker) buildPlansForProviderDynamic(provider *atlas.Provider) []domain.ServicePlan {
+	// var plans []domain.ServicePlan
+
+	// t, err := dynamicplans.FromEnv()
+	// if err != nil {
+	// 	b.logger.Fatalw("could not read dynamic plans from environment", "error", err)
+	// }
+
+	return nil
 }
 
 // serviceIDForProvider will generate a globally unique ID for a provider.

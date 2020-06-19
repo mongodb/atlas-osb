@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
@@ -32,7 +33,7 @@ type ContextParams struct {
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
-	client, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -48,7 +49,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	_ = json.Unmarshal(details.RawContext, contextParams)
 	b.logger.Infow("Creating cluster", "instance_name", contextParams.InstanceName)
 	// TODO - add this context info about k8s/namespace or pcf space into labels
-	cluster, err := b.clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
+	cluster, err := b.clusterFromParams(instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		b.logger.Errorw("Couldn't create cluster from the passed parameters", "error", err, "instance_id", instanceID, "details", details)
 		return
@@ -56,11 +57,10 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 
 	// Add default labels
 	// TODO - append the env info k8s, pcf, etc
-	var defaultLabel = atlas.Label{Key: "Infrastructure Tool", Value: "MongoDB Atlas Service Broker"}
-	cluster.Labels = make([]atlas.Label, 1)
-	cluster.Labels[0] = defaultLabel
+	var defaultLabel = mongodbatlas.Label{Key: "Infrastructure Tool", Value: "MongoDB Atlas Service Broker"}
+	cluster.Labels = []mongodbatlas.Label{defaultLabel}
 	// Create a new Atlas cluster from the generated definition
-	resultingCluster, err := client.CreateCluster(*cluster)
+	resultingCluster, _, err := client.Clusters.Create(ctx, gid, cluster)
 
 	if err != nil {
 		b.logger.Errorw("Failed to create Atlas cluster", "error", err, "cluster", cluster)
@@ -73,7 +73,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	return domain.ProvisionedServiceSpec{
 		IsAsync:       true,
 		OperationData: OperationProvision,
-		DashboardURL:  client.GetDashboardURL(resultingCluster.Name),
+		DashboardURL:  b.GetDashboardURL(gid, resultingCluster.Name),
 	}, nil
 }
 
@@ -81,7 +81,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 func (b Broker) Update(ctx context.Context, instanceID string, details domain.UpdateDetails, asyncAllowed bool) (spec domain.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
-	client, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -96,7 +96,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	// be passed during updates (if there are other update to the provider, such
 	// as region). The plan is not included in the OSB call unless it has changed
 	// hence we need to fetch the current value from Atlas.
-	existingCluster, err := client.GetCluster(NormalizeClusterName(instanceID))
+	existingCluster, _, err := client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
 	if err != nil {
 		err = atlasToAPIError(err)
 		return
@@ -106,7 +106,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	contextParams := &ContextParams{}
 	_ = json.Unmarshal(details.RawContext, contextParams)
 
-	cluster, err := b.clusterFromParams(client, instanceID, details.ServiceID, details.PlanID, details.RawParameters)
+	cluster, err := b.clusterFromParams(instanceID, details.ServiceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
@@ -125,7 +125,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}
 	}
 
-	resultingCluster, err := client.UpdateCluster(*cluster)
+	resultingCluster, _, err := client.Clusters.Update(ctx, gid, existingCluster.Name, cluster)
 	if err != nil {
 		b.logger.Errorw("Failed to update Atlas cluster", "error", err, "cluster", cluster)
 		err = atlasToAPIError(err)
@@ -137,7 +137,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	return domain.UpdateServiceSpec{
 		IsAsync:       true,
 		OperationData: OperationUpdate,
-		DashboardURL:  client.GetDashboardURL(resultingCluster.Name),
+		DashboardURL:  b.GetDashboardURL(gid, resultingCluster.Name),
 	}, nil
 }
 
@@ -145,7 +145,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details domain.DeprovisionDetails, asyncAllowed bool) (spec domain.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	client, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -156,7 +156,7 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 		return
 	}
 
-	err = client.DeleteCluster(NormalizeClusterName(instanceID))
+	_, err = client.Clusters.Delete(ctx, gid, NormalizeClusterName(instanceID))
 	if err != nil {
 		b.logger.Errorw("Failed to delete Atlas cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
@@ -184,12 +184,12 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
-	client, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
 
-	cluster, err := client.GetCluster(NormalizeClusterName(instanceID))
+	cluster, _, err := client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
 	if err != nil && err != atlas.ErrClusterNotFound {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
@@ -251,12 +251,12 @@ func NormalizeClusterName(name string) string {
 // clusterFromParams will construct a cluster object from an instance ID,
 // service, plan, and raw parameters. This way users can pass all the
 // configuration available for clusters in the Atlas API as "cluster" in the params.
-func (b Broker) clusterFromParams(client atlas.Client, instanceID string, serviceID string, planID string, rawParams []byte) (*atlas.Cluster, error) {
+func (b Broker) clusterFromParams(instanceID string, serviceID string, planID string, rawParams []byte) (*mongodbatlas.Cluster, error) {
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
-		Cluster *atlas.Cluster `json:"cluster"`
+		Cluster *mongodbatlas.Cluster `json:"cluster"`
 	}{
-		&atlas.Cluster{},
+		&mongodbatlas.Cluster{},
 	}
 
 	// If params were passed we unmarshal them into the params object.
@@ -271,7 +271,7 @@ func (b Broker) clusterFromParams(client atlas.Client, instanceID string, servic
 	// The plan ID is optional during updates but not during creation.
 	if planID != "" {
 		if params.Cluster.ProviderSettings == nil {
-			params.Cluster.ProviderSettings = &atlas.ProviderSettings{}
+			params.Cluster.ProviderSettings = &mongodbatlas.ProviderSettings{}
 		}
 
 		instanceSizeName := params.Cluster.ProviderSettings.InstanceSizeName

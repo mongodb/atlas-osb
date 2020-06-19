@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/gorilla/mux"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 )
 
@@ -36,7 +37,7 @@ func authMiddleware(auth credentials.BrokerAuth) mux.MiddlewareFunc {
 func simpleAuthMiddleware(baseURL string) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			username, password, ok := r.BasicAuth()
+			username, privKey, ok := r.BasicAuth()
 
 			// The username contains both the group ID and public key
 			// formatted as "<PUBLIC_KEY>@<GROUP_ID>".
@@ -46,17 +47,29 @@ func simpleAuthMiddleware(baseURL string) mux.MiddlewareFunc {
 			// The username needs have the correct format and the password must
 			// not be empty.
 			validUsername := len(splitUsername) == 2
-			validPassword := password != ""
+			validPassword := privKey != ""
 			if !(ok && validUsername && validPassword) {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
+			pubKey := splitUsername[0]
+			gid := splitUsername[1]
+
 			// Create a new client with the extracted API credentials and
 			// attach it to the request context.
-			client := atlas.NewClient(baseURL, splitUsername[1], splitUsername[0], password)
-			ctx := context.WithValue(r.Context(), ContextKeyAtlasClient, client)
+			hc, err := digest.NewTransport(pubKey, privKey).Client()
+			if err != nil {
+				panic(err)
+			}
 
+			client, err := mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
+			if err != nil {
+				panic(err)
+			}
+
+			ctx := context.WithValue(r.Context(), ContextKeyAtlasClient, client)
+			ctx = context.WithValue(ctx, ContextKeyGroupID, gid)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
