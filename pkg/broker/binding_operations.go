@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
@@ -26,7 +26,7 @@ type ConnectionDetails struct {
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details domain.BindDetails, asyncAllowed bool) (spec domain.Binding, err error) {
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	client, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -44,7 +44,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	}
 
 	// Fetch the cluster from Atlas to ensure it exists.
-	cluster, err := client.GetCluster(NormalizeClusterName(instanceID))
+	cluster, _, err := client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
 	if err != nil {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
@@ -67,7 +67,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	}
 
 	// Create a new Atlas database user from the generated definition.
-	_, err = client.CreateUser(*user)
+	_, _, err = client.DatabaseUsers.Create(ctx, gid, user)
 	if err != nil {
 		b.logger.Errorw("Failed to create Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
 		err = atlasToAPIError(err)
@@ -93,13 +93,13 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details domain.UnbindDetails, asyncAllowed bool) (spec domain.UnbindSpec, err error) {
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	client, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
 	}
 
 	// Fetch the cluster from Atlas to ensure it exists.
-	_, err = client.GetCluster(NormalizeClusterName(instanceID))
+	_, _, err = client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
 	if err != nil {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
@@ -107,7 +107,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	}
 
 	// Delete database user which has the binding ID as its username.
-	err = client.DeleteUser(bindingID)
+	_, err = client.DatabaseUsers.Delete(ctx, "admin", gid, bindingID)
 	if err != nil {
 		b.logger.Errorw("Failed to delete Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
 		err = atlasToAPIError(err)
@@ -149,12 +149,12 @@ func generatePassword() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func userFromParams(bindingID string, password string, rawParams []byte) (*atlas.User, error) {
+func userFromParams(bindingID string, password string, rawParams []byte) (*mongodbatlas.DatabaseUser, error) {
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
-		User *atlas.User `json:"user"`
+		User *mongodbatlas.DatabaseUser `json:"user"`
 	}{
-		&atlas.User{},
+		&mongodbatlas.DatabaseUser{},
 	}
 
 	// If params were passed we unmarshal them into the params object.
@@ -172,9 +172,9 @@ func userFromParams(bindingID string, password string, rawParams []byte) (*atlas
 	// If no role is specified we default to read/write on any database.
 	// This is the default role when creating a user through the Atlas UI.
 	if len(params.User.Roles) == 0 {
-		params.User.Roles = []atlas.Role{
+		params.User.Roles = []mongodbatlas.Role{
 			{
-				Name:         "readWriteAnyDatabase",
+				RoleName:     "readWriteAnyDatabase",
 				DatabaseName: "admin",
 			},
 		}

@@ -1,7 +1,7 @@
 name: MyPlan
 description: "This is a sample plan for a project, cluster, database user, and secure connection."
-apiKeys:
-- name: {{ .Project.Name }}-ApiKey
+apiKey:
+  name: {{ .Project.Name }}-ApiKey
   privateKey: {{ .APIKey.PrivateKey }}
   publicKey: {{ .APIKey.PublicKey }}
   orgId: {{ .Project.OrgID }}

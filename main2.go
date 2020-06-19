@@ -3,16 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
-	"text/template"
 	"time"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/goccy/go-yaml"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 )
 
 type PlanContext struct {
@@ -36,41 +34,8 @@ type Plan struct {
 	IPWhitelists  []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty" yaml:"ipWhitelists,omitempty"`
 }
 
-func getPlans() ([]*template.Template, error) {
-	planPath := getEnvOrDefault("ATLAS_BROKER_TEMPLATEDIR", "./samples/plans")
-	files, err := ioutil.ReadDir(planPath)
-	if err != nil {
-		return nil, err
-	}
-
-	templates := []*template.Template{}
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-
-		ext := filepath.Ext(f.Name())
-		if ext != ".yml" && ext != ".yaml" && ext != ".json" {
-			continue
-		}
-
-		text, err := ioutil.ReadFile(filepath.Join(planPath, f.Name()))
-		if err != nil {
-			return nil, err
-		}
-
-		t, err := template.New(f.Name()).Parse(string(text))
-		if err != nil {
-			return nil, err
-		}
-		templates = append(templates, t)
-	}
-
-	return templates, nil
-}
-
 func main() {
-	t, err := getPlans()
+	t, err := dynamicplans.FromEnv()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -110,5 +75,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }

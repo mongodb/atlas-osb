@@ -2,9 +2,12 @@ package broker
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
+	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/pivotal-cf/brokerapi/domain"
@@ -38,23 +41,31 @@ func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseUR
 	}
 }
 
-func (b *Broker) getClient(ctx context.Context, planID string) (atlas.Client, error) {
-	client, err := atlasClientFromContext(ctx)
+func (b *Broker) getClient(ctx context.Context, planID string) (client *mongodbatlas.Client, gid string, err error) {
+	client, err = atlasClientFromContext(ctx)
 	if err != nil {
-		gid, err := b.catalog.findGroupIDByPlanID(planID)
+		gid, err = b.catalog.findGroupIDByPlanID(planID)
 		if err != nil {
-			return nil, err
+			return nil, gid, err
 		}
 
 		c, ok := b.credentials.Projects[gid]
 		if !ok {
-			return nil, atlas.ErrUnauthorized
+			return nil, gid, atlas.ErrUnauthorized
 		}
 
-		client = atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
+		hc, err := digest.NewTransport(c.PublicKey, c.APIKey).Client()
+		if err != nil {
+			return nil, gid, err
+		}
+
+		client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
+		if err != nil {
+			return nil, gid, err
+		}
 	}
 
-	return client, nil
+	return client, gid, nil
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
@@ -63,6 +74,10 @@ func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
 	}
 
 	return simpleAuthMiddleware(b.baseURL)
+}
+
+func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
+	return fmt.Sprintf("%s/v2/%s#clusters/detail/%s", b.baseURL, groupID, clusterName)
 }
 
 // atlasToAPIError converts an Atlas error to a OSB response error.
