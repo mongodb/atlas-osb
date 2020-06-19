@@ -29,7 +29,7 @@ const (
 	DefaultServerPort = 4000
 )
 
-func mainold() {
+func main() {
 	// Add --help and -h flag.
 	helpDescription := "Print information about the MongoDB Atlas Service Broker and helpful links."
 	helpFlag := flag.Bool("help", false, helpDescription)
