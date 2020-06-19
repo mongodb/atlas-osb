@@ -276,18 +276,12 @@ func (b Broker) clusterFromParams(client atlas.Client, instanceID string, servic
 
 		instanceSizeName := params.Cluster.ProviderSettings.InstanceSizeName
 		if instanceSizeName != InstanceSizeNameM2 && instanceSizeName != InstanceSizeNameM5 {
-			provider, err := findProviderByServiceID(client, serviceID)
+			provider, err := b.catalog.findProviderByServiceID(serviceID)
 			if err != nil {
 				return nil, err
 			}
 
-			var instanceSize *atlas.InstanceSize
-			if !b.autoPlans || b.credHub == nil {
-				instanceSize, err = b.findInstanceSizeByPlanID(provider, planID)
-			} else {
-				instanceSize, err = b.findInstanceSizeByPlanIDAugmented(provider, planID)
-			}
-
+			instanceSize, err := b.catalog.findInstanceSizeByPlanID(provider, planID)
 			if err != nil {
 				return nil, err
 			}

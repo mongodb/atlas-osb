@@ -10,7 +10,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
-	atlasbroker "github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/pivotal-cf/brokerapi"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -73,6 +73,49 @@ Docker Image: quay.io/mongodb/mongodb-atlas-service-broker`
 	return fmt.Sprintf(helpMessage, releaseVersion)
 }
 
+func createBroker(logger *zap.SugaredLogger) *broker.Broker {
+	mode := broker.MultiGroup
+	creds, err := credentials.FromEnv()
+	if err != nil {
+		logger.Infof("Сould not load multi-project credentials from env: %v", err)
+		logger.Info("Continuing with CredHub...")
+
+		creds, err = credentials.FromCredHub()
+		if err != nil {
+			logger.Infof("Could not load multi-project credentials from CredHub: %v", err)
+			logger.Info("Continuing in single-project mode...")
+			mode = broker.BasicAuth
+		}
+	}
+
+	autoPlans := getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
+	if autoPlans && mode == broker.MultiGroup {
+		mode = broker.MultiGroupAutoPlans
+	}
+
+	// TODO: implement!
+	if mode == broker.MultiGroup {
+		logger.Fatal("Multi-group credentials used without BROKER_ENABLE_AUTOPLANSFROMPROJECTS: not implemented yet!")
+	}
+
+	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
+
+	// Administrators can control what providers/plans are available to users
+	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
+	if !hasWhitelist {
+		logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", "NONE")
+		return broker.New(logger, creds, baseURL, nil, mode)
+	}
+
+	whitelist, err := broker.ReadWhitelistFile(pathToWhitelistFile)
+	if err != nil {
+		logger.Fatal("Cannot load providers whitelist: %v", err)
+	}
+
+	logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", pathToWhitelistFile)
+	return broker.New(logger, creds, baseURL, whitelist, mode)
+}
+
 func startBrokerServer() {
 	logLevel := getEnvOrDefault("BROKER_LOG_LEVEL", DefaultLogLevel)
 	logger, err := createLogger(logLevel)
@@ -81,44 +124,14 @@ func startBrokerServer() {
 	}
 	defer logger.Sync() // Flushes buffer, if any
 
-	creds, err := broker.EnvCredentials()
-	if err != nil {
-		logger.Warnf("Сould not load multi-project credentials from env: %v", err)
-		logger.Warn("Continuing with CredHub...")
-
-		creds, err = broker.CredHubCredentials()
-		if err != nil {
-			logger.Warnf("Could not load multi-project credentials from CredHub: %v", err)
-			logger.Warn("Continuing in single-project mode...")
-		}
-	}
-
-	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
-	autoPlans := getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
-
-	// Administrators can control what providers/plans are available to users
-	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
-	var broker *atlasbroker.Broker
-	if !hasWhitelist {
-		broker = atlasbroker.NewBroker(logger, creds, baseURL, nil, autoPlans)
-	} else {
-		whitelist, err := atlasbroker.ReadWhitelistFile(pathToWhitelistFile)
-		if err != nil {
-			panic(err)
-		}
-		broker = atlasbroker.NewBroker(logger, creds, baseURL, whitelist, autoPlans)
-	}
+	b := createBroker(logger)
 
 	router := mux.NewRouter()
-	brokerapi.AttachRoutes(router, broker, NewLagerZapLogger(logger))
+	brokerapi.AttachRoutes(router, b, NewLagerZapLogger(logger))
 
 	// The auth middleware will convert basic auth credentials into an Atlas
 	// client.
-	if creds != nil {
-		router.Use(atlasbroker.AuthMiddleware(*creds.Broker))
-	} else {
-		router.Use(atlasbroker.SimpleAuthMiddleware(baseURL))
-	}
+	router.Use(b.AuthMiddleware())
 
 	// Configure TLS from environment variables.
 	tlsEnabled, tlsCertPath, tlsKeyPath := getTLSConfig(logger)
@@ -127,10 +140,7 @@ func startBrokerServer() {
 	port := getIntEnvOrDefault("BROKER_PORT", getIntEnvOrDefault("PORT", DefaultServerPort))
 
 	// Replace with NONE if not set
-	if !hasWhitelist {
-		pathToWhitelistFile = "NONE"
-	}
-	logger.Infow("Starting API server", "releaseVersion", releaseVersion, "host", host, "port", port, "tls_enabled", tlsEnabled, "atlas_base_url", baseURL, "whitelist_file", pathToWhitelistFile)
+	logger.Infow("Starting API server", "releaseVersion", releaseVersion, "host", host, "port", port, "tls_enabled", tlsEnabled)
 
 	// Start broker HTTP server.
 	address := host + ":" + strconv.Itoa(port)

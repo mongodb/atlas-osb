@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Setup the broker which will be used
-	broker = brokerlib.NewBroker(zap.NewNop().Sugar(), nil, "", whitelist, false)
+	broker = brokerlib.New(zap.NewNop().Sugar(), nil, "", whitelist, brokerlib.BasicAuth)
 
 	result := m.Run()
 

@@ -33,17 +33,12 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	// The service_id and plan_id are required to be valid per the specification, despite
 	// not being used for bindings. We look them up to ensure they can be found in the catalog.
-	provider, err := findProviderByServiceID(client, details.ServiceID)
+	provider, err := b.catalog.findProviderByServiceID(details.ServiceID)
 	if err != nil {
 		return
 	}
 
-	if !b.autoPlans || b.credHub == nil {
-		_, err = b.findInstanceSizeByPlanID(provider, details.PlanID)
-	} else {
-		_, err = b.findInstanceSizeByPlanIDAugmented(provider, details.PlanID)
-	}
-
+	_, err = b.catalog.findInstanceSizeByPlanID(provider, details.PlanID)
 	if err != nil {
 		return
 	}
@@ -178,7 +173,7 @@ func userFromParams(bindingID string, password string, rawParams []byte) (*atlas
 	// This is the default role when creating a user through the Atlas UI.
 	if len(params.User.Roles) == 0 {
 		params.User.Roles = []atlas.Role{
-			atlas.Role{
+			{
 				Name:         "readWriteAnyDatabase",
 				DatabaseName: "admin",
 			},

@@ -2,112 +2,67 @@ package broker
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 	"go.uber.org/zap"
 )
 
 // Ensure broker adheres to the ServiceBroker interface.
-var _ domain.ServiceBroker = Broker{}
+var _ domain.ServiceBroker = new(Broker)
 
 // Broker is responsible for translating OSB calls to Atlas API calls.
 // Implements the domain.ServiceBroker interface making it easy to spin up
 // an API server.
 type Broker struct {
-	logger    *zap.SugaredLogger
-	whitelist Whitelist
-	credHub   *credentials
-	baseURL   string
-	autoPlans bool
+	logger      *zap.SugaredLogger
+	whitelist   Whitelist
+	credentials *credentials.Credentials
+	baseURL     string
+	mode        Mode
+	catalog     *catalog
 }
 
-// NewBroker creates a new Broker with a logger.
-func NewBroker(logger *zap.SugaredLogger, credHub *credentials, baseURL string, whitelist Whitelist, autoPlans bool) *Broker {
+// New creates a new Broker with a logger.
+func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, mode Mode) *Broker {
 	return &Broker{
-		logger:    logger,
-		credHub:   credHub,
-		baseURL:   baseURL,
-		whitelist: whitelist,
-		autoPlans: autoPlans,
+		logger:      logger,
+		credentials: credentials,
+		baseURL:     baseURL,
+		whitelist:   whitelist,
+		mode:        mode,
 	}
 }
 
-// ContextKey represents the key for a value saved in a context. Linter
-// requires keys to have their own type.
-type ContextKey string
+func (b *Broker) getClient(ctx context.Context, planID string) (atlas.Client, error) {
+	client, err := atlasClientFromContext(ctx)
+	if err != nil {
+		gid, err := b.catalog.findGroupIDByPlanID(planID)
+		if err != nil {
+			return nil, err
+		}
 
-// ContextKeyAtlasClient is the key used to store the Atlas client in the
-// request context.
-var ContextKeyAtlasClient = ContextKey("atlas-client")
+		c, ok := b.credentials.Projects[gid]
+		if !ok {
+			return nil, atlas.ErrUnauthorized
+		}
 
-// AuthMiddleware is used to validate and parse Atlas API credentials passed
-// using basic auth. The credentials parsed into an Atlas client which is
-// attached to the request context. This client can later be retrieved by the
-// broker from the context.
-func AuthMiddleware(auth brokerAuth) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			username, password, ok := r.BasicAuth()
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			if auth.Username != username || auth.Password != password {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func SimpleAuthMiddleware(baseURL string) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			username, password, ok := r.BasicAuth()
-
-			// The username contains both the group ID and public key
-			// formatted as "<PUBLIC_KEY>@<GROUP_ID>".
-			splitUsername := strings.Split(username, "@")
-
-			// If the credentials are invalid we respond with 401 Unauthorized.
-			// The username needs have the correct format and the password must
-			// not be empty.
-			validUsername := len(splitUsername) == 2
-			validPassword := password != ""
-			if !(ok && validUsername && validPassword) {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			// Create a new client with the extracted API credentials and
-			// attach it to the request context.
-			client := atlas.NewClient(baseURL, splitUsername[1], splitUsername[0], password)
-			ctx := context.WithValue(r.Context(), ContextKeyAtlasClient, client)
-
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-
-}
-
-// atlasClientFromContext will retrieve an Atlas client stored inside the
-// provided context.
-func atlasClientFromContext(ctx context.Context) (atlas.Client, error) {
-	client, ok := ctx.Value(ContextKeyAtlasClient).(atlas.Client)
-	if !ok {
-		return nil, errors.New("no Atlas client in context")
+		client = atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
 	}
 
 	return client, nil
+}
+
+func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
+	if b.credentials != nil {
+		return authMiddleware(*b.credentials.Broker)
+	}
+
+	return simpleAuthMiddleware(b.baseURL)
 }
 
 // atlasToAPIError converts an Atlas error to a OSB response error.
@@ -128,23 +83,4 @@ func atlasToAPIError(err error) error {
 	// Fall back on returning the error again if no others match.
 	// Will result in a 500 Internal Server Error.
 	return err
-}
-
-func (b Broker) getClient(ctx context.Context, planID string) (atlas.Client, error) {
-	client, err := atlasClientFromContext(ctx)
-	if err != nil {
-		gid, err := groupID(planID, b.credHub)
-		if err != nil {
-			return nil, err
-		}
-
-		c, ok := b.credHub.Projects[gid]
-		if !ok {
-			return nil, atlas.ErrUnauthorized
-		}
-
-		client = atlas.NewClient(b.baseURL, gid, c.PublicKey, c.APIKey)
-	}
-
-	return client, nil
 }
