@@ -168,6 +168,7 @@ func userFromParams(bindingID string, password string, rawParams []byte) (*mongo
 	// Set binding ID as username and add password.
 	params.User.Username = bindingID
 	params.User.Password = password
+	params.User.DatabaseName = "admin"
 
 	// If no role is specified we default to read/write on any database.
 	// This is the default role when creating a user through the Atlas UI.
