@@ -65,7 +65,8 @@ func (b *Broker) getClient(ctx context.Context, planID string) (client *mongodba
 		}
 	}
 
-	return client, gid, nil
+	gid, err = groupIDFromContext(ctx)
+	return client, gid, err
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
