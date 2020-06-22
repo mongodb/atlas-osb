@@ -4,7 +4,6 @@ apiKey:
   name: {{ .Project.Name }}-ApiKey
   privateKey: {{ .APIKey.PrivateKey }}
   publicKey: {{ .APIKey.PublicKey }}
-  orgId: {{ .Project.OrgID }}
 project:
   name: {{ .Project.Name }}
   orgId: {{ .Project.OrgID }}
@@ -18,8 +17,7 @@ databaseUsers:
   groupId: {{ .Project.ID }}
   roles:
   - roleName: "readWrite"
-    collectionName: {{ .CollectionName }}
-    databaseName: {{ .DatabaseName }}
+    databaseName: "admin"
 ipWhitelists:
 - ipAddress: "0.0.0.0/1"
   comment: "everything"
