@@ -2,7 +2,6 @@ package broker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
@@ -24,7 +23,7 @@ const (
 func atlasClientFromContext(ctx context.Context) (*mongodbatlas.Client, error) {
 	client, ok := ctx.Value(ContextKeyAtlasClient).(*mongodbatlas.Client)
 	if !ok {
-		return nil, errors.New("no Atlas client in context")
+		return nil, fmt.Errorf("wrong atlas client type in context: expected *mongodbatlas.Client, got %T", ctx.Value(ContextKeyAtlasClient))
 	}
 
 	return client, nil
