@@ -281,7 +281,7 @@ func (b Broker) clusterFromParams(instanceID string, serviceID string, planID st
 
 	// If the plan ID is specified we construct the provider object from the service and plan.
 	// The plan ID is optional during updates but not during creation.
-	if planID != "" {
+	if planID != "" && b.mode != DynamicPlans {
 		if params.Cluster.ProviderSettings == nil {
 			params.Cluster.ProviderSettings = &mongodbatlas.ProviderSettings{}
 		}

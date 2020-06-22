@@ -37,14 +37,14 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	// The service_id and plan_id are required to be valid per the specification, despite
 	// not being used for bindings. We look them up to ensure they can be found in the catalog.
-	provider, err := b.catalog.findProviderByServiceID(details.ServiceID)
-	if err != nil {
-		return
+	_, ok := b.catalog.providers[details.ServiceID]
+	if !ok {
+		return spec, fmt.Errorf("service ID %q not found in catalog", details.ServiceID)
 	}
 
-	_, err = b.catalog.findInstanceSizeByPlanID(provider, details.PlanID)
-	if err != nil {
-		return
+	_, ok = b.catalog.plans[details.PlanID]
+	if !ok {
+		return spec, fmt.Errorf("plan ID %q not found in catalog", details.PlanID)
 	}
 
 	// Fetch the cluster from Atlas to ensure it exists.

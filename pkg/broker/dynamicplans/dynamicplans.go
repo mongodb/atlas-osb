@@ -1,6 +1,7 @@
 package dynamicplans
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -41,6 +42,10 @@ func FromEnv() ([]*template.Template, error) {
 			return nil, err
 		}
 		templates = append(templates, t)
+	}
+
+	if len(templates) == 0 {
+		return nil, errors.New("no templates found")
 	}
 
 	return templates, nil
