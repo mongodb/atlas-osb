@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
@@ -190,9 +191,14 @@ func (b *Broker) buildPlansForProviderDynamic(provider *atlas.Provider) []domain
 		b.logger.Fatalw("could not read dynamic plans from environment", "error", err)
 	}
 
+	ctx := dynamicplans.DefaultCtx()
+	ctx.Cluster.ProviderSettings = &mongodbatlas.ProviderSettings{
+		ProviderName: provider.Name,
+	}
+
 	for _, template := range templates {
 		raw := new(bytes.Buffer)
-		err := template.Execute(raw, dynamicplans.Context{})
+		err := template.Execute(raw, ctx)
 		if err != nil {
 			b.logger.Errorf("cannot execute template %q: %v", template.Name(), err)
 			continue
@@ -208,6 +214,7 @@ func (b *Broker) buildPlansForProviderDynamic(provider *atlas.Provider) []domain
 			ID:          planIDForDynamicPlan(provider.Name, p.Name),
 			Name:        p.Name,
 			Description: p.Description,
+			Free:        p.Free,
 			Metadata: &domain.ServicePlanMetadata{
 				AdditionalMetadata: map[string]interface{}{
 					"template": template,
