@@ -60,7 +60,7 @@ func (b *Broker) getClient(ctx context.Context, planID string) (client *mongodba
 		}
 
 		// TODO: temporary hack
-		baseURL := b.baseURL + "/api/atlas/v1.0"
+		baseURL := b.baseURL + "/api/atlas/v1.0/"
 
 		client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
 		if err != nil {
