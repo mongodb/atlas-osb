@@ -37,7 +37,7 @@ func (c catalog) findInstanceSizeByPlanID(provider *atlas.Provider, planID strin
 
 	sz, ok := szi.(*atlas.InstanceSize)
 	if !ok {
-		return nil, fmt.Errorf("incorrect metadata type: expected %T, found %T", (*atlas.InstanceSize)(nil), szi)
+		return nil, fmt.Errorf("incorrect metadata type: expected *atlas.InstanceSize, found %T", szi)
 	}
 
 	return sz, nil

@@ -100,9 +100,6 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 
 	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
 
-	// TODO: temporary hack
-	baseURL = baseURL + "/api/atlas/v1.0"
-
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	if !hasWhitelist {
