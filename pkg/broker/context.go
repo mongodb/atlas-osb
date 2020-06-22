@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 )
@@ -32,7 +33,7 @@ func atlasClientFromContext(ctx context.Context) (*mongodbatlas.Client, error) {
 func groupIDFromContext(ctx context.Context) (string, error) {
 	gid, ok := ctx.Value(ContextKeyGroupID).(string)
 	if !ok {
-		return "", errors.New("no group ID in context")
+		return "", fmt.Errorf("wrong group ID type in context: expected string, got %T", ctx.Value(ContextKeyGroupID))
 	}
 
 	return gid, nil
