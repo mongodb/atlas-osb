@@ -63,6 +63,9 @@ func simpleAuthMiddleware(baseURL string) mux.MiddlewareFunc {
 				panic(err)
 			}
 
+			// TODO: temporary hack
+			baseURL = baseURL + "/api/atlas/v1.0"
+
 			client, err := mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
 			if err != nil {
 				panic(err)
