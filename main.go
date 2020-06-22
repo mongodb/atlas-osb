@@ -74,53 +74,82 @@ Docker Image: quay.io/mongodb/mongodb-atlas-service-broker`
 	return fmt.Sprintf(helpMessage, releaseVersion)
 }
 
-func deduceMode(logger *zap.SugaredLogger) (broker.Mode, *credentials.Credentials) {
-	logger.Info("Deducing broker mode...")
+func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
+	logger.Info("Deducing credentials source...")
+
+	logger.Info("Trying Multi-Project credentials from env...")
+	creds, err := credentials.FromEnv()
+	if err != nil {
+		logger.Info("Selected Multi-Project (env)")
+		return creds
+	} else {
+		logger.Infow("Rejected Multi-Project (env)", "reason", err)
+	}
+
+	logger.Info("Trying Multi-Project credentials from CredHub...")
+	creds, err = credentials.FromCredHub()
+	if err != nil {
+		logger.Info("Selected Multi-Project (CredHub)")
+		return creds
+	} else {
+		logger.Infow("Rejected Multi-Project (CredHub)", "reason", err)
+	}
+
+	logger.Info("Selected Basic Auth")
+	return nil
+}
+
+func deduceModeAndCreds(logger *zap.SugaredLogger) (broker.Mode, *credentials.Credentials) {
+	logger.Info("Deducing catalog mode...")
+
+	dynPlans := false
+	autoPlans := false
 
 	logger.Info("Trying Dynamic Plans...")
 	_, err := dynamicplans.FromEnv()
 	if err == nil {
-		logger.Infof("Selected Dynamic Plans")
-		return broker.DynamicPlans, nil
+		logger.Info("Selected Dynamic Plans")
+		dynPlans = true
 	} else {
-		logger.Infow("Skipping Dynamic Plans", "error", err)
+		logger.Infow("Rejected Dynamic Plans", "reason", err)
+
+		logger.Info("Trying auto-generated plans...")
+		autoPlans = getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
+		if autoPlans {
+			logger.Info("Selected auto-generated plans")
+		} else {
+			logger.Info("Rejected auto-generated plans", "reason", "BROKER_ENABLE_AUTOPLANSFROMPROJECTS is not 'true'")
+			logger.Info("Selected static plans")
+		}
 	}
 
-	logger.Info("Checking BROKER_ENABLE_AUTOPLANSFROMPROJECTS...")
-	autoPlans := getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
-	logger.Infof("BROKER_ENABLE_AUTOPLANSFROMPROJECTS is %v", autoPlans)
+	creds := deduceCredentials(logger)
 
-	logger.Info("Trying Multi-Project credentials from env...")
-	creds, err := credentials.FromEnv()
-	if err == nil {
+	if creds == nil {
+		if dynPlans {
+			logger.Fatal("Cannot use dynamic plans without multi-project credentials")
+		}
 		if autoPlans {
-			logger.Infof("Selected Multi-Project with Automatic plan generation (env)")
+			logger.Fatal("Cannot use auto-generated plans without multi-project credentials")
+		}
+	}
+
+	if dynPlans {
+		return broker.DynamicPlans, creds
+	}
+
+	if creds != nil {
+		if autoPlans {
 			return broker.MultiGroupAutoPlans, creds
 		}
-		logger.Infof("Selected Multi-Project (env)")
 		return broker.MultiGroup, creds
-	} else {
-		logger.Infow("Skipping Multi-Project (env)", "error", err)
 	}
 
-	creds, err = credentials.FromCredHub()
-	if err == nil {
-		if autoPlans {
-			logger.Infof("Selected Multi-Project with Automatic plan generation (CredHub)")
-			return broker.MultiGroupAutoPlans, creds
-		}
-		logger.Infof("Selected Multi-Project (CredHub)")
-		return broker.MultiGroup, creds
-	} else {
-		logger.Infow("Skipping Multi-Project (CredHub)", "error", err)
-	}
-
-	logger.Infof("Selected Basic Auth")
 	return broker.BasicAuth, nil
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
-	mode, creds := deduceMode(logger)
+	mode, creds := deduceModeAndCreds(logger)
 
 	// TODO: implement!
 	if mode == broker.MultiGroup {
