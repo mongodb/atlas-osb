@@ -1,11 +1,14 @@
 package broker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
 
+	"github.com/goccy/go-yaml"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 
@@ -135,7 +138,7 @@ func (*Broker) buildPlansForProviderStatic(provider *atlas.Provider) []domain.Se
 	var plans []domain.ServicePlan
 	for _, instanceSize := range provider.InstanceSizes {
 		plan := domain.ServicePlan{
-			ID:          planIDForInstanceSize(provider, instanceSize, ""),
+			ID:          planIDForInstanceSize(provider.Name, instanceSize, ""),
 			Name:        instanceSize.Name,
 			Description: fmt.Sprintf("Instance size %q", instanceSize.Name),
 			Metadata: &domain.ServicePlanMetadata{
@@ -162,7 +165,7 @@ func (b *Broker) buildPlansForProviderAuto(provider *atlas.Provider) []domain.Se
 			}
 
 			plan := domain.ServicePlan{
-				ID:          planIDForInstanceSize(provider, instanceSize, groupID),
+				ID:          planIDForInstanceSize(provider.Name, instanceSize, groupID),
 				Name:        fmt.Sprintf("%s-%s", instanceSize.Name, id),
 				Description: fmt.Sprintf("Instance size %q", instanceSize.Name),
 				Metadata: &domain.ServicePlanMetadata{
@@ -180,14 +183,42 @@ func (b *Broker) buildPlansForProviderAuto(provider *atlas.Provider) []domain.Se
 }
 
 func (b *Broker) buildPlansForProviderDynamic(provider *atlas.Provider) []domain.ServicePlan {
-	// var plans []domain.ServicePlan
+	var plans []domain.ServicePlan
 
-	// t, err := dynamicplans.FromEnv()
-	// if err != nil {
-	// 	b.logger.Fatalw("could not read dynamic plans from environment", "error", err)
-	// }
+	templates, err := dynamicplans.FromEnv()
+	if err != nil {
+		b.logger.Fatalw("could not read dynamic plans from environment", "error", err)
+	}
 
-	return nil
+	for _, template := range templates {
+		raw := new(bytes.Buffer)
+		err := template.Execute(raw, dynamicplans.Context{})
+		if err != nil {
+			b.logger.Errorf("cannot execute template %q: %v", template.Name(), err)
+			continue
+		}
+
+		p := dynamicplans.Plan{}
+		if err := yaml.NewDecoder(raw).Decode(&p); err != nil {
+			b.logger.Errorf("cannot decode yaml template %q: %v", template.Name(), err)
+			continue
+		}
+
+		plan := domain.ServicePlan{
+			ID:          planIDForDynamicPlan(provider.Name, p.Name),
+			Name:        p.Name,
+			Description: p.Description,
+			Metadata: &domain.ServicePlanMetadata{
+				AdditionalMetadata: map[string]interface{}{
+					"template": template,
+				},
+			},
+		}
+		plans = append(plans, plan)
+		continue
+	}
+
+	return plans
 }
 
 // serviceIDForProvider will generate a globally unique ID for a provider.
@@ -197,12 +228,16 @@ func serviceIDForProvider(providerName string) string {
 
 // planIDForInstanceSize will generate a globally unique ID for an instance size
 // on a specific provider.
-func planIDForInstanceSize(provider *atlas.Provider, instanceSize atlas.InstanceSize, groupID string) string {
-	result := fmt.Sprintf("%s-plan-%s-%s", idPrefix, strings.ToLower(provider.Name), strings.ToLower(instanceSize.Name))
+func planIDForInstanceSize(providerName string, instanceSize atlas.InstanceSize, groupID string) string {
+	result := fmt.Sprintf("%s-plan-%s-%s", idPrefix, strings.ToLower(providerName), strings.ToLower(instanceSize.Name))
 
 	if groupID == "" {
 		return result
 	}
 
 	return fmt.Sprintf("%s-%s", result, groupID)
+}
+
+func planIDForDynamicPlan(providerName string, planName string) string {
+	return fmt.Sprintf("%s-plan-%s-%s", idPrefix, strings.ToLower(providerName), strings.ToLower(planName))
 }

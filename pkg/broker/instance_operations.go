@@ -81,6 +81,10 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 func (b Broker) Update(ctx context.Context, instanceID string, details domain.UpdateDetails, asyncAllowed bool) (spec domain.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
+	if b.mode == DynamicPlans {
+		panic("not implemented")
+	}
+
 	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
@@ -145,6 +149,10 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details domain.DeprovisionDetails, asyncAllowed bool) (spec domain.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
+	if b.mode == DynamicPlans {
+		panic("not implemented")
+	}
+
 	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
 		return
@@ -183,6 +191,10 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 // of a cluster.
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
+
+	if b.mode == DynamicPlans {
+		panic("not implemented")
+	}
 
 	client, gid, err := b.getClient(ctx, details.PlanID)
 	if err != nil {
