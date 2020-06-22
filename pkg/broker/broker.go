@@ -63,9 +63,7 @@ func (b *Broker) getClient(ctx context.Context, planID string) (client *mongodba
 		baseURL := b.baseURL + "/api/atlas/v1.0/"
 
 		client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
-		if err != nil {
-			return nil, gid, err
-		}
+		return client, gid, err
 	}
 
 	gid, err = groupIDFromContext(ctx)
