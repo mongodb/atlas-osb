@@ -30,7 +30,7 @@ func FromEnv() ([]*template.Template, error) {
 		}
 
 		ext := filepath.Ext(f.Name())
-		if ext != ".yml" && ext != ".yaml" && ext != ".json" {
+		if ext != ".tpl" {
 			continue
 		}
 
@@ -39,7 +39,11 @@ func FromEnv() ([]*template.Template, error) {
 			return nil, err
 		}
 
+		// trim .tpl
 		basename := strings.TrimSuffix(f.Name(), ext)
+		// also trim .yml/.yaml/.json (if any)
+		basename = strings.TrimSuffix(basename, filepath.Ext(basename))
+
 		t, err := template.
 			New(basename).
 			Funcs(map[string]interface{}{
