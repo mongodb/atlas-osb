@@ -1,14 +1,10 @@
 package broker
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"text/template"
 
-	"github.com/goccy/go-yaml"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
@@ -38,7 +34,7 @@ type ContextParams struct {
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
-	client, gid, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
@@ -86,11 +82,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 func (b Broker) Update(ctx context.Context, instanceID string, details domain.UpdateDetails, asyncAllowed bool) (spec domain.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
-	if b.mode == DynamicPlans {
-		panic("not implemented")
-	}
-
-	client, gid, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
@@ -154,11 +146,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details domain.DeprovisionDetails, asyncAllowed bool) (spec domain.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	if b.mode == DynamicPlans {
-		panic("not implemented")
-	}
-
-	client, gid, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID, nil)
 	if err != nil {
 		return
 	}
@@ -197,7 +185,7 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
-	client, gid, err := b.getClient(ctx, details.PlanID)
+	client, gid, err := b.getClient(ctx, details.PlanID, nil)
 	if err != nil {
 		return
 	}
@@ -266,7 +254,7 @@ func NormalizeClusterName(name string) string {
 // configuration available for clusters in the Atlas API as "cluster" in the params.
 func (b Broker) clusterFromParams(instanceID string, serviceID string, planID string, rawParams []byte) (*mongodbatlas.Cluster, error) {
 	// Set up a params object which will be used for deserialiation.
-	params := dynamicplans.DefaultCtx()
+	params := dynamicplans.DefaultCtx(b.credentials)
 
 	// If params were passed we unmarshal them into the params object.
 	if len(rawParams) > 0 {
@@ -283,54 +271,27 @@ func (b Broker) clusterFromParams(instanceID string, serviceID string, planID st
 			params.Cluster.ProviderSettings = &mongodbatlas.ProviderSettings{}
 		}
 
-		switch b.mode {
-		case DynamicPlans:
-			p, ok := b.catalog.plans[planID]
-			if !ok {
-				return nil, fmt.Errorf("plan ID %q not found in catalog", planID)
-			}
-
-			tpl, ok := p.Metadata.AdditionalMetadata["template"].(*template.Template)
-			if !ok {
-				return nil, errors.New("plan ID %q does not contain a valid plan template")
-			}
-
-			raw := new(bytes.Buffer)
-			err := tpl.Execute(raw, params)
+		instanceSizeName := params.Cluster.ProviderSettings.InstanceSizeName
+		if instanceSizeName != InstanceSizeNameM2 && instanceSizeName != InstanceSizeNameM5 {
+			provider, err := b.catalog.findProviderByServiceID(serviceID)
 			if err != nil {
 				return nil, err
 			}
 
-			plan := dynamicplans.Plan{}
-			err = yaml.NewDecoder(raw).Decode(&plan)
+			instanceSize, err := b.catalog.findInstanceSizeByPlanID(provider, planID)
 			if err != nil {
 				return nil, err
 			}
 
-			params.Cluster.ProviderSettings.ProviderName = plan.Cluster.ProviderSettings.ProviderName
-			params.Cluster.ProviderSettings.InstanceSizeName = plan.Cluster.ProviderSettings.InstanceSizeName
-
-		default:
-			instanceSizeName := params.Cluster.ProviderSettings.InstanceSizeName
-			if instanceSizeName != InstanceSizeNameM2 && instanceSizeName != InstanceSizeNameM5 {
-				provider, err := b.catalog.findProviderByServiceID(serviceID)
-				if err != nil {
-					return nil, err
-				}
-
-				instanceSize, err := b.catalog.findInstanceSizeByPlanID(provider, planID)
-				if err != nil {
-					return nil, err
-				}
-
-				// Configure provider based on service and plan.
-				params.Cluster.ProviderSettings.ProviderName = provider.Name
-				params.Cluster.ProviderSettings.InstanceSizeName = instanceSize.Name
-			}
+			// Configure provider based on service and plan.
+			params.Cluster.ProviderSettings.ProviderName = provider.Name
+			params.Cluster.ProviderSettings.InstanceSizeName = instanceSize.Name
 		}
 	}
 
 	// Add the instance ID as the name of the cluster.
-	params.Cluster.Name = NormalizeClusterName(instanceID)
+	if params.Cluster.Name == "" {
+		params.Cluster.Name = NormalizeClusterName(instanceID)
+	}
 	return params.Cluster, nil
 }
