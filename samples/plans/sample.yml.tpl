@@ -1,5 +1,5 @@
-name: MyPlan
-description: "This is a sample plan for a project, cluster, database user, and secure connection."
+name: full-plan
+description: This is a full plan for a project, cluster, database user, and secure connection.
 free: true
 apiKey: {{ json (index .Credentials.Projects .Project.ID) }}
 project:
@@ -7,8 +7,6 @@ project:
   name: {{ .Project.Name }}
   orgId: {{ .Project.OrgID }}
 cluster:
-  name: {{ .Project.Name }}-Cluster
-  groupId: {{ .Project.ID }}
   providerSettings:
     instanceSizeName: M20
 databaseUsers:
