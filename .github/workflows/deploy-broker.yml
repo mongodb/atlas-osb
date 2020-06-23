@@ -13,13 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@master
       
-      - name: Cleanup ENV for current branch
-        uses: ./.github/actions/cleanup-cf
-        with:
-          pcf_url: ${{ secrets.PCF_URL }}
-          pcf_user: ${{ secrets.PCF_USER }}
-          pcf_password: ${{ secrets.PCF_PASSWORD }}
-
       - name: Create CF org, space, broker, service and push app)
         id: prepare
         uses: ./.github/actions/prepare-credhub
@@ -33,7 +26,7 @@ jobs:
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
           credhub_file: ${{ secrets.CREDHUB_FILE }}
 
-      - name: Check application. Add album
+      - name: Check application.
         id: check
         env:
           APP_URL: ${{ steps.prepare.outputs.app_url }}
@@ -65,3 +58,10 @@ jobs:
               echo "FAILED. Application doesn't work"
               exit 1
           fi
+
+      - name: Cleanup ENV for current branch
+        uses: ./.github/actions/cleanup-cf
+        with:
+          pcf_url: ${{ secrets.PCF_URL }}
+          pcf_user: ${{ secrets.PCF_USER }}
+          pcf_password: ${{ secrets.PCF_PASSWORD }}

@@ -16,7 +16,7 @@ make_sample_credhub_config ./credhub-config.json
 echo "Login. Create ORG and SPACE depended on the branch name"
 cf_login
 cf create-org $ORG_NAME && cf target -o $ORG_NAME
-cf create-space $ORG_NAME && cf target -s $ORG_NAME
+cf create-space $SPACE_NAME && cf target -s $SPACE_NAME
 
 echo "Create credhub service" #credhub broker already exist
 cf create-service credhub default $CREDHUB -c ./credhub-config.json
