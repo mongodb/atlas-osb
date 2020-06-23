@@ -1,15 +1,21 @@
 package broker
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"text/template"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
+	"github.com/goccy/go-yaml"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 	"go.uber.org/zap"
@@ -41,9 +47,58 @@ func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseUR
 	}
 }
 
-func (b *Broker) getClient(ctx context.Context, planID string) (client *mongodbatlas.Client, gid string, err error) {
-	client, err = atlasClientFromContext(ctx)
+func (b *Broker) parsePlan(planID string, rawParams json.RawMessage) (dp dynamicplans.Plan, err error) {
+	sp, ok := b.catalog.plans[planID]
+	if !ok {
+		err = fmt.Errorf("plan ID %q not found in catalog", planID)
+		return
+	}
+
+	tpl, ok := sp.Metadata.AdditionalMetadata["template"].(*template.Template)
+	if !ok {
+		err = errors.New("plan ID %q does not contain a valid plan template")
+		return
+	}
+
+	params := dynamicplans.DefaultCtx(b.credentials)
+
+	// If params were passed we unmarshal them into the params object.
+	if len(rawParams) > 0 {
+		err = json.Unmarshal(rawParams, &params)
+		if err != nil {
+			return
+		}
+	}
+
+	raw := new(bytes.Buffer)
+	err = tpl.Execute(raw, params)
 	if err != nil {
+		return
+	}
+
+	b.logger.Infow("Parsed plan", "plan", raw.String(), "creds", b.credentials.Projects)
+
+	if err = yaml.NewDecoder(raw).Decode(&dp); err != nil {
+		return
+	}
+
+	return dp, nil
+}
+
+func (b *Broker) getClient(ctx context.Context, planID string, rawParams json.RawMessage) (client *mongodbatlas.Client, gid string, err error) {
+	switch b.mode {
+	case BasicAuth:
+		client, err = atlasClientFromContext(ctx)
+		if err != nil {
+			return
+		}
+		gid, err = groupIDFromContext(ctx)
+		return client, gid, err
+
+	case MultiGroup:
+		panic("not implemented")
+
+	case MultiGroupAutoPlans:
 		gid, err = b.catalog.findGroupIDByPlanID(planID)
 		if err != nil {
 			return nil, gid, err
@@ -54,20 +109,45 @@ func (b *Broker) getClient(ctx context.Context, planID string) (client *mongodba
 			return nil, gid, atlas.ErrUnauthorized
 		}
 
-		hc, err := digest.NewTransport(c.PublicKey, c.APIKey).Client()
+		hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()
 		if err != nil {
 			return nil, gid, err
 		}
 
-		// TODO: temporary hack
-		baseURL := b.baseURL + "/api/atlas/v1.0/"
-
-		client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
+		client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
 		return client, gid, err
-	}
 
-	gid, err = groupIDFromContext(ctx)
-	return client, gid, err
+	case DynamicPlans:
+		dp := dynamicplans.Plan{}
+		dp, err = b.parsePlan(planID, rawParams)
+		if err != nil {
+			return
+		}
+
+		if dp.Project == nil {
+			err = fmt.Errorf("missing Project in plan definition")
+			return
+		}
+
+		gid = dp.Project.ID
+
+		c, ok := b.credentials.Projects[gid]
+		if !ok {
+			err = fmt.Errorf("credentials for project ID %q not found", gid)
+			return
+		}
+
+		hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()
+		if err != nil {
+			return nil, gid, err
+		}
+
+		client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
+		return client, gid, err
+
+	default:
+		panic("invalid broker mode")
+	}
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {

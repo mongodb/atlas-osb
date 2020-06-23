@@ -1,17 +1,15 @@
 package credentials
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-)
 
-type credential struct {
-	PublicKey   string `json:"public_key"`
-	APIKey      string `json:"api_key"`
-	DisplayName string `json:"display_name"`
-}
+	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+)
 
 type BrokerAuth struct {
 	Username string `json:"username"`
@@ -19,9 +17,9 @@ type BrokerAuth struct {
 }
 
 type Credentials struct {
-	Projects map[string]credential `json:"projects"`
-	Orgs     map[string]credential `json:"orgs"`
-	Broker   *BrokerAuth           `json:"broker"`
+	Projects map[string]mongodbatlas.APIKey `json:"projects"`
+	Orgs     map[string]mongodbatlas.APIKey `json:"orgs"`
+	Broker   *BrokerAuth                    `json:"broker"`
 }
 
 type credHub struct {
@@ -45,8 +43,8 @@ func FromCredHub() (*Credentials, error) {
 	}
 
 	result := Credentials{
-		Projects: map[string]credential{},
-		Orgs:     map[string]credential{},
+		Projects: map[string]mongodbatlas.APIKey{},
+		Orgs:     map[string]mongodbatlas.APIKey{},
 	}
 
 	for _, c := range services.CredHub {
@@ -54,7 +52,7 @@ func FromCredHub() (*Credentials, error) {
 			result.Projects[k] = v
 		}
 		for k, v := range c.Credentials.Orgs {
-			result.Projects[k] = v
+			result.Orgs[k] = v
 		}
 		if c.Credentials.Broker != nil {
 			result.Broker = c.Credentials.Broker
@@ -80,7 +78,7 @@ func FromEnv() (*Credentials, error) {
 	}
 
 	if err := creds.validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate credentials: %v", err)
 	}
 
 	return &creds, nil
@@ -95,9 +93,32 @@ func (c *Credentials) validate() error {
 		return errors.New("no Project/Org credentials specified")
 	}
 
-	if len(c.Orgs) != 0 {
-		return errors.New("Org credentials are not implemented yet")
-	}
+	return nil
+}
 
+func (c *Credentials) FlattenOrgs(baseURL string) error {
+	for k, v := range c.Orgs {
+		hc, err := digest.NewTransport(v.PublicKey, v.PrivateKey).Client()
+		if err != nil {
+			return err
+		}
+
+		client, err := mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
+		if err != nil {
+			return err
+		}
+
+		p, _, err := client.Projects.GetAllProjects(context.Background(), nil)
+		if err != nil {
+			return err
+		}
+		for _, pp := range p.Results {
+			if pp.OrgID != k {
+				continue
+			}
+			c.Projects[pp.ID] = v
+		}
+	}
+	c.Orgs = map[string]mongodbatlas.APIKey{}
 	return nil
 }

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
@@ -24,7 +23,7 @@ var releaseVersion = "development-build"
 const (
 	DefaultLogLevel = "INFO"
 
-	DefaultAtlasBaseURL = "https://cloud.mongodb.com"
+	DefaultAtlasBaseURL = "https://cloud.mongodb.com/api/atlas/v1.0/"
 
 	DefaultServerHost = "127.0.0.1"
 	DefaultServerPort = 4000
@@ -79,7 +78,7 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 
 	logger.Info("Trying Multi-Project credentials from env...")
 	creds, err := credentials.FromEnv()
-	if err != nil {
+	if err == nil {
 		logger.Info("Selected Multi-Project (env)")
 		return creds
 	} else {
@@ -88,7 +87,7 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 
 	logger.Info("Trying Multi-Project credentials from CredHub...")
 	creds, err = credentials.FromCredHub()
-	if err != nil {
+	if err == nil {
 		logger.Info("Selected Multi-Project (CredHub)")
 		return creds
 	} else {
@@ -99,7 +98,7 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	return nil
 }
 
-func deduceModeAndCreds(logger *zap.SugaredLogger) (broker.Mode, *credentials.Credentials) {
+func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (broker.Mode, *credentials.Credentials) {
 	logger.Info("Deducing catalog mode...")
 
 	dynPlans := false
@@ -139,6 +138,10 @@ func deduceModeAndCreds(logger *zap.SugaredLogger) (broker.Mode, *credentials.Cr
 	}
 
 	if creds != nil {
+		if err := creds.FlattenOrgs(baseURL); err != nil {
+			logger.Fatalw("Cannot parse Org API Keys", "error", err)
+		}
+
 		if autoPlans {
 			return broker.MultiGroupAutoPlans, creds
 		}
@@ -149,14 +152,13 @@ func deduceModeAndCreds(logger *zap.SugaredLogger) (broker.Mode, *credentials.Cr
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
-	mode, creds := deduceModeAndCreds(logger)
+	baseURL := getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL)
+	mode, creds := deduceModeAndCreds(logger, baseURL)
 
 	// TODO: implement!
 	if mode == broker.MultiGroup {
 		logger.Fatal("Multi-group credentials used without BROKER_ENABLE_AUTOPLANSFROMPROJECTS: not implemented yet!")
 	}
-
-	baseURL := strings.TrimRight(getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL), "/")
 
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")

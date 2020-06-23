@@ -1,12 +1,15 @@
 package dynamicplans
 
 import (
+	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/goccy/go-yaml"
 )
 
 func FromEnv() ([]*template.Template, error) {
@@ -37,7 +40,27 @@ func FromEnv() ([]*template.Template, error) {
 		}
 
 		basename := strings.TrimSuffix(f.Name(), ext)
-		t, err := template.New(basename).Parse(string(text))
+		t, err := template.
+			New(basename).
+			Funcs(map[string]interface{}{
+				"yaml": func(v interface{}) (string, error) {
+					out, err := yaml.Marshal(v)
+					return string(out), err
+				},
+				"json": func(v interface{}) (string, error) {
+					out, err := json.Marshal(v)
+					// TODO: remove this atrocity when github.com/goccy/go-yaml/issues/142 is fixed
+					return strings.ReplaceAll(string(out), ":", ": "), err
+				},
+				"required": func(v string) (string, error) {
+					if len(v) == 0 {
+						return v, errors.New("required value is empty")
+					}
+					return v, nil
+				},
+			}).
+			Parse(string(text))
+
 		if err != nil {
 			return nil, err
 		}

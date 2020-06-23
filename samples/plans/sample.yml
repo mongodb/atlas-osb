@@ -1,18 +1,15 @@
 name: MyPlan
 description: "This is a sample plan for a project, cluster, database user, and secure connection."
 free: true
-apiKey:
-  name: {{ .Project.Name }}-ApiKey
-  privateKey: {{ .APIKey.PrivateKey }}
-  publicKey: {{ .APIKey.PublicKey }}
+apiKey: {{ json (index .Credentials.Projects .Project.ID) }}
 project:
+  id: {{ .Project.ID }}
   name: {{ .Project.Name }}
   orgId: {{ .Project.OrgID }}
 cluster:
   name: {{ .Project.Name }}-Cluster
   groupId: {{ .Project.ID }}
   providerSettings:
-    providerName: AWS
     instanceSizeName: M20
 databaseUsers:
 - username: "test-user"

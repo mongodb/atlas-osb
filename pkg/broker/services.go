@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -45,6 +47,8 @@ var (
 			},
 		},
 	}
+
+	forbiddenSymbols = regexp.MustCompile("[^-a-zA-Z0-9]+")
 )
 
 // Services generates the service catalog which will be presented to consumers of the API.
@@ -74,8 +78,10 @@ func (b *Broker) buildCatalog() error {
 		if providerName == "TENANT" {
 			svc = sharedService
 		} else {
-			// TODO: reimplement?
-			provider, err := atlas.NewClient(b.baseURL, "", "", "").GetProvider(providerName)
+			// TODO: temporary hack, replace with a proper private API client
+			u, _ := url.Parse(b.baseURL)
+			u.Path = ""
+			provider, err := atlas.NewClient(u.String(), "", "", "").GetProvider(providerName)
 			if err != nil {
 				return err
 			}
@@ -125,7 +131,7 @@ func (b *Broker) buildPlansForProvider(provider *atlas.Provider) []domain.Servic
 	case BasicAuth:
 		return b.buildPlansForProviderStatic(provider)
 	case MultiGroup:
-		panic("not implemented yet")
+		panic("not implemented")
 	case MultiGroupAutoPlans:
 		return b.buildPlansForProviderAuto(provider)
 	case DynamicPlans:
@@ -155,14 +161,18 @@ func (*Broker) buildPlansForProviderStatic(provider *atlas.Provider) []domain.Se
 	return plans
 }
 
+func normalizeID(id string) string {
+	return strings.ToLower(forbiddenSymbols.ReplaceAllString(id, "_"))
+}
+
 func (b *Broker) buildPlansForProviderAuto(provider *atlas.Provider) []domain.ServicePlan {
 	var plans []domain.ServicePlan
 
 	for _, instanceSize := range provider.InstanceSizes {
-		for groupID, creds := range b.credentials.Projects {
+		for groupID, key := range b.credentials.Projects {
 			id := groupID
-			if creds.DisplayName != "" {
-				id = creds.DisplayName
+			if key.Desc != "" {
+				id = normalizeID(key.Desc)
 			}
 
 			plan := domain.ServicePlan{
@@ -191,7 +201,7 @@ func (b *Broker) buildPlansForProviderDynamic(provider *atlas.Provider) []domain
 		b.logger.Fatalw("could not read dynamic plans from environment", "error", err)
 	}
 
-	ctx := dynamicplans.DefaultCtx()
+	ctx := dynamicplans.DefaultCtx(b.credentials)
 	ctx.Cluster.ProviderSettings = &mongodbatlas.ProviderSettings{
 		ProviderName: provider.Name,
 	}
@@ -204,9 +214,27 @@ func (b *Broker) buildPlansForProviderDynamic(provider *atlas.Provider) []domain
 			continue
 		}
 
+		b.logger.Info("Parsed plan: %s", raw.String())
+
 		p := dynamicplans.Plan{}
 		if err := yaml.NewDecoder(raw).Decode(&p); err != nil {
-			b.logger.Errorf("cannot decode yaml template %q: %v", template.Name(), err)
+			b.logger.Errorw("cannot decode yaml template", "name", template.Name(), "error", err)
+			continue
+		}
+
+		if p.Cluster == nil ||
+			p.Cluster.ProviderSettings == nil ||
+			p.Cluster.ProviderSettings.InstanceSizeName == "" {
+			b.logger.Errorw(
+				"invalid yaml template",
+				"name", template.Name(),
+				"error", ".cluster.providerSettings.instanceSizeName must not be empty",
+			)
+			continue
+		}
+
+		pn := p.Cluster.ProviderSettings.ProviderName
+		if pn != "" && pn != provider.Name {
 			continue
 		}
 
@@ -217,7 +245,8 @@ func (b *Broker) buildPlansForProviderDynamic(provider *atlas.Provider) []domain
 			Free:        p.Free,
 			Metadata: &domain.ServicePlanMetadata{
 				AdditionalMetadata: map[string]interface{}{
-					"template": template,
+					"template":     template,
+					"instanceSize": provider.InstanceSizes[p.Cluster.ProviderSettings.InstanceSizeName],
 				},
 			},
 		}
