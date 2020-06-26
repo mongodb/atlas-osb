@@ -59,13 +59,6 @@ type serviceInstance struct {
 // Services generates the service catalog which will be presented to consumers of the API.
 func (b *Broker) Services(ctx context.Context) ([]domain.Service, error) {
 	b.logger.Info("Retrieving service catalog")
-
-	if b.catalog == nil {
-		if err := b.buildCatalog(); err != nil {
-			return nil, err
-		}
-	}
-
 	return b.catalog.services, nil
 }
 
