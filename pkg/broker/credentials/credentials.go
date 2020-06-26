@@ -11,10 +11,16 @@ import (
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 )
 
+// FIXME: temporary hack for old secrets
+type APIKey struct {
+	mongodbatlas.APIKey
+	DisplayName string `json:"display_name,omitempty"`
+}
+
 type Credentials struct {
-	Projects map[string]mongodbatlas.APIKey `json:"projects"`
-	Orgs     map[string]mongodbatlas.APIKey `json:"orgs"`
-	Broker   *BrokerAuth                    `json:"broker"`
+	Projects map[string]APIKey `json:"projects"`
+	Orgs     map[string]APIKey `json:"orgs"`
+	Broker   *BrokerAuth       `json:"broker"`
 }
 
 type BrokerAuth struct {
@@ -44,12 +50,17 @@ func FromCredHub() (*Credentials, error) {
 	}
 
 	result := Credentials{
-		Projects: map[string]mongodbatlas.APIKey{},
-		Orgs:     map[string]mongodbatlas.APIKey{},
+		Projects: map[string]APIKey{},
+		Orgs:     map[string]APIKey{},
 	}
 
 	for _, c := range services.CredHub {
 		for k, v := range c.Credentials.Projects {
+			// FIXME: temporary hack for old secrets
+			if v.DisplayName != "" {
+				v.Desc = v.DisplayName
+			}
+
 			result.Projects[k] = v
 		}
 		for k, v := range c.Credentials.Orgs {
@@ -120,6 +131,6 @@ func (c *Credentials) FlattenOrgs(baseURL string) error {
 			c.Projects[pp.ID] = v
 		}
 	}
-	c.Orgs = map[string]mongodbatlas.APIKey{}
+	c.Orgs = map[string]APIKey{}
 	return nil
 }
