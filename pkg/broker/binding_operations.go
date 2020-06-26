@@ -26,7 +26,7 @@ type ConnectionDetails struct {
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details domain.BindDetails, asyncAllowed bool) (spec domain.Binding, err error) {
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	client, gid, err := b.getClient(ctx, details.PlanID, details.RawParameters)
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
@@ -93,7 +93,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details domain.UnbindDetails, asyncAllowed bool) (spec domain.UnbindSpec, err error) {
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	client, gid, err := b.getClient(ctx, details.PlanID, nil)
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}

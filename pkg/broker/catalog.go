@@ -5,26 +5,26 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
+	atlasprivate "github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
 
 type catalog struct {
 	services  []domain.Service
-	providers map[string]atlas.Provider
+	providers map[string]atlasprivate.Provider
 	plans     map[string]domain.ServicePlan
 }
 
 func newCatalog() *catalog {
 	return &catalog{
 		services:  []domain.Service{},
-		providers: map[string]atlas.Provider{},
+		providers: map[string]atlasprivate.Provider{},
 		plans:     map[string]domain.ServicePlan{},
 	}
 }
 
-func (c catalog) findInstanceSizeByPlanID(provider *atlas.Provider, planID string) (*atlas.InstanceSize, error) {
+func (c catalog) findInstanceSizeByPlanID(provider *atlasprivate.Provider, planID string) (*atlasprivate.InstanceSize, error) {
 	p, found := c.plans[planID]
 	if !found {
 		return nil, fmt.Errorf("plan ID %q not found in catalog", planID)
@@ -35,9 +35,9 @@ func (c catalog) findInstanceSizeByPlanID(provider *atlas.Provider, planID strin
 		return nil, fmt.Errorf("instance size not found in metadata for plan %q", planID)
 	}
 
-	sz, ok := szi.(atlas.InstanceSize)
+	sz, ok := szi.(atlasprivate.InstanceSize)
 	if !ok {
-		return nil, fmt.Errorf("incorrect metadata type: expected atlas.InstanceSize, found %T", szi)
+		return nil, fmt.Errorf("incorrect metadata type: expected atlasprivate.InstanceSize, found %T", szi)
 	}
 
 	return &sz, nil
@@ -62,7 +62,7 @@ func (c *catalog) findGroupIDByPlanID(planID string) (string, error) {
 	return gid, nil
 }
 
-func (c *catalog) findProviderByServiceID(serviceID string) (*atlas.Provider, error) {
+func (c *catalog) findProviderByServiceID(serviceID string) (*atlasprivate.Provider, error) {
 	p, found := c.providers[serviceID]
 	if !found {
 		return nil, apiresponses.NewFailureResponse(errors.New("Invalid service ID"), http.StatusBadRequest, "invalid-service-id")
