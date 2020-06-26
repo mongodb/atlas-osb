@@ -32,12 +32,12 @@ make_sample_credhub_config() {
 		"${INPUT_ATLAS_PROJECT_ID}": {
 			"public_key": "${INPUT_ATLAS_PUBLIC_KEY}",
 			"api_key": "${INPUT_ATLAS_PRIVATE_KEY}",
-			"display_name": "valley"
+			"desc": "valley"
 		},
 		"${INPUT_ATLAS_PROJECT_ID_BAY}": {
 			"public_key": "${INPUT_ATLAS_PUBLIC_KEY}",
 			"api_key": "${INPUT_ATLAS_PRIVATE_KEY}",
-			"display_name": "bay"
+			"desc": "bay"
 		}
 	}
 }
