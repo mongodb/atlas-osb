@@ -11,15 +11,16 @@ import (
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 )
 
-type BrokerAuth struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 type Credentials struct {
 	Projects map[string]mongodbatlas.APIKey `json:"projects"`
 	Orgs     map[string]mongodbatlas.APIKey `json:"orgs"`
 	Broker   *BrokerAuth                    `json:"broker"`
+}
+
+type BrokerAuth struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	DB       string `json:"db"`
 }
 
 type credHub struct {

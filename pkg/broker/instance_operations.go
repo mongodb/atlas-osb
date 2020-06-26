@@ -7,11 +7,9 @@ import (
 	"net/http"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -37,7 +35,7 @@ type ContextParams struct {
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
-	client, gid, err := b.getClient(ctx, details.PlanID, details.RawParameters)
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
@@ -58,6 +56,30 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		b.logger.Errorw("Couldn't create cluster from the passed parameters", "error", err, "instance_id", instanceID, "details", details)
 		return
 	}
+
+	s := serviceInstance{
+		ID: instanceID,
+		GetInstanceDetailsSpec: domain.GetInstanceDetailsSpec{
+			PlanID:       details.PlanID,
+			ServiceID:    details.ServiceID,
+			DashboardURL: b.GetDashboardURL(gid, cluster.Name),
+			Parameters: bson.M{
+				"groupID": gid,
+			},
+		},
+	}
+
+	col := b.client.Database("atlas-broker").Collection("instances")
+	_, err = col.InsertOne(ctx, s)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			col.DeleteOne(ctx, s)
+		}
+	}()
 
 	// Add default labels
 	// TODO - append the env info k8s, pcf, etc
@@ -85,7 +107,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 func (b Broker) Update(ctx context.Context, instanceID string, details domain.UpdateDetails, asyncAllowed bool) (spec domain.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
-	client, gid, err := b.getClient(ctx, details.PlanID, details.RawParameters)
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, details.RawParameters)
 	if err != nil {
 		return
 	}
@@ -149,7 +171,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details domain.DeprovisionDetails, asyncAllowed bool) (spec domain.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	client, gid, err := b.getClient(ctx, details.PlanID, nil)
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}
@@ -185,14 +207,14 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 		return
 	}
 
-	err = b.client.Ping(ctx, readpref.Primary())
+	c := b.client.Database("atlas-broker").Collection("instances")
+	s := serviceInstance{}
+
+	err = c.FindOne(ctx, bson.M{"id": instanceID}).Decode(&s)
 	if err != nil {
 		return
 	}
 
-	c := b.client.Database("atlas-broker").Collection("instances")
-	c.FindOne(ctx, bson.M{"id": instanceID})
-	s := serviceInstance{}
 	return domain.GetInstanceDetailsSpec{
 		ServiceID:    s.ServiceID,
 		PlanID:       s.PlanID,
@@ -206,13 +228,13 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
-	client, gid, err := b.getClient(ctx, details.PlanID, nil)
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}
 
-	cluster, _, err := client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
-	if err != nil && err != atlas.ErrClusterNotFound {
+	cluster, r, err := client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
+	if err != nil && r.StatusCode != http.StatusNotFound {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
 		return
@@ -226,27 +248,29 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	case OperationProvision:
 		switch cluster.StateName {
 		// Provision has succeeded if the cluster is in state "idle".
-		case atlas.ClusterStateIdle:
+		case "IDLE":
 			state = domain.Succeeded
-		case atlas.ClusterStateCreating:
+		case "CREATING":
 			state = domain.InProgress
 		}
 	case OperationDeprovision:
 		// The Atlas API may return a 404 response if a cluster is deleted or it
 		// will return the cluster with a state of "DELETED". Both of these
 		// scenarios indicate that a cluster has been successfully deleted.
-		if err == atlas.ErrClusterNotFound || cluster.StateName == atlas.ClusterStateDeleted {
+		if r.StatusCode == http.StatusNotFound || cluster.StateName == "DELETED" {
 			state = domain.Succeeded
-		} else if cluster.StateName == atlas.ClusterStateDeleting {
+			// TODO: change this?
+			b.client.Database("atlas-broker").Collection("instances").DeleteOne(ctx, bson.M{"id": instanceID})
+		} else if cluster.StateName == "DELETING" {
 			state = domain.InProgress
 		}
 	case OperationUpdate:
 		// We assume that the cluster transitions to the "UPDATING" state
 		// in a synchronous manner during the update request.
 		switch cluster.StateName {
-		case atlas.ClusterStateIdle:
+		case "IDLE":
 			state = domain.Succeeded
-		case atlas.ClusterStateUpdating:
+		case "UPDATING":
 			state = domain.InProgress
 		}
 	}
@@ -311,8 +335,6 @@ func (b Broker) clusterFromParams(instanceID string, serviceID string, planID st
 	}
 
 	// Add the instance ID as the name of the cluster.
-	if params.Cluster.Name == "" {
-		params.Cluster.Name = NormalizeClusterName(instanceID)
-	}
+	params.Cluster.Name = NormalizeClusterName(instanceID)
 	return params.Cluster, nil
 }

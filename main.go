@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -104,7 +107,7 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	return nil
 }
 
-func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (broker.Mode, *credentials.Credentials) {
+func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.Mode, creds *credentials.Credentials, client *mongo.Client) {
 	logger.Info("Deducing catalog mode...")
 
 	dynPlans := false
@@ -115,6 +118,14 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (broker.Mode,
 	switch {
 	case err == nil && p == nil:
 		logger.Infow("Rejected Dynamic Plans", "reason", "ATLAS_BROKER_TEMPLATEDIR not set")
+		logger.Info("Trying auto-generated plans...")
+		autoPlans = getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
+		if autoPlans {
+			logger.Info("Selected auto-generated plans")
+		} else {
+			logger.Info("Rejected auto-generated plans", "reason", "BROKER_ENABLE_AUTOPLANSFROMPROJECTS not set to 'true'")
+			logger.Info("Selected static plans")
+		}
 	case err == nil:
 		logger.Info("Selected Dynamic Plans")
 		dynPlans = true
@@ -122,16 +133,7 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (broker.Mode,
 		logger.Fatalw("Error while loading Dynamic Plans", "error", err)
 	}
 
-	logger.Info("Trying auto-generated plans...")
-	autoPlans = getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
-	if autoPlans {
-		logger.Info("Selected auto-generated plans")
-	} else {
-		logger.Info("Rejected auto-generated plans", "reason", "BROKER_ENABLE_AUTOPLANSFROMPROJECTS not set to 'true'")
-		logger.Info("Selected static plans")
-	}
-
-	creds := deduceCredentials(logger)
+	creds = deduceCredentials(logger)
 
 	if creds == nil {
 		if dynPlans {
@@ -140,40 +142,53 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (broker.Mode,
 		if autoPlans {
 			logger.Fatal("Cannot use auto-generated plans without multi-project credentials")
 		}
+
+		return broker.BasicAuth, nil, nil
+	}
+
+	if creds.Broker.DB == "" {
+		if dynPlans {
+			logger.Fatal("Cannot use dynamic plans without DB connection")
+		}
+		if !autoPlans {
+			logger.Fatal("Cannot use Multi-Group with static plans and no DB connection")
+		}
+	} else {
+		client, err = mongo.NewClient(options.Client().ApplyURI(creds.Broker.DB))
+		if err != nil {
+			logger.Fatalf("Cannot create Mongo client: %v", err)
+		}
+
+		err = client.Connect(context.Background())
+		if err != nil {
+			logger.Fatalf("Cannot connect to Mongo database: %v", err)
+		}
 	}
 
 	if dynPlans {
-		return broker.DynamicPlans, creds
+		return broker.DynamicPlans, creds, client
 	}
 
-	if creds != nil {
-		if err := creds.FlattenOrgs(baseURL); err != nil {
-			logger.Fatalw("Cannot parse Org API Keys", "error", err)
-		}
-
-		if autoPlans {
-			return broker.MultiGroupAutoPlans, creds
-		}
-		return broker.MultiGroup, creds
+	if err := creds.FlattenOrgs(baseURL); err != nil {
+		logger.Fatalw("Cannot parse Org API Keys", "error", err)
 	}
 
-	return broker.BasicAuth, nil
+	if autoPlans {
+		return broker.MultiGroupAutoPlans, creds, client
+	}
+	return broker.MultiGroup, creds, client
+
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	baseURL := getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL)
-	mode, creds := deduceModeAndCreds(logger, baseURL)
-
-	// TODO: implement!
-	if mode == broker.MultiGroup {
-		logger.Fatal("Multi-group credentials used without BROKER_ENABLE_AUTOPLANSFROMPROJECTS: not implemented yet!")
-	}
+	mode, creds, client := deduceModeAndCreds(logger, baseURL)
 
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	if !hasWhitelist {
 		logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", "NONE")
-		return broker.New(logger, creds, baseURL, nil, mode)
+		return broker.New(logger, creds, baseURL, nil, client, mode)
 	}
 
 	whitelist, err := broker.ReadWhitelistFile(pathToWhitelistFile)
@@ -182,7 +197,7 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	}
 
 	logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", pathToWhitelistFile)
-	return broker.New(logger, creds, baseURL, whitelist, mode)
+	return broker.New(logger, creds, baseURL, whitelist, client, mode)
 }
 
 func startBrokerServer() {
