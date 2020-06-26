@@ -38,7 +38,7 @@ type Broker struct {
 
 // New creates a new Broker with a logger.
 func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, client *mongo.Client, mode Mode) *Broker {
-	return &Broker{
+	b := &Broker{
 		logger:      logger,
 		credentials: credentials,
 		baseURL:     baseURL,
@@ -46,6 +46,12 @@ func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseUR
 		client:      client,
 		mode:        mode,
 	}
+
+	if err := b.buildCatalog(); err != nil {
+		logger.Fatalw("Cannot build service catalog", "error", err)
+	}
+
+	return b
 }
 
 func (b *Broker) parsePlan(planID string, rawParams json.RawMessage) (dp dynamicplans.Plan, err error) {
