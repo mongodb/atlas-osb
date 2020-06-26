@@ -34,7 +34,7 @@ type services struct {
 func FromCredHub() (*Credentials, error) {
 	env, found := os.LookupEnv("VCAP_SERVICES")
 	if !found {
-		return nil, fmt.Errorf("env VCAP_SERVICES not specified")
+		return nil, nil
 	}
 
 	services := &services{}
@@ -69,7 +69,7 @@ func FromCredHub() (*Credentials, error) {
 func FromEnv() (*Credentials, error) {
 	env, found := os.LookupEnv("BROKER_APIKEYS")
 	if !found {
-		return nil, fmt.Errorf("env BROKER_APIKEYS not specified")
+		return nil, nil
 	}
 
 	creds := Credentials{}

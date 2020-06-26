@@ -78,20 +78,26 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 
 	logger.Info("Trying Multi-Project credentials from env...")
 	creds, err := credentials.FromEnv()
-	if err == nil {
+	switch {
+	case err == nil && creds == nil:
+		logger.Infow("Rejected Multi-Project (env)", "reason", err)
+	case err == nil:
 		logger.Info("Selected Multi-Project (env)")
 		return creds
-	} else {
-		logger.Infow("Rejected Multi-Project (env)", "reason", err)
+	default:
+		logger.Fatalw("Error while loading env credentials", "error", err)
 	}
 
 	logger.Info("Trying Multi-Project credentials from CredHub...")
 	creds, err = credentials.FromCredHub()
-	if err == nil {
+	switch {
+	case err == nil && creds == nil:
+		logger.Infow("Rejected Multi-Project (CredHub)", "reason", err)
+	case err == nil:
 		logger.Info("Selected Multi-Project (CredHub)")
 		return creds
-	} else {
-		logger.Infow("Rejected Multi-Project (CredHub)", "reason", err)
+	default:
+		logger.Fatalw("Error while loading CredHub credentials", "error", err)
 	}
 
 	logger.Info("Selected Basic Auth")
@@ -105,21 +111,24 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (broker.Mode,
 	autoPlans := false
 
 	logger.Info("Trying Dynamic Plans...")
-	_, err := dynamicplans.FromEnv()
-	if err == nil {
+	p, err := dynamicplans.FromEnv()
+	switch {
+	case err == nil && p == nil:
+		logger.Infow("Rejected Dynamic Plans", "reason", "ATLAS_BROKER_TEMPLATEDIR not set")
+	case err == nil:
 		logger.Info("Selected Dynamic Plans")
 		dynPlans = true
-	} else {
-		logger.Infow("Rejected Dynamic Plans", "reason", err)
+	default:
+		logger.Fatalw("Error while loading Dynamic Plans", "error", err)
+	}
 
-		logger.Info("Trying auto-generated plans...")
-		autoPlans = getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
-		if autoPlans {
-			logger.Info("Selected auto-generated plans")
-		} else {
-			logger.Info("Rejected auto-generated plans", "reason", "BROKER_ENABLE_AUTOPLANSFROMPROJECTS is not 'true'")
-			logger.Info("Selected static plans")
-		}
+	logger.Info("Trying auto-generated plans...")
+	autoPlans = getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
+	if autoPlans {
+		logger.Info("Selected auto-generated plans")
+	} else {
+		logger.Info("Rejected auto-generated plans", "reason", "BROKER_ENABLE_AUTOPLANSFROMPROJECTS not set to 'true'")
+		logger.Info("Selected static plans")
 	}
 
 	creds := deduceCredentials(logger)

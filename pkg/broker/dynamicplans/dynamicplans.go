@@ -15,7 +15,7 @@ import (
 func FromEnv() ([]*template.Template, error) {
 	planPath, found := os.LookupEnv("ATLAS_BROKER_TEMPLATEDIR")
 	if !found {
-		planPath = "./samples/plans"
+		return nil, nil
 	}
 
 	files, err := ioutil.ReadDir(planPath)
