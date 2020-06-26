@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
@@ -34,6 +35,7 @@ type Broker struct {
 	baseURL     string
 	mode        Mode
 	catalog     *catalog
+	client      *mongo.Client
 }
 
 // New creates a new Broker with a logger.
@@ -96,7 +98,8 @@ func (b *Broker) getClient(ctx context.Context, planID string, rawParams json.Ra
 		return client, gid, err
 
 	case MultiGroup:
-		panic("not implemented")
+		i, _ := b.GetInstance()
+		i.Parameters
 
 	case MultiGroupAutoPlans:
 		gid, err = b.catalog.findGroupIDByPlanID(planID)

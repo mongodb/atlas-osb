@@ -3,13 +3,16 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
+	"net/http"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // The different async operations that can be performed.
@@ -176,8 +179,26 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 // InstancesRetrievable setting in the service catalog.
 func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
 	b.logger.Infow("Fetching instance", "instance_id", instanceID)
-	err = apiresponses.NewFailureResponse(fmt.Errorf("Unknown instance ID %s", instanceID), 404, "get-instance")
-	return
+
+	if b.client == nil {
+		err = apiresponses.NewFailureResponse(errors.New("Fetching instances not supported in stateless mode"), http.StatusNotImplemented, "get-instance")
+		return
+	}
+
+	err = b.client.Ping(ctx, readpref.Primary())
+	if err != nil {
+		return
+	}
+
+	c := b.client.Database("atlas-broker").Collection("instances")
+	c.FindOne(ctx, bson.M{"id": instanceID})
+	s := serviceInstance{}
+	return domain.GetInstanceDetailsSpec{
+		ServiceID:    s.ServiceID,
+		PlanID:       s.PlanID,
+		DashboardURL: s.DashboardURL,
+		Parameters:   s.Parameters,
+	}, nil
 }
 
 // LastOperation should fetch the state of the provision/deprovision
