@@ -80,7 +80,7 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	creds, err := credentials.FromEnv()
 	switch {
 	case err == nil && creds == nil:
-		logger.Infow("Rejected Multi-Project (env)", "reason", err)
+		logger.Infow("Rejected Multi-Project (env): not enabled by user")
 	case err == nil:
 		logger.Info("Selected Multi-Project (env)")
 		return creds
@@ -92,7 +92,7 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	creds, err = credentials.FromCredHub()
 	switch {
 	case err == nil && creds == nil:
-		logger.Infow("Rejected Multi-Project (CredHub)", "reason", err)
+		logger.Infow("Rejected Multi-Project (CredHub): not in CF")
 	case err == nil:
 		logger.Info("Selected Multi-Project (CredHub)")
 		return creds
