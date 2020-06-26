@@ -115,11 +115,11 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.
 
 	logger.Info("Trying Dynamic Plans...")
 	p, err := dynamicplans.FromEnv()
+	autoPlans = getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
 	switch {
 	case err == nil && p == nil:
 		logger.Infow("Rejected Dynamic Plans", "reason", "ATLAS_BROKER_TEMPLATEDIR not set")
 		logger.Info("Trying auto-generated plans...")
-		autoPlans = getEnvOrDefault("BROKER_ENABLE_AUTOPLANSFROMPROJECTS", "") == "true"
 		if autoPlans {
 			logger.Info("Selected auto-generated plans")
 		} else {
@@ -127,6 +127,9 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.
 			logger.Info("Selected static plans")
 		}
 	case err == nil:
+		if autoPlans {
+			logger.Fatalw("ATLAS_BROKER_TEMPLATEDIR cannot be used with BROKER_ENABLE_AUTOPLANSFROMPROJECTS")
+		}
 		logger.Info("Selected Dynamic Plans")
 		dynPlans = true
 	default:

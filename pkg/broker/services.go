@@ -97,6 +97,7 @@ func (b *Broker) buildCatalog() error {
 		}
 
 		b.catalog.services = append(b.catalog.services, svc)
+		b.logger.Infow("Built service", "provider", providerName)
 	}
 
 	return nil
