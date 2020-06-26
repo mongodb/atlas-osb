@@ -69,17 +69,19 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		},
 	}
 
-	col := b.client.Database("atlas-broker").Collection("instances")
-	_, err = col.InsertOne(ctx, s)
-	if err != nil {
-		return
-	}
-
-	defer func() {
+	if b.client != nil {
+		col := b.client.Database("atlas-broker").Collection("instances")
+		_, err = col.InsertOne(ctx, s)
 		if err != nil {
-			col.DeleteOne(ctx, s)
+			return
 		}
-	}()
+
+		defer func() {
+			if err != nil {
+				col.DeleteOne(ctx, s)
+			}
+		}()
+	}
 
 	// Add default labels
 	// TODO - append the env info k8s, pcf, etc
@@ -203,7 +205,7 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 	b.logger.Infow("Fetching instance", "instance_id", instanceID)
 
 	if b.client == nil {
-		err = apiresponses.NewFailureResponse(errors.New("Fetching instances not supported in stateless mode"), http.StatusNotImplemented, "get-instance")
+		err = apiresponses.NewFailureResponse(errors.New("Fetching instances is not supported in stateless mode"), http.StatusNotImplemented, "get-instance")
 		return
 	}
 
@@ -259,8 +261,10 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		// scenarios indicate that a cluster has been successfully deleted.
 		if r.StatusCode == http.StatusNotFound || cluster.StateName == "DELETED" {
 			state = domain.Succeeded
-			// TODO: change this?
-			b.client.Database("atlas-broker").Collection("instances").DeleteOne(ctx, bson.M{"id": instanceID})
+			if b.client != nil {
+				// TODO: change this?
+				b.client.Database("atlas-broker").Collection("instances").DeleteOne(ctx, bson.M{"id": instanceID})
+			}
 		} else if cluster.StateName == "DELETING" {
 			state = domain.InProgress
 		}
