@@ -91,22 +91,31 @@ func (b *Broker) parsePlan(planID string, rawParams json.RawMessage) (dp dynamic
 	return dp, nil
 }
 
-func (b *Broker) getGroupIDByInstanceID(ctx context.Context, instanceID string) (string, error) {
+func (b *Broker) getInstanceState(ctx context.Context, instanceID string) (primitive.M, error) {
 	i, err := b.GetInstance(ctx, instanceID)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return "", nil
-		}
-
-		return "", err
+		return nil, err
 	}
 
 	p, ok := i.Parameters.(primitive.D)
 	if !ok {
-		return "", fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
+		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
 	}
 
-	gidi, ok := p.Map()["groupID"]
+	return p.Map(), nil
+}
+
+func (b *Broker) getGroupIDByInstanceID(ctx context.Context, instanceID string) (string, error) {
+	s, err := b.getInstanceState(ctx, instanceID)
+	if err != nil {
+		// no metadata - not an error in our case
+		if err == mongo.ErrNoDocuments {
+			return "", nil
+		}
+		return "", err
+	}
+
+	gidi, ok := s["groupID"]
 	if !ok {
 		return "", fmt.Errorf("groupID not found in instance metadata for %q", instanceID)
 	}
@@ -117,6 +126,29 @@ func (b *Broker) getGroupIDByInstanceID(ctx context.Context, instanceID string) 
 	}
 
 	return gid, nil
+}
+
+func (b *Broker) getClusterNameByInstanceID(ctx context.Context, instanceID string) (string, error) {
+	if b.client == nil {
+		return NormalizeClusterName(instanceID), nil
+	}
+
+	s, err := b.getInstanceState(ctx, instanceID)
+	if err != nil {
+		return "", err
+	}
+
+	ci, ok := s["clusterName"]
+	if !ok {
+		return "", fmt.Errorf("clusterName not found in instance metadata for %q", instanceID)
+	}
+
+	c, ok := ci.(string)
+	if !ok {
+		return "", fmt.Errorf("clusterName from instance metadata has the wrong type %T", ci)
+	}
+
+	return c, nil
 }
 
 func (b *Broker) getClient(ctx context.Context, instanceID string, planID string, rawParams json.RawMessage) (client *mongodbatlas.Client, gid string, err error) {
@@ -130,29 +162,33 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return client, gid, err
 
 	case MultiGroup:
+		// try to get groupID for existing instances
 		gid, err = b.getGroupIDByInstanceID(ctx, instanceID)
 		if err != nil {
 			return
 		}
 
-		if gid == "" {
-			params := dynamicplans.DefaultCtx(b.credentials)
+		if gid != "" {
+			break
+		}
 
-			// If params were passed we unmarshal them into the params object.
-			if len(rawParams) > 0 {
-				err = json.Unmarshal(rawParams, &params)
-				if err != nil {
-					return
-				}
-			}
+		// new instance: get groupID from params
+		params := dynamicplans.DefaultCtx(b.credentials)
 
-			if params.Project.ID == "" {
-				err = errors.New("project ID not found in rawParameters")
+		// If params were passed we unmarshal them into the params object.
+		if len(rawParams) > 0 {
+			err = json.Unmarshal(rawParams, &params)
+			if err != nil {
 				return
 			}
-
-			gid = params.Project.ID
 		}
+
+		if params.Project.ID == "" {
+			err = errors.New("project ID not found in rawParameters")
+			return
+		}
+
+		gid = params.Project.ID
 
 	case MultiGroupAutoPlans:
 		gid, err = b.catalog.findGroupIDByPlanID(planID)

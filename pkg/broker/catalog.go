@@ -24,7 +24,7 @@ func newCatalog() *catalog {
 	}
 }
 
-func (c catalog) findInstanceSizeByPlanID(provider *atlasprivate.Provider, planID string) (*atlasprivate.InstanceSize, error) {
+func (c catalog) findInstanceSizeByPlanID(planID string) (*atlasprivate.InstanceSize, error) {
 	p, found := c.plans[planID]
 	if !found {
 		return nil, fmt.Errorf("plan ID %q not found in catalog", planID)

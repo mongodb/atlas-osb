@@ -64,7 +64,8 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 			ServiceID:    details.ServiceID,
 			DashboardURL: b.GetDashboardURL(gid, cluster.Name),
 			Parameters: bson.M{
-				"groupID": gid,
+				"groupID":     gid,
+				"clusterName": cluster.Name,
 			},
 		},
 	}
@@ -120,11 +121,16 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
+	name, err := b.getClusterNameByInstanceID(ctx, instanceID)
+	if err != nil {
+		return
+	}
+
 	// Fetch the cluster from Atlas. The Atlas API requires an instance size to
 	// be passed during updates (if there are other update to the provider, such
 	// as region). The plan is not included in the OSB call unless it has changed
 	// hence we need to fetch the current value from Atlas.
-	existingCluster, _, err := client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
+	existingCluster, _, err := client.Clusters.Get(ctx, gid, name)
 	if err != nil {
 		err = atlasToAPIError(err)
 		return
@@ -184,7 +190,12 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 		return
 	}
 
-	_, err = client.Clusters.Delete(ctx, gid, NormalizeClusterName(instanceID))
+	name, err := b.getClusterNameByInstanceID(ctx, instanceID)
+	if err != nil {
+		return
+	}
+
+	_, err = client.Clusters.Delete(ctx, gid, name)
 	if err != nil {
 		b.logger.Errorw("Failed to delete Atlas cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
@@ -235,7 +246,12 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		return
 	}
 
-	cluster, r, err := client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
+	name, err := b.getClusterNameByInstanceID(ctx, instanceID)
+	if err != nil {
+		return
+	}
+
+	cluster, r, err := client.Clusters.Get(ctx, gid, name)
 	if err != nil && r.StatusCode != http.StatusNotFound {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
@@ -247,12 +263,17 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	state := domain.LastOperationState(domain.Failed)
 
 	switch details.OperationData {
-	case OperationProvision:
+	case OperationProvision, OperationUpdate:
+		if r.StatusCode == http.StatusNotFound {
+			state = domain.Failed
+			break
+		}
+
 		switch cluster.StateName {
 		// Provision has succeeded if the cluster is in state "idle".
 		case "IDLE":
 			state = domain.Succeeded
-		case "CREATING":
+		case "CREATING", "UPDATING":
 			state = domain.InProgress
 		}
 	case OperationDeprovision:
@@ -266,15 +287,6 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				b.client.Database("atlas-broker").Collection("instances").DeleteOne(ctx, bson.M{"id": instanceID})
 			}
 		} else if cluster.StateName == "DELETING" {
-			state = domain.InProgress
-		}
-	case OperationUpdate:
-		// We assume that the cluster transitions to the "UPDATING" state
-		// in a synchronous manner during the update request.
-		switch cluster.StateName {
-		case "IDLE":
-			state = domain.Succeeded
-		case "UPDATING":
 			state = domain.InProgress
 		}
 	}
@@ -305,6 +317,12 @@ func (b Broker) clusterFromParams(instanceID string, serviceID string, planID st
 	// Set up a params object which will be used for deserialiation.
 	params := dynamicplans.DefaultCtx(b.credentials)
 
+	// In template mode, everything is handled by the template itself.
+	if b.mode == DynamicPlans {
+		dp, err := b.parsePlan(planID, rawParams)
+		return dp.Cluster, err
+	}
+
 	// If params were passed we unmarshal them into the params object.
 	if len(rawParams) > 0 {
 		err := json.Unmarshal(rawParams, &params)
@@ -327,7 +345,7 @@ func (b Broker) clusterFromParams(instanceID string, serviceID string, planID st
 				return nil, err
 			}
 
-			instanceSize, err := b.catalog.findInstanceSizeByPlanID(provider, planID)
+			instanceSize, err := b.catalog.findInstanceSizeByPlanID(planID)
 			if err != nil {
 				return nil, err
 			}

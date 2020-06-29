@@ -7,8 +7,11 @@ project:
   name: {{ .Project.Name }}
   orgId: {{ .Project.OrgID }}
 cluster:
+  name: {{ .Cluster.Name }}
   providerSettings:
+    providerName: AWS
     instanceSizeName: M20
+    regionName: US_EAST_2
 databaseUsers:
 - username: "test-user"
   password: "test-password"
