@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"text/template"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/goccy/go-yaml"
@@ -61,7 +60,7 @@ func (b *Broker) parsePlan(planID string, rawParams json.RawMessage) (dp dynamic
 		return
 	}
 
-	tpl, ok := sp.Metadata.AdditionalMetadata["template"].(*template.Template)
+	tpl, ok := sp.Metadata.AdditionalMetadata["template"].(dynamicplans.TemplateContainer)
 	if !ok {
 		err = errors.New("plan ID %q does not contain a valid plan template")
 		return
@@ -162,6 +161,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		}
 
 	case DynamicPlans:
+		// try to get groupID for existing instances
 		gid, err = b.getGroupIDByInstanceID(ctx, instanceID)
 		if err != nil {
 			return
@@ -171,6 +171,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 			break
 		}
 
+		// new instance: get groupID from params
 		dp := dynamicplans.Plan{}
 		dp, err = b.parsePlan(planID, rawParams)
 		if err != nil {
@@ -182,6 +183,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 			return
 		}
 
+		// use existing project
 		if dp.Project.ID != "" {
 			gid = dp.Project.ID
 			break
