@@ -43,8 +43,13 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return spec, fmt.Errorf("plan ID %q not found in catalog", details.PlanID)
 	}
 
+	name, err := b.getClusterNameByInstanceID(ctx, instanceID)
+	if err != nil {
+		return
+	}
+
 	// Fetch the cluster from Atlas to ensure it exists.
-	cluster, _, err := client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
+	cluster, _, err := client.Clusters.Get(ctx, gid, name)
 	if err != nil {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
@@ -98,8 +103,13 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 		return
 	}
 
+	name, err := b.getClusterNameByInstanceID(ctx, instanceID)
+	if err != nil {
+		return
+	}
+
 	// Fetch the cluster from Atlas to ensure it exists.
-	_, _, err = client.Clusters.Get(ctx, gid, NormalizeClusterName(instanceID))
+	_, _, err = client.Clusters.Get(ctx, gid, name)
 	if err != nil {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		err = atlasToAPIError(err)
