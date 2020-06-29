@@ -244,7 +244,7 @@ func (b *Broker) buildPlansForProviderDynamic(provider *atlasprivate.Provider) [
 			Free:        p.Free,
 			Metadata: &domain.ServicePlanMetadata{
 				AdditionalMetadata: map[string]interface{}{
-					"template":     template,
+					"template":     dynamicplans.TemplateContainer{Template: template},
 					"instanceSize": provider.InstanceSizes[p.Cluster.ProviderSettings.InstanceSizeName],
 				},
 			},
