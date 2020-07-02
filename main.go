@@ -168,12 +168,12 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.
 		}
 	}
 
-	if dynPlans {
-		return broker.DynamicPlans, creds, client
-	}
-
 	if err := creds.FlattenOrgs(baseURL); err != nil {
 		logger.Fatalw("Cannot parse Org API Keys", "error", err)
+	}
+
+	if dynPlans {
+		return broker.DynamicPlans, creds, client
 	}
 
 	if autoPlans {
