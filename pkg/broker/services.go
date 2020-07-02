@@ -71,6 +71,7 @@ func (b *Broker) buildCatalog() error {
 			b.catalog.plans[p.ID] = p
 		}
 
+		b.catalog.providers[svc.ID] = atlasprivate.Provider{Name: "template"}
 		b.catalog.services = append(b.catalog.services, svc)
 		b.logger.Infow("Built service", "provider", "template")
 		return nil

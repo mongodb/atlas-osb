@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
@@ -26,7 +27,22 @@ type ConnectionDetails struct {
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details domain.BindDetails, asyncAllowed bool) (spec domain.Binding, err error) {
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, details.RawParameters)
+	planContext := dynamicplans.DefaultCtx(b.credentials)
+	if len(details.RawParameters) > 0 {
+		err = json.Unmarshal(details.RawParameters, &planContext)
+		if err != nil {
+			return
+		}
+	}
+
+	if len(details.RawContext) > 0 {
+		err = json.Unmarshal(details.RawContext, &planContext)
+		if err != nil {
+			return
+		}
+	}
+
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
 	if err != nil {
 		return
 	}
@@ -98,7 +114,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details domain.UnbindDetails, asyncAllowed bool) (spec domain.UnbindSpec, err error) {
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, nil)
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, dynamicplans.DefaultCtx(b.credentials))
 	if err != nil {
 		return
 	}
