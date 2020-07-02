@@ -131,6 +131,6 @@ func (c *Credentials) FlattenOrgs(baseURL string) error {
 			c.Projects[pp.ID] = v
 		}
 	}
-	c.Orgs = map[string]APIKey{}
+
 	return nil
 }
