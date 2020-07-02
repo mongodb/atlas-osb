@@ -3,9 +3,9 @@ package broker
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/goccy/go-yaml"
@@ -53,7 +53,7 @@ func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseUR
 	return b
 }
 
-func (b *Broker) parsePlan(planID string, rawParams json.RawMessage) (dp dynamicplans.Plan, err error) {
+func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp dynamicplans.Plan, err error) {
 	sp, ok := b.catalog.plans[planID]
 	if !ok {
 		err = fmt.Errorf("plan ID %q not found in catalog", planID)
@@ -66,18 +66,8 @@ func (b *Broker) parsePlan(planID string, rawParams json.RawMessage) (dp dynamic
 		return
 	}
 
-	params := dynamicplans.DefaultCtx(b.credentials)
-
-	// If params were passed we unmarshal them into the params object.
-	if len(rawParams) > 0 {
-		err = json.Unmarshal(rawParams, &params)
-		if err != nil {
-			return
-		}
-	}
-
 	raw := new(bytes.Buffer)
-	err = tpl.Execute(raw, params)
+	err = tpl.Execute(raw, ctx)
 	if err != nil {
 		return
 	}
@@ -151,7 +141,7 @@ func (b *Broker) getClusterNameByInstanceID(ctx context.Context, instanceID stri
 	return c, nil
 }
 
-func (b *Broker) getClient(ctx context.Context, instanceID string, planID string, rawParams json.RawMessage) (client *mongodbatlas.Client, gid string, err error) {
+func (b *Broker) getClient(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (client *mongodbatlas.Client, gid string, err error) {
 	switch b.mode {
 	case BasicAuth:
 		client, err = atlasClientFromContext(ctx)
@@ -172,23 +162,13 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 			break
 		}
 
-		// new instance: get groupID from params
-		params := dynamicplans.DefaultCtx(b.credentials)
-
-		// If params were passed we unmarshal them into the params object.
-		if len(rawParams) > 0 {
-			err = json.Unmarshal(rawParams, &params)
-			if err != nil {
-				return
-			}
-		}
-
-		if params.Project.ID == "" {
-			err = errors.New("project ID not found in rawParameters")
+		// new instance: get groupID from planCtx
+		if planCtx.Project.ID == "" {
+			err = errors.New("project ID not found in plan context")
 			return
 		}
 
-		gid = params.Project.ID
+		gid = planCtx.Project.ID
 
 	case MultiGroupAutoPlans:
 		gid, err = b.catalog.findGroupIDByPlanID(planID)
@@ -209,7 +189,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 
 		// new instance: get groupID from params
 		dp := dynamicplans.Plan{}
-		dp, err = b.parsePlan(planID, rawParams)
+		dp, err = b.parsePlan(planCtx, planID)
 		if err != nil {
 			return
 		}
@@ -223,6 +203,29 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		if dp.Project.ID != "" {
 			gid = dp.Project.ID
 			break
+		}
+
+		if dp.Project.OrgID != "" {
+			oid := dp.Project.OrgID
+			c, ok := b.credentials.Orgs[oid]
+			if !ok {
+				return nil, "", fmt.Errorf("credentials for project ID %q not found", oid)
+			}
+
+			hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()
+			if err != nil {
+				return nil, "", err
+			}
+
+			client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
+
+			if dp.Project.Name != "" {
+				p, _, err := client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
+				if err == nil {
+					return client, p.ID, err
+				}
+			}
+			return client, "", err
 		}
 
 	default:
@@ -252,7 +255,12 @@ func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
 }
 
 func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
-	return fmt.Sprintf("%s/v2/%s#clusters/detail/%s", b.baseURL, groupID, clusterName)
+	apiUrl, err := url.Parse(b.baseURL)
+	if err != nil {
+		return err.Error()
+	}
+	apiUrl.Path = fmt.Sprintf("/v2/%s", groupID)
+	return apiUrl.String() + fmt.Sprintf("#clusters/detail/%s", clusterName)
 }
 
 // TODO: do something about this!

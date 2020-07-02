@@ -6,9 +6,12 @@ import (
 )
 
 type Context struct {
-	Project     *mongodbatlas.Project `json:"project,omitempty"`
-	Cluster     *mongodbatlas.Cluster `json:"cluster,omitempty"`
-	Credentials *credentials.Credentials
+	Project      *mongodbatlas.Project `json:"project,omitempty"`
+	Cluster      *mongodbatlas.Cluster `json:"cluster,omitempty"`
+	Credentials  *credentials.Credentials
+	InstanceName string `json:"instance_name"`
+	Namespace    string `json:"namespace"`
+	Platform     string `json:"platform"`
 }
 
 func DefaultCtx(creds *credentials.Credentials) Context {
