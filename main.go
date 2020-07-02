@@ -187,6 +187,10 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	baseURL := getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL)
 	mode, creds, client := deduceModeAndCreds(logger, baseURL)
 
+	if mode != broker.DynamicPlans {
+		logger.Fatalw("Only Dynamic Plans are currently supported")
+	}
+
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	if !hasWhitelist {
