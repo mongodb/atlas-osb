@@ -226,9 +226,14 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 		b.logger.Fatalw("could not read dynamic plans from environment", "error", err)
 	}
 
+	planContext := dynamicplans.Context{
+		"Credentials": b.credentials,
+	}
+
 	for _, template := range templates {
 		raw := new(bytes.Buffer)
-		err := template.Execute(raw, dynamicplans.DefaultCtx(b.credentials))
+
+		err := template.Execute(raw, planContext)
 		if err != nil {
 			b.logger.Errorf("cannot execute template %q: %v", template.Name(), err)
 			continue

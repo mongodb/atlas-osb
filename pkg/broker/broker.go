@@ -152,23 +152,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return client, gid, err
 
 	case MultiGroup:
-		// try to get groupID for existing instances
-		gid, err = b.getGroupIDByInstanceID(ctx, instanceID)
-		if err != nil {
-			return
-		}
-
-		if gid != "" {
-			break
-		}
-
-		// new instance: get groupID from planCtx
-		if planCtx.Project.ID == "" {
-			err = errors.New("project ID not found in plan context")
-			return
-		}
-
-		gid = planCtx.Project.ID
+		panic("not implemented")
 
 	case MultiGroupAutoPlans:
 		gid, err = b.catalog.findGroupIDByPlanID(planID)
