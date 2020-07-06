@@ -1,15 +1,16 @@
 package dynamicplans
 
 import (
-	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"text/template"
 
-	"github.com/goccy/go-yaml"
+	"github.com/Masterminds/sprig/v3"
 )
 
 func FromEnv() ([]*template.Template, error) {
@@ -46,21 +47,26 @@ func FromEnv() ([]*template.Template, error) {
 
 		t, err := template.
 			New(basename).
-			Funcs(map[string]interface{}{
-				"yaml": func(v interface{}) (string, error) {
-					out, err := yaml.Marshal(v)
-					return string(out), err
-				},
-				"json": func(v interface{}) (string, error) {
-					out, err := json.Marshal(v)
-					// TODO: remove this atrocity when github.com/goccy/go-yaml/issues/142 is fixed
-					return strings.ReplaceAll(string(out), ":", ": "), err
-				},
-				"required": func(v string) (string, error) {
-					if len(v) == 0 {
-						return v, errors.New("required value is empty")
+			Funcs(sprig.TxtFuncMap()).
+			Funcs(template.FuncMap{
+				"randelem": func(v interface{}) (interface{}, error) {
+					val := reflect.ValueOf(v)
+					switch val.Kind() {
+					case reflect.Map:
+						r := val.MapRange()
+						if !r.Next() {
+							return nil, nil
+						}
+						return r.Value().Interface(), nil
+					case reflect.Slice, reflect.Array, reflect.String:
+						l := val.Len()
+						if l == 0 {
+							return nil, nil
+						}
+						return val.Index(rand.Intn(l)), nil
 					}
-					return v, nil
+
+					return nil, errors.New("invalid type")
 				},
 			}).
 			Parse(string(text))
