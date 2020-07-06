@@ -27,7 +27,10 @@ type ConnectionDetails struct {
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details domain.BindDetails, asyncAllowed bool) (spec domain.Binding, err error) {
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	planContext := dynamicplans.DefaultCtx(b.credentials)
+	planContext := dynamicplans.Context{
+		"Credentials": b.credentials,
+		"instance_id": instanceID,
+	}
 	if len(details.RawParameters) > 0 {
 		err = json.Unmarshal(details.RawParameters, &planContext)
 		if err != nil {
@@ -114,7 +117,11 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details domain.UnbindDetails, asyncAllowed bool) (spec domain.UnbindSpec, err error) {
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, dynamicplans.DefaultCtx(b.credentials))
+	planContext := dynamicplans.Context{
+		"Credentials": b.credentials,
+		"instance_id": instanceID,
+	}
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
 	if err != nil {
 		return
 	}

@@ -30,7 +30,10 @@ const (
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
-	planContext := dynamicplans.DefaultCtx(b.credentials)
+	planContext := dynamicplans.Context{
+		"Credentials": b.credentials,
+		"instance_id": instanceID,
+	}
 	if len(details.RawParameters) > 0 {
 		err = json.Unmarshal(details.RawParameters, &planContext)
 		if err != nil {
@@ -67,7 +70,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	}
 
 	// Construct a cluster definition from the instance ID, service, plan, and params.
-	b.logger.Infow("Creating cluster", "instance_name", planContext.InstanceName)
+	b.logger.Infow("Creating cluster", "instance_name", planContext["instance_name"])
 	// TODO - add this context info about k8s/namespace or pcf space into labels
 	cluster, err := b.clusterFromParams(instanceID, details.ServiceID, details.PlanID, planContext)
 	if err != nil {
@@ -147,7 +150,10 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 func (b Broker) Update(ctx context.Context, instanceID string, details domain.UpdateDetails, asyncAllowed bool) (spec domain.UpdateServiceSpec, err error) {
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
-	planContext := dynamicplans.DefaultCtx(b.credentials)
+	planContext := dynamicplans.Context{
+		"Credentials": b.credentials,
+		"instance_id": instanceID,
+	}
 	if len(details.RawParameters) > 0 {
 		err = json.Unmarshal(details.RawParameters, &planContext)
 		if err != nil {
@@ -228,7 +234,11 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details domain.DeprovisionDetails, asyncAllowed bool) (spec domain.DeprovisionServiceSpec, err error) {
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, dynamicplans.DefaultCtx(b.credentials))
+	planContext := dynamicplans.Context{
+		"Credentials": b.credentials,
+		"instance_id": instanceID,
+	}
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
 	if err != nil {
 		return
 	}
@@ -290,7 +300,11 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
-	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, dynamicplans.DefaultCtx(b.credentials))
+	planContext := dynamicplans.Context{
+		"Credentials": b.credentials,
+		"instance_id": instanceID,
+	}
+	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
 	if err != nil {
 		return
 	}
@@ -369,14 +383,22 @@ func (b Broker) clusterFromParams(instanceID string, serviceID string, planID st
 		return dp.Cluster, err
 	}
 
+	// workaround for old modes
+	var context struct {
+		Cluster *mongodbatlas.Cluster `json:"cluster"`
+	}
+
+	out, _ := json.Marshal(planContext)
+	_ = json.Unmarshal(out, &context)
+
 	// If the plan ID is specified we construct the provider object from the service and plan.
 	// The plan ID is optional during updates but not during creation.
 	if planID != "" {
-		if planContext.Cluster.ProviderSettings == nil {
-			planContext.Cluster.ProviderSettings = &mongodbatlas.ProviderSettings{}
+		if context.Cluster.ProviderSettings == nil {
+			context.Cluster.ProviderSettings = &mongodbatlas.ProviderSettings{}
 		}
 
-		instanceSizeName := planContext.Cluster.ProviderSettings.InstanceSizeName
+		instanceSizeName := context.Cluster.ProviderSettings.InstanceSizeName
 		if instanceSizeName != InstanceSizeNameM2 && instanceSizeName != InstanceSizeNameM5 {
 			provider, err := b.catalog.findProviderByServiceID(serviceID)
 			if err != nil {
@@ -389,12 +411,12 @@ func (b Broker) clusterFromParams(instanceID string, serviceID string, planID st
 			}
 
 			// Configure provider based on service and plan.
-			planContext.Cluster.ProviderSettings.ProviderName = provider.Name
-			planContext.Cluster.ProviderSettings.InstanceSizeName = instanceSize.Name
+			context.Cluster.ProviderSettings.ProviderName = provider.Name
+			context.Cluster.ProviderSettings.InstanceSizeName = instanceSize.Name
 		}
 	}
 
 	// Add the instance ID as the name of the cluster.
-	planContext.Cluster.Name = NormalizeClusterName(instanceID)
-	return planContext.Cluster, nil
+	context.Cluster.Name = NormalizeClusterName(instanceID)
+	return context.Cluster, nil
 }
