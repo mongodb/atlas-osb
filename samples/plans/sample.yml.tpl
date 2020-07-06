@@ -1,7 +1,7 @@
 name: full-plan
 description: This is a full plan for a project, cluster, database user, and secure connection.
 free: true
-apiKey: {{ json (index .Credentials.Projects .Project.ID) }}
+apiKey: {{ mustToJson (index .Credentials.Projects .Project.ID) }}
 project:
   id: {{ .Project.ID }}
   name: {{ .Project.Name }}
