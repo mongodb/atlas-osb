@@ -56,11 +56,6 @@ func FromCredHub() (*Credentials, error) {
 
 	for _, c := range services.CredHub {
 		for k, v := range c.Credentials.Projects {
-			// FIXME: temporary hack for old secrets
-			if v.DisplayName != "" {
-				v.Desc = v.DisplayName
-			}
-
 			result.Projects[k] = v
 		}
 		for k, v := range c.Credentials.Orgs {

@@ -239,7 +239,7 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 			continue
 		}
 
-		b.logger.Info("Parsed plan: %s", raw.String())
+		b.logger.Infof("Parsed plan: %s", raw.String())
 
 		p := dynamicplans.Plan{}
 		if err := yaml.NewDecoder(raw).Decode(&p); err != nil {
