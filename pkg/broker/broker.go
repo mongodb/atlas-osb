@@ -193,7 +193,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 			oid := dp.Project.OrgID
 			c, ok := b.credentials.Orgs[oid]
 			if !ok {
-				return nil, "", fmt.Errorf("credentials for project ID %q not found", oid)
+				return nil, "", fmt.Errorf("credentials for org ID %q not found", oid)
 			}
 
 			hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()

@@ -1,10 +1,11 @@
 name: basic-plan
 description: "This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection."
 free: true
-apiKey: {{ mustToJson (randelem .Credentials.Orgs) }}
+apiKey: {{ mustToJson (index .Credentials.Orgs (default "" .org_id)) }}
 project:
   name: {{ .instance_name }}
   desc: Created from a template
+  orgId: {{ .org_id }}
 cluster:
   name: {{ .instance_name }}
   providerSettings:

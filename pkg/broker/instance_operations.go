@@ -142,6 +142,20 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 		return nil, err
 	}
 
+	for _, u := range dp.DatabaseUsers {
+		_, _, err := client.DatabaseUsers.Create(ctx, p.ID, u)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(dp.IPWhitelists) > 0 {
+		_, _, err := client.ProjectIPWhitelist.Create(ctx, p.ID, dp.IPWhitelists)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	b.credentials.Projects[p.ID] = b.credentials.Orgs[p.OrgID]
 	return p, nil
 }
