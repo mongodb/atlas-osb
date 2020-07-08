@@ -103,10 +103,10 @@ func (m MockAtlasClient) GetProvider(name string) (*atlas.Provider, error) {
 	return &atlas.Provider{
 		Name: "AWS",
 		InstanceSizes: map[string]atlas.InstanceSize{
-			"M10": atlas.InstanceSize{
+			"M10": {
 				Name: "M10",
 			},
-			"M20": atlas.InstanceSize{
+			"M20": {
 				Name: "M20",
 			},
 		},
@@ -124,17 +124,17 @@ func setupTest() (*Broker, MockAtlasClient, context.Context) {
 	}
 	ctx := context.WithValue(context.Background(), ContextKeyAtlasClient, client)
 
-	broker := NewBroker(zap.NewNop().Sugar())
+	broker := New(zap.NewNop().Sugar(), nil, "", nil, BasicAuth)
 	return broker, client, ctx
 }
 
-func TestAuthMiddleware(t *testing.T) {
+func TestSimpleAuthMiddleware(t *testing.T) {
 	baseURL := "http://baseURL"
 	groupID := "group-id"
 	publicKey := "public-key"
 	privateKey := "private-key"
 
-	middleware := AuthMiddleware(baseURL)
+	middleware := simpleAuthMiddleware(baseURL)
 
 	// On successful auth the middleware will run testHandler which ensures
 	// the context was set up correctly.

@@ -58,14 +58,14 @@ func (lagerZapLogger *LagerZapLogger) Info(action string, data ...lager.Data) {
 // Error logs a message at ErrorLevel. The message includes any fields passed
 // at the log site, as well as any fields accumulated on the logger.
 func (lagerZapLogger *LagerZapLogger) Error(action string, err error, data ...lager.Data) {
-	lagerZapLogger.logger.Errorw(action, createFields(data)...)
+	lagerZapLogger.logger.Errorw(action, append(createFields(data), "error", err)...)
 }
 
 // Fatal is for logging fatal messages.
 // Fatal logs a message at FatalLevel. The message includes any fields passed
 // at the log site, as well as any fields accumulated on the logger.
 func (lagerZapLogger *LagerZapLogger) Fatal(action string, err error, data ...lager.Data) {
-	lagerZapLogger.logger.Fatalw(action, createFields(data)...)
+	lagerZapLogger.logger.Fatalw(action, append(createFields(data), "error", err)...)
 }
 
 // createFields converts the structured log data that the lager library uses to

@@ -1,111 +1,267 @@
 package broker
 
 import (
+	"bytes"
 	"context"
 	"errors"
-	"net/http"
-	"strings"
+	"fmt"
+	"net/url"
 
+	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
+	"github.com/goccy/go-yaml"
 	"github.com/gorilla/mux"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
-	"github.com/pivotal-cf/brokerapi"
-	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
+	"github.com/pivotal-cf/brokerapi/domain"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
 // Ensure broker adheres to the ServiceBroker interface.
-var _ brokerapi.ServiceBroker = Broker{}
+var _ domain.ServiceBroker = new(Broker)
 
 // Broker is responsible for translating OSB calls to Atlas API calls.
-// Implements the brokerapi.ServiceBroker interface making it easy to spin up
+// Implements the domain.ServiceBroker interface making it easy to spin up
 // an API server.
 type Broker struct {
-	logger    *zap.SugaredLogger
-	whitelist Whitelist
+	logger      *zap.SugaredLogger
+	whitelist   Whitelist
+	credentials *credentials.Credentials
+	baseURL     string
+	mode        Mode
+	catalog     *catalog
+	client      *mongo.Client
 }
 
-// NewBroker creates a new Broker with a logger.
-func NewBroker(logger *zap.SugaredLogger) *Broker {
-	return &Broker{
-		logger: logger,
+// New creates a new Broker with a logger.
+func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, client *mongo.Client, mode Mode) *Broker {
+	b := &Broker{
+		logger:      logger,
+		credentials: credentials,
+		baseURL:     baseURL,
+		whitelist:   whitelist,
+		client:      client,
+		mode:        mode,
 	}
-}
 
-// NewBrokerWithWhitelist creates a new Broker with a given logger and a
-// whitelist for allowed providers and their plans.
-func NewBrokerWithWhitelist(logger *zap.SugaredLogger, whitelist Whitelist) *Broker {
-	return &Broker{
-		logger:    logger,
-		whitelist: whitelist,
+	if err := b.buildCatalog(); err != nil {
+		logger.Fatalw("Cannot build service catalog", "error", err)
 	}
+
+	return b
 }
 
-// ContextKey represents the key for a value saved in a context. Linter
-// requires keys to have their own type.
-type ContextKey string
+func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp dynamicplans.Plan, err error) {
+	sp, ok := b.catalog.plans[planID]
+	if !ok {
+		err = fmt.Errorf("plan ID %q not found in catalog", planID)
+		return
+	}
 
-// ContextKeyAtlasClient is the key used to store the Atlas client in the
-// request context.
-var ContextKeyAtlasClient = ContextKey("atlas-client")
+	tpl, ok := sp.Metadata.AdditionalMetadata["template"].(dynamicplans.TemplateContainer)
+	if !ok {
+		err = errors.New("plan ID %q does not contain a valid plan template")
+		return
+	}
 
-// AuthMiddleware is used to validate and parse Atlas API credentials passed
-// using basic auth. The credentials parsed into an Atlas client which is
-// attached to the request context. This client can later be retrieved by the
-// broker from the context.
-func AuthMiddleware(baseURL string) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			username, password, ok := r.BasicAuth()
+	raw := new(bytes.Buffer)
+	err = tpl.Execute(raw, ctx)
+	if err != nil {
+		return
+	}
 
-			// The username contains both the group ID and public key
-			// formatted as "<PUBLIC_KEY>@<GROUP_ID>".
-			splitUsername := strings.Split(username, "@")
+	b.logger.Infow("Parsed plan", "plan", raw.String(), "creds", b.credentials.Projects)
 
-			// If the credentials are invalid we respond with 401 Unauthorized.
-			// The username needs have the correct format and the password must
-			// not be empty.
-			validUsername := len(splitUsername) == 2
-			validPassword := password != ""
-			if !(ok && validUsername && validPassword) {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
+	if err = yaml.NewDecoder(raw).Decode(&dp); err != nil {
+		return
+	}
+
+	return dp, nil
+}
+
+func (b *Broker) getInstanceState(ctx context.Context, instanceID string) (primitive.M, error) {
+	i, err := b.GetInstance(ctx, instanceID)
+	if err != nil {
+		return nil, err
+	}
+
+	p, ok := i.Parameters.(primitive.D)
+	if !ok {
+		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
+	}
+
+	return p.Map(), nil
+}
+
+func (b *Broker) getGroupIDByInstanceID(ctx context.Context, instanceID string) (string, error) {
+	s, err := b.getInstanceState(ctx, instanceID)
+	if err != nil {
+		// no metadata - not an error in our case
+		if err == mongo.ErrNoDocuments {
+			return "", nil
+		}
+		return "", err
+	}
+
+	gidi, ok := s["groupID"]
+	if !ok {
+		return "", fmt.Errorf("groupID not found in instance metadata for %q", instanceID)
+	}
+
+	gid, ok := gidi.(string)
+	if !ok {
+		return "", fmt.Errorf("groupID from instance metadata has the wrong type %T", gidi)
+	}
+
+	return gid, nil
+}
+
+func (b *Broker) getClusterNameByInstanceID(ctx context.Context, instanceID string) (string, error) {
+	if b.client == nil {
+		return NormalizeClusterName(instanceID), nil
+	}
+
+	s, err := b.getInstanceState(ctx, instanceID)
+	if err != nil {
+		return "", err
+	}
+
+	ci, ok := s["clusterName"]
+	if !ok {
+		return "", fmt.Errorf("clusterName not found in instance metadata for %q", instanceID)
+	}
+
+	c, ok := ci.(string)
+	if !ok {
+		return "", fmt.Errorf("clusterName from instance metadata has the wrong type %T", ci)
+	}
+
+	return c, nil
+}
+
+func (b *Broker) getClient(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (client *mongodbatlas.Client, gid string, err error) {
+	switch b.mode {
+	case BasicAuth:
+		client, err = atlasClientFromContext(ctx)
+		if err != nil {
+			return
+		}
+		gid, err = groupIDFromContext(ctx)
+		return client, gid, err
+
+	case MultiGroup:
+		panic("not implemented")
+
+	case MultiGroupAutoPlans:
+		gid, err = b.catalog.findGroupIDByPlanID(planID)
+		if err != nil {
+			return nil, gid, err
+		}
+
+	case DynamicPlans:
+		// try to get groupID for existing instances
+		gid, err = b.getGroupIDByInstanceID(ctx, instanceID)
+		if err != nil {
+			return
+		}
+
+		if gid != "" {
+			break
+		}
+
+		// new instance: get groupID from params
+		dp := dynamicplans.Plan{}
+		dp, err = b.parsePlan(planCtx, planID)
+		if err != nil {
+			return
+		}
+
+		if dp.Project == nil {
+			err = fmt.Errorf("missing Project in plan definition")
+			return
+		}
+
+		// use existing project
+		if dp.Project.ID != "" {
+			gid = dp.Project.ID
+			break
+		}
+
+		if dp.Project.OrgID != "" {
+			oid := dp.Project.OrgID
+			c, ok := b.credentials.Orgs[oid]
+			if !ok {
+				return nil, "", fmt.Errorf("credentials for org ID %q not found", oid)
 			}
 
-			// Create a new client with the extracted API credentials and
-			// attach it to the request context.
-			client := atlas.NewClient(baseURL, splitUsername[1], splitUsername[0], password)
-			ctx := context.WithValue(r.Context(), ContextKeyAtlasClient, client)
+			hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()
+			if err != nil {
+				return nil, "", err
+			}
 
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
+			client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
+
+			if dp.Project.Name != "" {
+				p, _, err := client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
+				if err == nil {
+					return client, p.ID, err
+				}
+			}
+			return client, "", err
+		}
+
+	default:
+		panic("invalid broker mode")
 	}
-}
 
-// atlasClientFromContext will retrieve an Atlas client stored inside the
-// provided context.
-func atlasClientFromContext(ctx context.Context) (atlas.Client, error) {
-	client, ok := ctx.Value(ContextKeyAtlasClient).(atlas.Client)
+	c, ok := b.credentials.Projects[gid]
 	if !ok {
-		return nil, errors.New("no Atlas client in context")
+		return nil, gid, fmt.Errorf("credentials for project ID %q not found", gid)
 	}
 
-	return client, nil
+	hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()
+	if err != nil {
+		return nil, gid, err
+	}
+
+	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
+	return client, gid, err
 }
 
+func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
+	if b.credentials != nil {
+		return authMiddleware(*b.credentials.Broker)
+	}
+
+	return simpleAuthMiddleware(b.baseURL)
+}
+
+func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
+	apiUrl, err := url.Parse(b.baseURL)
+	if err != nil {
+		return err.Error()
+	}
+	apiUrl.Path = fmt.Sprintf("/v2/%s", groupID)
+	return apiUrl.String() + fmt.Sprintf("#clusters/detail/%s", clusterName)
+}
+
+// TODO: do something about this!
 // atlasToAPIError converts an Atlas error to a OSB response error.
 func atlasToAPIError(err error) error {
-	switch err {
-	case atlas.ErrClusterNotFound:
-		return apiresponses.ErrInstanceDoesNotExist
-	case atlas.ErrClusterAlreadyExists:
-		return apiresponses.ErrInstanceAlreadyExists
-	case atlas.ErrUserAlreadyExists:
-		return apiresponses.ErrBindingAlreadyExists
-	case atlas.ErrUserNotFound:
-		return apiresponses.ErrBindingDoesNotExist
-	case atlas.ErrUnauthorized:
-		return apiresponses.NewFailureResponse(err, http.StatusUnauthorized, "")
-	}
+	// switch err {
+	// case atlas.ErrClusterNotFound:
+	// 	return apiresponses.ErrInstanceDoesNotExist
+	// case atlas.ErrClusterAlreadyExists:
+	// 	return apiresponses.ErrInstanceAlreadyExists
+	// case atlas.ErrUserAlreadyExists:
+	// 	return apiresponses.ErrBindingAlreadyExists
+	// case atlas.ErrUserNotFound:
+	// 	return apiresponses.ErrBindingDoesNotExist
+	// case atlas.ErrUnauthorized:
+	// 	return apiresponses.NewFailureResponse(err, http.StatusUnauthorized, "")
+	// }
 
 	// Fall back on returning the error again if no others match.
 	// Will result in a 500 Internal Server Error.

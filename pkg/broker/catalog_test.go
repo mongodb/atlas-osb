@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -26,10 +27,10 @@ func TestWhitelist(t *testing.T) {
 	logger := zap.S()
 	whitelist := Whitelist{}
 	whitelist["AWS"] = []string{"M10"}
-	broker := NewBrokerWithWhitelist(logger, whitelist)
+	broker := New(logger, nil, "", whitelist, BasicAuth)
 	services, err := broker.Services(ctx)
 
-	assert.Len(t, services, 1)
-	assert.Len(t, services[0].Plans, 1)
-	assert.NoError(t, err)
+	require.Len(t, services, 1)
+	require.Len(t, services[0].Plans, 1)
+	require.NoError(t, err)
 }

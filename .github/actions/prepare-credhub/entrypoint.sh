@@ -10,18 +10,32 @@ echo "init"
 INSTALL_TIMEOUT=40 #service deploy timeout
 branch_name=$(echo $GITHUB_REF | awk -F'/' '{print $3}')
 make_pcf_metadata $INPUT_PCF_URL $INPUT_PCF_USER $INPUT_PCF_PASSWORD
+make_sample_credhub_config ./credhub-config.json
+#echo $INPUT_CREDHUB_FILE > ./credhub-config.json #TODO 
 
 echo "Login. Create ORG and SPACE depended on the branch name"
 cf_login
 cf create-org $ORG_NAME && cf target -o $ORG_NAME
 cf create-space $SPACE_NAME && cf target -s $SPACE_NAME
 
+echo "Create credhub service" #credhub broker already exist
+cf create-service credhub default $CREDHUB -c ./credhub-config.json
+
 echo "Create service-broker"
-create_atlas_service_broker_from_repo $BROKER $BROKER_APP
+cf push $BROKER_APP --no-start
+cf set-env $BROKER_APP BROKER_HOST 0.0.0.0
+cf set-env $BROKER_APP BROKER_PORT 8080
+cf set-env $BROKER_APP BROKER_ENABLE_AUTOPLANSFROMPROJECTS true
+cf bind-service $BROKER_APP $CREDHUB --binding-name "test1"
+
+cf start $BROKER_APP
+check_app_started $BROKER_APP
+app_url=$(cf app $BROKER_APP | awk '/routes:/{print $2}')
+cf create-service-broker $BROKER "admin" "admin" http://$app_url --space-scoped #TODO form
 
 cf marketplace
 
-create_service $SERVICE_ATLAS "M10"
+create_service $SERVICE_ATLAS "M10-valley" #TODO form plan
 
 echo "Simple app"
 git clone https://github.com/leo-ri/simple-ruby.git

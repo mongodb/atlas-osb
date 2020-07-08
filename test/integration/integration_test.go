@@ -10,7 +10,7 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	brokerlib "github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	testutil "github.com/mongodb/mongodb-atlas-service-broker/test/util"
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Setup the broker which will be used
-	broker = brokerlib.NewBrokerWithWhitelist(zap.NewNop().Sugar(), whitelist)
+	broker = brokerlib.New(zap.NewNop().Sugar(), nil, "", whitelist, brokerlib.BasicAuth)
 
 	result := m.Run()
 
@@ -114,7 +114,7 @@ func TestProvision(t *testing.T) {
 
 	params := `{"cluster":` + string(paramsByte) + `}`
 
-	_, err := broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	_, err := broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		ServiceID:     "aosb-cluster-service-aws",
 		PlanID:        "aosb-cluster-plan-aws-m10",
 		RawParameters: []byte(params),
@@ -165,7 +165,7 @@ func TestProvisionProvidersConfig(t *testing.T) {
 	}`
 
 	// We try to provision something that the adminstrator didn't create
-	_, err := broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	_, err := broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		ServiceID:     "aosb-cluster-service-azure",
 		PlanID:        "aosb-cluster-plan-azure-m10",
 		RawParameters: []byte(params),
@@ -181,7 +181,7 @@ func TestProvisionProvidersConfig(t *testing.T) {
 				}
 			}
 	}`
-	_, err = broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	_, err = broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		ServiceID:     "aosb-cluster-service-gcp",
 		PlanID:        "aosb-cluster-plan-gcp-m10",
 		RawParameters: []byte(params),
@@ -231,7 +231,7 @@ func TestProvisionM2Size(t *testing.T) {
 
 	params := `{"cluster":` + string(paramsByte) + `}`
 
-	_, err := broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	_, err := broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		ServiceID:     "aosb-cluster-service-tenant",
 		PlanID:        "aosb-cluster-plan-tenant-m2",
 		RawParameters: []byte(params),
@@ -287,7 +287,7 @@ func TestProvisionM5Size(t *testing.T) {
 
 	params := `{"cluster":` + string(paramsByte) + `}`
 
-	_, err := broker.Provision(ctx, instanceID, brokerapi.ProvisionDetails{
+	_, err := broker.Provision(ctx, instanceID, domain.ProvisionDetails{
 		ServiceID:     "aosb-cluster-service-tenant",
 		PlanID:        "aosb-cluster-plan-tenant-m5",
 		RawParameters: []byte(params),
@@ -349,7 +349,7 @@ func TestUpdate(t *testing.T) {
 	}`
 
 	// Try to update to a plan that doesn't exist
-	_, err = broker.Update(ctx, instanceID, brokerapi.UpdateDetails{
+	_, err = broker.Update(ctx, instanceID, domain.UpdateDetails{
 		ServiceID:     "aosb-cluster-service-aws",
 		PlanID:        "aosb-cluster-plan-aws-m60",
 		RawParameters: []byte(params),
@@ -357,7 +357,7 @@ func TestUpdate(t *testing.T) {
 
 	assert.Error(t, atlas.ErrPlanIDNotFound, err)
 
-	_, err = broker.Update(ctx, instanceID, brokerapi.UpdateDetails{
+	_, err = broker.Update(ctx, instanceID, domain.UpdateDetails{
 		ServiceID:     "aosb-cluster-service-aws",
 		PlanID:        "aosb-cluster-plan-aws-m20",
 		RawParameters: []byte(params),
@@ -406,7 +406,7 @@ func TestBind(t *testing.T) {
 			}]
 		}}`
 
-	spec, err := broker.Bind(ctx, instanceID, bindingID, brokerapi.BindDetails{
+	spec, err := broker.Bind(ctx, instanceID, bindingID, domain.BindDetails{
 		ServiceID:     "aosb-cluster-service-aws",
 		PlanID:        "aosb-cluster-plan-aws-m10",
 		RawParameters: []byte(params),
@@ -505,7 +505,7 @@ func TestUnbind(t *testing.T) {
 		return
 	}
 
-	_, err = broker.Unbind(ctx, instanceID, bindingID, brokerapi.UnbindDetails{}, true)
+	_, err = broker.Unbind(ctx, instanceID, bindingID, domain.UnbindDetails{}, true)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -527,7 +527,7 @@ func TestDeprovision(t *testing.T) {
 	}
 
 	// Deprovision the cluster.
-	_, err = broker.Deprovision(ctx, instanceID, brokerapi.DeprovisionDetails{}, true)
+	_, err = broker.Deprovision(ctx, instanceID, domain.DeprovisionDetails{}, true)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -544,7 +544,7 @@ func TestDeprovision(t *testing.T) {
 // timeout has been reached.
 func waitForLastOperation(broker *brokerlib.Broker, instanceID string, operation string, timeoutMinutes int) error {
 	return testutil.Poll(timeoutMinutes, func() (bool, error) {
-		res, err := broker.LastOperation(ctx, instanceID, brokerapi.PollDetails{
+		res, err := broker.LastOperation(ctx, instanceID, domain.PollDetails{
 			OperationData: operation,
 		})
 
@@ -552,7 +552,7 @@ func waitForLastOperation(broker *brokerlib.Broker, instanceID string, operation
 			return false, err
 		}
 
-		return res.State == brokerapi.Succeeded, nil
+		return res.State == domain.Succeeded, nil
 	})
 }
 

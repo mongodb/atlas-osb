@@ -19,7 +19,7 @@ func ReadWhitelistFile(path string) (Whitelist, error) {
 		return nil, err
 	}
 
-	for whitelistProviderName, _ := range whitelist {
+	for whitelistProviderName := range whitelist {
 		var isValid bool
 		for _, providerName := range providerNames {
 			if whitelistProviderName == providerName {
