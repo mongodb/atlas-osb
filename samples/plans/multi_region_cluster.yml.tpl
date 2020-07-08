@@ -1,5 +1,5 @@
 name: multi-region-us
-description: "This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection."
+description: "This is sample Plan, it extends the 'Basic Plan` to a multi-region database cluster."
 free: true
 apiKey: {{ mustToJson (index .Credentials.Orgs (default "" .org_id)) }}
 project:
