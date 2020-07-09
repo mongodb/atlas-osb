@@ -44,6 +44,8 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s PCF_URL=https://pcf.something.com
 -s PCF_USER=<user>
 -s CREDHUB_FILE=<file sample>
+-s ATLAS_ORG_ID=<org_id for the templates>
+-s BROKER_DB_CONNECTION_STRING=<connection string for the brockers DB>
 ```
 
 Now simply call:
