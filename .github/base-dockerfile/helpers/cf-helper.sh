@@ -91,11 +91,23 @@ create_atlas_service_broker_from_ECS() { #TODO
   cf create-service-broker $broker_name $INPUT_ATLAS_PUBLIC_KEY@$INPUT_ATLAS_PROJECT_ID "$INPUT_ATLAS_PRIVATE_KEY" $INPUT_ATLAS_BROKER_URL --space-scoped
 }
 
+#credhub multikeys #TODO clean up after final solution
 create_service() {
   local instance_name=$1 #aws-atlas-test-instance-$INPUT_BRANCH_NAME
   local plan=$2
   #local config=$2
   cf create-service mongodb-atlas-aws $plan  $instance_name -c '{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
+  wait_service_status_change $instance_name "create in progress"
+  service_status=$(cf services | awk  '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
+  if [[ $service_status != "succeeded" ]]; then
+    echo "FAILED! wrong status: $(cf service $instance_name)"
+    cf logout
+    exit 1
+  fi
+}
+
+check_service_creation() {
+  local instance_name=$1
   wait_service_status_change $instance_name "create in progress"
   service_status=$(cf services | awk  '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
   if [[ $service_status != "succeeded" ]]; then
