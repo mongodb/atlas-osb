@@ -31,7 +31,6 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	if len(details.RawParameters) > 0 {
@@ -105,10 +104,6 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		}()
 	}
 
-	// Add default labels
-	// TODO - append the env info k8s, pcf, etc
-	var defaultLabel = mongodbatlas.Label{Key: "Infrastructure Tool", Value: "MongoDB Atlas Service Broker"}
-	cluster.Labels = []mongodbatlas.Label{defaultLabel}
 	// Create a new Atlas cluster from the generated definition
 	resultingCluster, _, err := client.Clusters.Create(ctx, gid, cluster)
 
@@ -165,7 +160,6 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	if len(details.RawParameters) > 0 {
@@ -249,7 +243,6 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
@@ -315,7 +308,6 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)

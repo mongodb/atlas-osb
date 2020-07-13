@@ -67,12 +67,12 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp dynamicp
 	}
 
 	raw := new(bytes.Buffer)
-	err = tpl.Execute(raw, ctx)
+	err = tpl.Execute(raw, ctx.With("credentials", b.credentials))
 	if err != nil {
 		return
 	}
 
-	b.logger.Infow("Parsed plan", "plan", raw.String(), "creds", b.credentials.Projects)
+	b.logger.Infow("Parsed plan", "plan", raw.String())
 
 	if err = yaml.NewDecoder(raw).Decode(&dp); err != nil {
 		return
