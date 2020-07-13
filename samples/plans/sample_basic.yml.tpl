@@ -8,10 +8,14 @@ project:
   orgId: {{ .org_id }}
 cluster:
   name: {{ .instance_name }}
+  providerBackupEnabled: true
   providerSettings:
     providerName: {{ default "AWS" .provider }}
     instanceSizeName: {{ default "M20" .instance_size }}
     regionName: {{ default "US_EAST_1" .region }}
+  labels:
+    - key: Infrastructure Tool
+      value: MongoDB Atlas Service Broker
 databaseUsers:
 - username: {{ default "test-user" .username }}
   password: {{ default "test-password" .password }}
