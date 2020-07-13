@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
@@ -98,14 +99,23 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	}
 
 	b.logger.Infow("Successfully created Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
-	b.logger.Infow("New User ConnectionString", "connectionString", cluster.ConnectionStrings)
-	cs, err := json.Marshal(cluster.ConnectionStrings)
+
+	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
+	if err != nil {
+		b.logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
+	}
+
+	b.logger.Infow("New User ConnectionString", "connectionString", cs)
+
+	cs.User = url.UserPassword(user.Username, user.Password)
+	cs.Path = user.DatabaseName
+
 	spec = domain.Binding{
 		Credentials: ConnectionDetails{
 			Username:         bindingID,
 			Password:         password,
 			URI:              cluster.SrvAddress,
-			ConnectionString: string(cs),
+			ConnectionString: cs.String(),
 		},
 	}
 	return
