@@ -104,10 +104,6 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		}()
 	}
 
-	// Add default labels
-	// TODO - append the env info k8s, pcf, etc
-	var defaultLabel = mongodbatlas.Label{Key: "Infrastructure Tool", Value: "MongoDB Atlas Service Broker"}
-	cluster.Labels = []mongodbatlas.Label{defaultLabel}
 	// Create a new Atlas cluster from the generated definition
 	resultingCluster, _, err := client.Clusters.Create(ctx, gid, cluster)
 
