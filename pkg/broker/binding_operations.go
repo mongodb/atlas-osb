@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
+    "net/url"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
@@ -83,7 +83,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	}
 
 	// Construct a cluster definition from the instance ID, service, plan, and params.
-	user, err := userFromParams(bindingID, password, details.RawParameters)
+	user, err := userFromParams(bindingID, password, details.RawParameters,&b)
 	if err != nil {
 		b.logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
 		return
@@ -99,12 +99,26 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	b.logger.Infow("Successfully created Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
 	b.logger.Infow("New User ConnectionString", "connectionString", cluster.ConnectionStrings)
+
+    // Convert connection string info for binding conviences
 	cs, err := json.Marshal(cluster.ConnectionStrings)
+    resolvedURI := cluster.SrvAddress
+    rURI, err := url.Parse(resolvedURI)
+	if err != nil {
+		b.logger.Errorw("Failed to parse URI to merge credentials","err",err)
+	}
+    b.logger.Infow("Merging credentials into 'URI' key for binding")
+	rURI.User = url.UserPassword(bindingID,password)
+
+    query := rURI.Query()
+    query.Set("authSource",user.DatabaseName)
+    rURI.RawQuery=query.Encode()    
+    b.logger.Infow("resolved uri","rURI",rURI)
 	spec = domain.Binding{
 		Credentials: ConnectionDetails{
 			Username:         bindingID,
 			Password:         password,
-			URI:              cluster.SrvAddress,
+			URI:              string(fmt.Sprintf("%v",rURI)),
 			ConnectionString: string(cs),
 		},
 	}
@@ -180,7 +194,7 @@ func generatePassword() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func userFromParams(bindingID string, password string, rawParams []byte) (*mongodbatlas.DatabaseUser, error) {
+func userFromParams(bindingID string, password string, rawParams []byte, broker *Broker) (*mongodbatlas.DatabaseUser, error) {
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
 		User *mongodbatlas.DatabaseUser `json:"user"`
@@ -199,8 +213,10 @@ func userFromParams(bindingID string, password string, rawParams []byte) (*mongo
 	// Set binding ID as username and add password.
 	params.User.Username = bindingID
 	params.User.Password = password
-	params.User.DatabaseName = "admin"
-
+    if len(params.User.DatabaseName) == 0 {
+        params.User.DatabaseName = "admin"
+    }
+    broker.logger.Infow("userFromParams",params,"params")
 	// If no role is specified we default to read/write on any database.
 	// This is the default role when creating a user through the Atlas UI.
 	if len(params.User.Roles) == 0 {
