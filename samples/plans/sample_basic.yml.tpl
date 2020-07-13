@@ -1,7 +1,7 @@
 name: basic-plan
-description: "This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection."
+description: This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection.
 free: true
-apiKey: {{ mustToJson (index .Credentials.Orgs (default "" .org_id)) }}
+apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}
 project:
   name: {{ .instance_name }}
   desc: Created from a template
@@ -18,7 +18,7 @@ databaseUsers:
   databaseName: {{ default "admin" .auth_db }}
   roles:
   - roleName: {{ default "readWrite" .role }}
-    databaseName: {{ default "test" .role_db }}
+    databaseName: {{ default "default" .role_db }}
 ipWhitelists:
 - ipAddress: "0.0.0.0/1"
   comment: "everything"
