@@ -227,7 +227,7 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 	}
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
+		"credentials": b.credentials,
 	}
 
 	for _, template := range templates {
@@ -248,14 +248,23 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 		}
 
 		if p.Cluster == nil ||
-			p.Cluster.ProviderSettings == nil ||
-			p.Cluster.ProviderSettings.InstanceSizeName == "" {
-			b.logger.Errorw(
-				"invalid yaml template",
-				"name", template.Name(),
-				"error", ".cluster.providerSettings.instanceSizeName must not be empty",
-			)
-			continue
+			p.Cluster.ProviderSettings == nil {
+			if p.Cluster.ProviderSettings.ProviderName == "" {
+				b.logger.Errorw(
+					"invalid yaml template",
+					"name", template.Name(),
+					"error", ".cluster.providerSettings.providerName must not be empty",
+				)
+				continue
+			}
+			if p.Cluster.ProviderSettings.InstanceSizeName == "" {
+				b.logger.Errorw(
+					"invalid yaml template",
+					"name", template.Name(),
+					"error", ".cluster.providerSettings.instanceSizeName must not be empty",
+				)
+				continue
+			}
 		}
 
 		plan := domain.ServicePlan{

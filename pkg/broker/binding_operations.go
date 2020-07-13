@@ -28,7 +28,6 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	if len(details.RawParameters) > 0 {
@@ -118,7 +117,6 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)

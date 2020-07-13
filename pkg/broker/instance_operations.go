@@ -31,7 +31,6 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	if len(details.RawParameters) > 0 {
@@ -165,7 +164,6 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	if len(details.RawParameters) > 0 {
@@ -249,7 +247,6 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
@@ -315,7 +312,6 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
-		"Credentials": b.credentials,
 		"instance_id": instanceID,
 	}
 	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
