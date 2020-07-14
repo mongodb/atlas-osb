@@ -27,11 +27,11 @@ def try_atlas():
         vcap_services = os.getenv('VCAP_SERVICES')
         services = json.loads(vcap_services)
         for service_name in services.keys():
+            print(f'service_name={service_name}')
+            if service_name == "_":
+                continue
             credentials = load_from_vcap_services(service_name)
             result.update(credentials)
-            if 'connectionString' in credentials:
-                connection_strings = json.loads(credentials['connectionString'])
-                result['connection_strings']=connection_strings
     except Exception as err:
         print( f'Error looking for VCAP_SERVICES {err}')
         result['error']=err
@@ -39,12 +39,12 @@ def try_atlas():
 
     mongo_results = {}
     try:
-        db = MongoClient( result['uri'] )
+        db = MongoClient( result['connectionString'] )
         mongo_results["MongoClient"]= f'{db}'
         mongo_results["server_info"]=db.server_info()
     except Exception as err:
-        print( f'Error looking for VCAP_SERVICES {err}')
-        result['error']=err
+        print( f'Error trying connection to Atlas: {err}')
+        result['atlas-error']=err
     finally:
         result['mongo']=mongo_results
 
