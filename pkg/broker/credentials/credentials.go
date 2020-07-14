@@ -36,6 +36,7 @@ type credHub struct {
 
 type services struct {
 	CredHub []credHub `json:"credhub"`
+	UserProvided []credHub `json:"user-provided"`
 }
 
 func FromCredHub() (*Credentials, error) {
@@ -54,7 +55,7 @@ func FromCredHub() (*Credentials, error) {
 		Orgs:     map[string]APIKey{},
 	}
 
-	for _, c := range services.CredHub {
+	for _, c := range append(services.CredHub,services.UserProvided...) {
 		for k, v := range c.Credentials.Projects {
 			result.Projects[k] = v
 		}

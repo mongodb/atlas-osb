@@ -337,8 +337,11 @@ The OSB bind function is used to provision a new database user credential and co
 The `bind()` call maps to `DatabaseUserService.Create` then `ProjectIPWhiteListService.Create`, and 
 `unbind()` maps to `ProjectIPWhiteListService.Delete` then `DatabaseUserService.Delete` (note order change).
 
-Bindings should return 
+When the broker creates a binding, it will translate the Connection Details for the given cluster into the OSB Binding structure. 
+
 [Connection Details](https://github.com/jasonmimick/atlas-osb/blob/a503c88b66c9df15f8620c7f072826ba13ca3dd3/pkg/broker/binding_operations.go#L16) types.
     
+    <add ref to osb spec>
+
 
 
