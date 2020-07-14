@@ -17,5 +17,7 @@ RUN apk --no-cache add ca-certificates
 # Copy binary from build stage
 WORKDIR /root
 COPY --from=builder /usr/src/bin .
+COPY --from=builder /usr/src/samples ./samples
+RUN ln -s /root/samples/plans /plans
 
 CMD ["./atlas-service-broker"]

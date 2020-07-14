@@ -1,7 +1,7 @@
 name: multi-region-us
 description: "This is sample Plan, it extends the 'Basic Plan` to a multi-region database cluster."
 free: true
-apiKey: {{ mustToJson (index .Credentials.Orgs (default "" .org_id)) }}
+apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}
 project:
   name: {{ .instance_name }}
   desc: Created from a template
