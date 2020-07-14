@@ -7,8 +7,8 @@ on: [push]
 name: Prepare CF. Base scenario.
 
 jobs:
-  deploy-to-cf:
-    name: Prepare CF. Base scenario.
+  basic-plan-cloudfoundry:
+    name: basic-plan-cloudfoundry 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
