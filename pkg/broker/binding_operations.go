@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
@@ -84,7 +83,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	}
 
 	// Construct a cluster definition from the instance ID, service, plan, and params.
-	user, err := userFromParams(bindingID, password, details.RawParameters)
+	user, err := userFromParams(bindingID, password, details.RawParameters,&b)
 	if err != nil {
 		b.logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
 		return
@@ -190,7 +189,7 @@ func generatePassword() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func userFromParams(bindingID string, password string, rawParams []byte) (*mongodbatlas.DatabaseUser, error) {
+func userFromParams(bindingID string, password string, rawParams []byte, broker *Broker) (*mongodbatlas.DatabaseUser, error) {
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
 		User *mongodbatlas.DatabaseUser `json:"user"`
@@ -209,8 +208,10 @@ func userFromParams(bindingID string, password string, rawParams []byte) (*mongo
 	// Set binding ID as username and add password.
 	params.User.Username = bindingID
 	params.User.Password = password
-	params.User.DatabaseName = "admin"
-
+    if len(params.User.DatabaseName) == 0 {
+        params.User.DatabaseName = "admin"
+    }
+    broker.logger.Infow("userFromParams",params,"params")
 	// If no role is specified we default to read/write on any database.
 	// This is the default role when creating a user through the Atlas UI.
 	if len(params.User.Roles) == 0 {
