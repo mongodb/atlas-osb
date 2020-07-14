@@ -1,0 +1,5 @@
+Flask
+gunicorn
+dnspython
+pymongo
+vcap_services
