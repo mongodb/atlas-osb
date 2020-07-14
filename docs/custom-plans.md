@@ -341,7 +341,32 @@ When the broker creates a binding, it will translate the Connection Details for 
 
 [Connection Details](https://github.com/jasonmimick/atlas-osb/blob/a503c88b66c9df15f8620c7f072826ba13ca3dd3/pkg/broker/binding_operations.go#L16) types.
     
-    <add ref to osb spec>
+The format for the JSON available for binding in `VCAP_SERVICES` is:
+
+```json
+{ 'connectionString': 'mongodb+srv://uuuuuuuuu:xxxxxxxx@chewy-123.6bikq.mongodb.net/admin',
+  'password': 'xxxxxxxxxx',
+  'uri': 'mongodb+srv://chewy-123.6bikq.mongodb.net',
+  'username': 'uuuuuuuuuu'}
+```
+
+_*FUTURE SPRINT PROPOSAL*_
+
+The binding feature will be enchanced to support different connection string format.
+The proposal is to add this at the `Plan` level, adding a template for the binding.
+
+For example,
+
+```yaml
+bindingParameters:
+  connectionString:
+    source: standardSrv
+    format: $proto://$user:$pass@$host/$dbName?authSource=$authSource&whatever=else
+```
+
+If the `format` is empty, just take the provided source, defaulting to pure standard or standardSrv returned from Atlas.
+
+*TODO* design and document the parameters such as `$protocol` for the binding format.
 
 
 
