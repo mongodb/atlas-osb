@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-
 	"github.com/goccy/go-yaml"
 	atlasprivate "github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
@@ -141,15 +140,22 @@ func (b *Broker) buildServiceTemplate() (service domain.Service) {
 	return domain.Service{
 		ID:                   serviceIDForProvider("template"),
 		Name:                 "mongodb-atlas-template",
-		Description:          fmt.Sprintf(`Atlas cluster provided by template`),
+		Description:          fmt.Sprintf(`MonogoDB Atlas Plan Template Deployments`),
 		Bindable:             true,
 		InstancesRetrievable: true,
 		BindingsRetrievable:  false,
-		Metadata:             nil,
+		Metadata:             &domain.ServiceMetadata{
+            DisplayName:      "MongoDB Atlas - Template Services",
+            ImageUrl:         "https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg",
+            DocumentationUrl: "https://support.mongodb.com/welcome",
+            ProviderDisplayName: "MongoDB",
+            LongDescription:  "Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/jasonmimick/atlas-osb",
+        },
 		PlanUpdatable:        true,
 		Plans:                b.buildPlansForProviderDynamic(),
 	}
 }
+
 
 // plansForProvider will convert the available instance sizes for a provider
 // to service plans for the broker.
@@ -273,6 +279,8 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 			Description: p.Description,
 			Free:        p.Free,
 			Metadata: &domain.ServicePlanMetadata{
+                DisplayName:        p.Name,
+                Bullets:            []string{ p.Description }, 
 				AdditionalMetadata: map[string]interface{}{
 					"template":     dynamicplans.TemplateContainer{Template: template},
 					"instanceSize": p.Cluster.ProviderSettings.InstanceSizeName,

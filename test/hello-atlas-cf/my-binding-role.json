@@ -1,0 +1,13 @@
+{
+  "user" : {
+    "username": "jason",
+    "databaseName": "admin",
+    "roles": [
+    {
+      "roleName": "readWrite",
+      "databaseName": "default"
+    }
+   ]
+  }
+}
+
