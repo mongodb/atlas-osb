@@ -350,6 +350,8 @@ The format for the JSON available for binding in `VCAP_SERVICES` is:
   'username': 'uuuuuuuuuu'}
 ```
 
+Please see the [test/hello-atlas-cf](test/hello-atlas-cf) sample app to see details on the binding information available to apps.
+
 _*FUTURE SPRINT PROPOSAL*_
 
 The binding feature will be enchanced to support different connection string format.
