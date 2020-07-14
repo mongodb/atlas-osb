@@ -7,7 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+<<<<<<< HEAD
     "net/url"
+=======
+	"net/url"
+
+>>>>>>> 303dca580183f49f8582895754b9e25559e98908
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
@@ -98,28 +103,23 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	}
 
 	b.logger.Infow("Successfully created Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
-	b.logger.Infow("New User ConnectionString", "connectionString", cluster.ConnectionStrings)
 
-    // Convert connection string info for binding conviences
-	cs, err := json.Marshal(cluster.ConnectionStrings)
-    resolvedURI := cluster.SrvAddress
-    rURI, err := url.Parse(resolvedURI)
+	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
 	if err != nil {
-		b.logger.Errorw("Failed to parse URI to merge credentials","err",err)
+		b.logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
 	}
-    b.logger.Infow("Merging credentials into 'URI' key for binding")
-	rURI.User = url.UserPassword(bindingID,password)
 
-    query := rURI.Query()
-    query.Set("authSource",user.DatabaseName)
-    rURI.RawQuery=query.Encode()    
-    b.logger.Infow("resolved uri","rURI",rURI)
+	b.logger.Infow("New User ConnectionString", "connectionString", cs)
+
+	cs.User = url.UserPassword(user.Username, user.Password)
+	cs.Path = user.DatabaseName
+
 	spec = domain.Binding{
 		Credentials: ConnectionDetails{
 			Username:         bindingID,
 			Password:         password,
-			URI:              string(fmt.Sprintf("%v",rURI)),
-			ConnectionString: string(cs),
+			URI:              cluster.SrvAddress,
+			ConnectionString: cs.String(),
 		},
 	}
 	return
