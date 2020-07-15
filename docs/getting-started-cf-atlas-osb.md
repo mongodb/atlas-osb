@@ -85,10 +85,10 @@ cf push atlas-osb --no-start
 cf bind-service atlas-osb atlas-osb-keys
 
 # use the provided sample plan templates
-cf set-env atlas-broker ATLAS_BROKER_TEMPLATEDIR ./samples/plans
+cf set-env atlas-osb ATLAS_BROKER_TEMPLATEDIR ./samples/plans
 
-cf set-env atlas-broker BROKER_HOST 0.0.0.0
-cf set-env atlas-broker BROKER_PORT 8080
+cf set-env atlas-osb BROKER_HOST 0.0.0.0
+cf set-env atlas-osb BROKER_PORT 8080
 
 # start it up
 cf start atlas-osb
@@ -97,7 +97,7 @@ cf start atlas-osb
 Check the logs, you should see output included the loaded plan templates.
 
 ```bash
-cf logs atlas-broker --recent
+cf logs atlas-osb --recent
 ```
 
 4. Register the app as a real service broker
@@ -107,6 +107,8 @@ Grab the `routes` value from `cf app atlas-osb` and use this URL in the followin
 ```bash
 # create the actual broker
 cf create-service-broker atlas-osb admin admin <YOUR-DEPLOYMENT-URL>
+# enable access
+cf enable-service-access mongodb-atlas-template
 ```
 
 Check out the results.
@@ -116,21 +118,7 @@ cf marketplace
 cf apps
 ```
 
-3. Enable service access.
-
-Run the `cf service-access -b mongodb-atlas` command to inspect all the services now available through your Atlas broker. There are services mapping to each of the cloud providers (AWS, GCP, Azure) on which Atlas will deploy your MongoDB clusters. Here, we'll enable access to the Azure plans. Once done, you can inspect the available plans in the marketplace.
-
-```
-cf enable-service-access mongodb-atlas-azure
-cf marketplace
-Getting services from marketplace in org mongodb-testing / space jason as admin...
-OK
-
-service               plans                                          description                          broker
-mongodb-atlas-azure   M10, M20, M30, M40, M50, M200, M60, M80, M90   Atlas cluster hosted on "AZURE"      mongodb-atlas
-```
-
-4. Create an Atlas cluster
+5. Create an Atlas cluster
 
 For this flow, we'll create an instance of the "basic-plan" called "hello-atlas-osb".
 See [/samples/plans/sample_basic.yml.tpl](/samples/plans/sample_basic.yml.tpl).
@@ -160,3 +148,47 @@ Grab the route and load it up in your browser. You should see connection informa
 ## Advanced
 
 You can inspect more scenarios over in our Github [actions](/.github/actions) and [workflows](./github/workflows). 
+
+### Pausing a cluster
+
+```bash
+ cf update-service <SERVICE-INSTANCE-NAME> -c '{ "paused":"true" }'
+```
+
+### mongocli
+
+`mongocli` is a tool from MongoDB, https://github.com/mongodb/mongocli.
+It can be useful, for example you can check the state of a cluster like this,
+
+Grab the `projectId` from the dashboard url:
+
+```bash
+cf service wed-demo-1
+Showing info of service wed-demo-1 in org atlas-broker-demo / space test1 as admin...
+
+name:             wed-demo-1
+service:          mongodb-atlas-template
+tags:             
+plan:             basic-plan
+description:      MonogoDB Atlas Plan Template Deployments
+documentation:    https://support.mongodb.com/welcome
+dashboard:        https://cloud.mongodb.com/v2/5f0f0e0859cd8a08718294bf#clusters/detail/wed-demo-1
+service broker:   atlas-osb
+...
+```
+
+then, once you setup `mongocli` [TODO - integration with atlas-osb keys]
+
+```bash
+mongocli atlas clusters list --projectId 5f0f0e0859cd8a08718294bf
+```
+
+Use tools like `jq` to do fun stuff,
+
+```bash
+ mongocli atlas clusters list --projectId 5f0f0e0859cd8a08718294bf | jq '.[] | { "n" : .name, "s" : .paused}'
+{
+  "n": "wed-demo-1",
+  "s": false
+}
+```
