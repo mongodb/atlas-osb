@@ -157,6 +157,12 @@ You need to override the role when creating the binding like this:
  cf bind-service hello-atlas-cf wed-demo-1 -c '{"User" : {"roles" : [ { "roleName" : "readWrite", "databaseName" : "default"} ] } }'
 ```
 
+You can check this works with the hello-atlas-cf app with something like this:
+
+```bash
+cf app hello-atlas-cf | grep routes | cut -d: -f2 | xargs -I {} google-chrome "{}"
+```
+
 ### Pausing a cluster
 
 ```bash
