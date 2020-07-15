@@ -104,10 +104,16 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		b.logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
 	}
 
+	cs.Path = user.DatabaseName
+
+    if len(user.Roles)>0 {
+        cs.Path = user.Roles[0].DatabaseName
+	    b.logger.Infow("Detected roles, override the name of the db to connect", "connectionString", cs)
+    }
+
 	b.logger.Infow("New User ConnectionString", "connectionString", cs)
 
 	cs.User = url.UserPassword(user.Username, user.Password)
-	cs.Path = user.DatabaseName
 
 	spec = domain.Binding{
 		Credentials: ConnectionDetails{
