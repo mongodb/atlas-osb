@@ -8,7 +8,7 @@ project:
   orgId: {{ .org_id }}
 cluster:
   name: {{ .instance_name }}
-  providerBackupEnabled: true
+  providerBackupEnabled: {{ default "true" .backups }}
   providerSettings:
     providerName: {{ default "AWS" .provider }}
     instanceSizeName: {{ default "M20" .instance_size }}
