@@ -152,3 +152,6 @@ cf app hello-atlas-cf
 
 Grab the route and load it up in your browser. You should see connection information to your new Atlas cluster.
 
+## Advanced
+
+You can inspect more scenarios over in our Github [./github/actions](actions) and [./github/workflows](workflows). 
