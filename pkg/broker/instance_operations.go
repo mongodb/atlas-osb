@@ -192,6 +192,16 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
+	// special case: pause/unpause
+	if p, ok := planContext["paused"].(bool); ok {
+		request := &mongodbatlas.Cluster{
+			Paused: &p,
+		}
+
+		_, _, err = client.Clusters.Update(ctx, gid, name, request)
+		return
+	}
+
 	// Fetch the cluster from Atlas. The Atlas API requires an instance size to
 	// be passed during updates (if there are other update to the provider, such
 	// as region). The plan is not included in the OSB call unless it has changed
