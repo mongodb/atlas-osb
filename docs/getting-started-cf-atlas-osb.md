@@ -23,7 +23,7 @@ Once you have your workstation ready, head over to http://cloud.mongodb.com and 
 1. Pull down the latest release of the atlas-osb (recommended).
 
 ```bash
-curl -OL https://github.com/jasonmimick/atlas-osb/archive/atlas-osb-latest.tar.gz
+curl -OL https://github.com/jasonmimick/atlas-osb/releases/download/v0.1-alpha/atlas-osb-v0.1-alpha.tar.gz
 tar xvf atlas-osb-latest.tar.gz
 cd atlas-osb
 ```
@@ -149,11 +149,21 @@ Grab the route and load it up in your browser. You should see connection informa
 
 You can inspect more scenarios over in our Github [actions](/.github/actions) and [workflows](./github/workflows). 
 
+### How to bind and connect to a specific database
+
+You need to override the role when creating the binding like this:
+
+```bash
+ cf bind-service hello-atlas-cf wed-demo-1 -c '{"User" : {"roles" : [ { "roleName" : "readWrite", "databaseName" : "default"} ] } }'
+```
+
 ### Pausing a cluster
 
 ```bash
- cf update-service <SERVICE-INSTANCE-NAME> -c '{ "paused":"true" }'
+ cf update-service <SERVICE-INSTANCE-NAME> -c '{ "paused":true }'
 ```
+
+Note - do not put quotes around the true/value.
 
 ### mongocli
 
