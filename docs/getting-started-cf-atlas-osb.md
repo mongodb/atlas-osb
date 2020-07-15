@@ -2,7 +2,10 @@
 
 The atlas-osb installs into Cloud Foundry with a usual `cf push` command. It does not require a tile to be installed into PCF Ops Manager. These instuctions show a basic installation, configuration, and use of the broker. These have been tested on PCF 2.9. 
 
-*NOTE* These instuctions only apply to the new template-based atlas-osb and _not_ the legacy [MongoDB Atlas Service Broker](https://github.com/mongodb/mongodb-atlas-service-broker).
+### PLEASE NOTE 
+These instuctions only apply to **this** the new template-based atlas-osb and **_not_** the legacy [MongoDB Atlas Service Broker](https://github.com/mongodb/mongodb-atlas-service-broker).
+
+This software is in active development. 
 
 ## Prereq's
 
@@ -13,7 +16,7 @@ Typical cli/bash commands are used for this procedure along with the following t
 * text editor
 * MongoDB Atlas account - you need an Org apikey
 
-Once you have your workstation ready, head over to http://cloud.mongodb.com and create an organization apikey. Step by step details on this step here: https://docs.atlas.mongodb.com/configure-api-access/#manage-programmatic-access-to-an-organization.
+Once you have your workstation ready, head over to http://cloud.mongodb.com and create an organization apikey. For more step by step details on this step, step over here: https://docs.atlas.mongodb.com/configure-api-access/#manage-programmatic-access-to-an-organization.
 
 ## Installation & Configuration
 
@@ -56,7 +59,9 @@ Copy this template and update with your own apikey information.
 }
 ```
 
-Save this in a file called `keys`
+Save this in a file called `keys`.
+
+__NOTE__ The `broker.db` field in the json above currently holds a connection string to another Atlas cluster we are using to store data on the mappings between serivce instance id's and the Atlas project, cluster, etc ids. The use of another external db will __NOT__ be a requirement of the GA version of atlas-osb. This is only a temporary solution, to be addressed in Sprint 3.
 
 3. Create a user provided service:
 
@@ -154,4 +159,4 @@ Grab the route and load it up in your browser. You should see connection informa
 
 ## Advanced
 
-You can inspect more scenarios over in our Github [./github/actions](actions) and [./github/workflows](workflows). 
+You can inspect more scenarios over in our Github [actions](/.github/actions) and [workflows](./github/workflows). 
