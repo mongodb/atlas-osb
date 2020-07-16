@@ -107,7 +107,9 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	return nil
 }
 
-func createStateStorage(logger *zap.SugaredLogger, baseURL string) (creds *credentials.Credentials, client *mongo.Client) {
+func createCredsAndDB(logger *zap.SugaredLogger, baseURL string) (creds *credentials.Credentials, client *mongo.Client) {
+	creds = deduceCredentials(logger)
+
 	if creds.Broker.DB == "" {
 		logger.Fatal("Cannot create state storage without DB connection")
 	}
@@ -132,13 +134,13 @@ func createStateStorage(logger *zap.SugaredLogger, baseURL string) (creds *crede
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	baseURL := getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL)
 
-	creds, client := createStateStorage(logger, baseURL)
+	creds, client := createCredsAndDB(logger, baseURL)
 
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	if !hasWhitelist {
 		logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", "NONE")
-		return broker.New(logger, creds, baseURL, nil, client)
+		return broker.New(logger, creds, baseURL, nil, broker.NewMongoStorage(client))
 	}
 
 	// TODO
@@ -150,7 +152,7 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	}
 
 	logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", pathToWhitelistFile)
-	return broker.New(logger, creds, baseURL, whitelist, client)
+	return broker.New(logger, creds, baseURL, whitelist, broker.NewMongoStorage(client))
 }
 
 func startBrokerServer() {

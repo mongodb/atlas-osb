@@ -15,7 +15,6 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
@@ -26,22 +25,22 @@ var _ domain.ServiceBroker = new(Broker)
 // Implements the domain.ServiceBroker interface making it easy to spin up
 // an API server.
 type Broker struct {
-	logger      *zap.SugaredLogger
-	whitelist   Whitelist
-	credentials *credentials.Credentials
-	baseURL     string
-	catalog     *catalog
-	client      *mongo.Client
+	logger       *zap.SugaredLogger
+	whitelist    Whitelist
+	credentials  *credentials.Credentials
+	baseURL      string
+	catalog      *catalog
+	stateStorage StateStorage
 }
 
 // New creates a new Broker with a logger.
-func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, client *mongo.Client) *Broker {
+func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, storage StateStorage) *Broker {
 	b := &Broker{
-		logger:      logger,
-		credentials: credentials,
-		baseURL:     baseURL,
-		whitelist:   whitelist,
-		client:      client,
+		logger:       logger,
+		credentials:  credentials,
+		baseURL:      baseURL,
+		whitelist:    whitelist,
+		stateStorage: storage,
 	}
 
 	b.buildCatalog()
@@ -85,6 +84,7 @@ func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynam
 
 	params, ok := i.Parameters.(bson.D)
 	if !ok {
+		b.logger.Errorf("%#v", i)
 		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
 	}
 
@@ -117,7 +117,13 @@ func (b *Broker) createClient(k credentials.APIKey) (*mongodbatlas.Client, error
 	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
 }
 
-func (b *Broker) getProjectAndPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (p *mongodbatlas.Project, dp *dynamicplans.Plan, err error) {
+func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (dp *dynamicplans.Plan, err error) {
+	// existing instance: try to get from state store
+	dp, err = b.getInstancePlan(ctx, instanceID)
+	if err == nil {
+		return
+	}
+
 	// new instance: get from plan
 	dp, err = b.parsePlan(planCtx, planID)
 	if err != nil {
@@ -129,30 +135,19 @@ func (b *Broker) getProjectAndPlan(ctx context.Context, instanceID string, planI
 		return
 	}
 
-	// existing instance: get from state store
-	ip, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	if ip != nil {
-		p = ip.Project
-	}
-
 	return
 }
 
-func (b *Broker) getClient(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (client *mongodbatlas.Client, p *mongodbatlas.Project, dp *dynamicplans.Plan, err error) {
-	p, dp, err = b.getProjectAndPlan(ctx, instanceID, planID, planCtx)
+func (b *Broker) getClient(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (client *mongodbatlas.Client, dp *dynamicplans.Plan, err error) {
+	dp, err = b.getPlan(ctx, instanceID, planID, planCtx)
 	if err != nil {
 		return
 	}
 
-	if p.ID != "" {
-		gid := p.ID
-		c, ok := b.credentials.Projects[gid]
+	if dp.Project.ID != "" {
+		c, ok := b.credentials.Projects[dp.Project.ID]
 		if !ok {
-			err = fmt.Errorf("credentials for project ID %q not found", gid)
+			err = fmt.Errorf("credentials for project ID %q not found", dp.Project.ID)
 			return
 		}
 
@@ -160,8 +155,8 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	if p.OrgID != "" && p.Name != "" {
-		oid := p.OrgID
+	if dp.Project.OrgID != "" {
+		oid := dp.Project.OrgID
 		c, ok := b.credentials.Orgs[oid]
 		if !ok {
 			err = fmt.Errorf("credentials for org ID %q not found", oid)
@@ -173,11 +168,19 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 			return
 		}
 
-		p, _, err = client.Projects.GetOneProjectByName(ctx, p.Name)
+		// try to merge existing project into plan, don't error out if not found
+		var existing *mongodbatlas.Project
+		existing, _, err = client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
+		if err == nil {
+			dp.Project = existing
+			return
+		} else {
+			err = nil
+		}
 		return
 	}
 
-	err = fmt.Errorf("project info must contain either ID or OrgID & project name, got %+v", p)
+	err = fmt.Errorf("project info must contain either ID or OrgID & project name, got %+v", dp.Project)
 	return
 }
 

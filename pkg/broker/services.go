@@ -22,11 +22,6 @@ var (
 	providerNames = []string{"AWS", "GCP", "AZURE", "TENANT"}
 )
 
-type serviceInstance struct {
-	ID string `bson:"id"`
-	domain.GetInstanceDetailsSpec
-}
-
 // Services generates the service catalog which will be presented to consumers of the API.
 func (b *Broker) Services(ctx context.Context) ([]domain.Service, error) {
 	b.logger.Info("Retrieving service catalog")

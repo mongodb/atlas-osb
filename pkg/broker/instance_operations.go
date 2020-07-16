@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
@@ -45,19 +46,19 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		}
 	}
 
-	client, p, dp, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
+	client, dp, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
 	if err != nil {
 		return
 	}
 
-	if p.ID == "" {
+	if dp.Project.ID == "" {
 		var newp *mongodbatlas.Project
 		newp, err = b.createResources(ctx, client, dp)
 		if err != nil {
 			return
 		}
 
-		p.ID = newp.ID
+		dp.Project.ID = newp.ID
 	}
 
 	// Async needs to be supported for provisioning to work.
@@ -70,35 +71,28 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	b.logger.Infow("Creating cluster", "instance_name", planContext["instance_name"])
 	// TODO - add this context info about k8s/namespace or pcf space into labels
 
-	s := serviceInstance{
-		ID: instanceID,
-		GetInstanceDetailsSpec: domain.GetInstanceDetailsSpec{
-			PlanID:       details.PlanID,
-			ServiceID:    details.ServiceID,
-			DashboardURL: b.GetDashboardURL(p.ID, dp.Cluster.Name),
-			Parameters: bson.M{
-				"groupID": p.ID,
-				"plan":    *dp,
-			},
+	s := domain.GetInstanceDetailsSpec{
+		PlanID:       details.PlanID,
+		ServiceID:    details.ServiceID,
+		DashboardURL: b.GetDashboardURL(dp.Project.ID, dp.Cluster.Name),
+		Parameters: bson.M{
+			"plan": *dp,
 		},
 	}
 
-	if b.client != nil {
-		col := b.client.Database("atlas-broker").Collection("instances")
-		_, err = col.InsertOne(ctx, s)
-		if err != nil {
-			return
-		}
-
-		defer func() {
-			if err != nil {
-				_, _ = col.DeleteOne(ctx, s)
-			}
-		}()
+	err = b.stateStorage.Put(ctx, instanceID, &s)
+	if err != nil {
+		return
 	}
 
+	defer func() {
+		if err != nil {
+			_ = b.stateStorage.Delete(ctx, instanceID)
+		}
+	}()
+
 	// Create a new Atlas cluster from the generated definition
-	resultingCluster, _, err := client.Clusters.Create(ctx, p.ID, dp.Cluster)
+	resultingCluster, _, err := client.Clusters.Create(ctx, dp.Project.ID, dp.Cluster)
 
 	if err != nil {
 		b.logger.Errorw("Failed to create Atlas cluster", "error", err, "cluster", dp.Cluster)
@@ -111,7 +105,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	return domain.ProvisionedServiceSpec{
 		IsAsync:       true,
 		OperationData: OperationProvision,
-		DashboardURL:  b.GetDashboardURL(p.ID, resultingCluster.Name),
+		DashboardURL:  b.GetDashboardURL(dp.Project.ID, resultingCluster.Name),
 	}, nil
 }
 
@@ -160,7 +154,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}
 	}
 
-	client, p, oldPlan, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
+	client, oldPlan, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
 	if err != nil {
 		return
 	}
@@ -177,7 +171,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 			Paused: &paused,
 		}
 
-		_, _, err = client.Clusters.Update(ctx, p.ID, oldPlan.Cluster.Name, request)
+		_, _, err = client.Clusters.Update(ctx, oldPlan.Project.ID, oldPlan.Cluster.Name, request)
 		return
 	}
 
@@ -185,7 +179,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	// be passed during updates (if there are other update to the provider, such
 	// as region). The plan is not included in the OSB call unless it has changed
 	// hence we need to fetch the current value from Atlas.
-	existingCluster, _, err := client.Clusters.Get(ctx, p.ID, oldPlan.Cluster.Name)
+	existingCluster, _, err := client.Clusters.Get(ctx, oldPlan.Project.ID, oldPlan.Cluster.Name)
 	if err != nil {
 		err = atlasToAPIError(err)
 		return
@@ -196,7 +190,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
-	resultingCluster, _, err := client.Clusters.Update(ctx, p.ID, existingCluster.Name, newPlan.Cluster)
+	resultingCluster, _, err := client.Clusters.Update(ctx, oldPlan.Project.ID, existingCluster.Name, newPlan.Cluster)
 	if err != nil {
 		b.logger.Errorw("Failed to update Atlas cluster", "error", err, "new_cluster", newPlan.Cluster)
 		err = atlasToAPIError(err)
@@ -208,7 +202,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	return domain.UpdateServiceSpec{
 		IsAsync:       true,
 		OperationData: OperationUpdate,
-		DashboardURL:  b.GetDashboardURL(p.ID, resultingCluster.Name),
+		DashboardURL:  b.GetDashboardURL(oldPlan.Project.ID, resultingCluster.Name),
 	}, nil
 }
 
@@ -247,17 +241,21 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	}, nil
 }
 
-// GetInstance is currently not supported as specified by the
-// InstancesRetrievable setting in the service catalog.
+// GetInstance should fetch the stored instance from state storage
 func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
 	b.logger.Infow("Fetching instance", "instance_id", instanceID)
 
-	err = b.client.
-		Database("atlas-broker").
-		Collection("instances").
-		FindOne(ctx, bson.M{"id": instanceID}).
-		Decode(&spec)
-	return
+	r, err := b.stateStorage.Get(ctx, instanceID)
+	if err != nil {
+		return
+	}
+
+	if r == nil {
+		err = errors.New("stored instance is nil")
+		return
+	}
+
+	return *r, nil
 }
 
 // LastOperation should fetch the state of the provision/deprovision
@@ -306,13 +304,8 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		// scenarios indicate that a cluster has been successfully deleted.
 		if r.StatusCode == http.StatusNotFound || cluster.StateName == "DELETED" {
 			state = domain.Succeeded
-			if b.client != nil {
-				// TODO: change this?
-				_, _ = b.client.
-					Database("atlas-broker").
-					Collection("instances").
-					DeleteOne(ctx, bson.M{"id": instanceID})
-			}
+			// TODO: change this?
+			_ = b.stateStorage.Delete(ctx, instanceID)
 		} else if cluster.StateName == "DELETING" {
 			state = domain.InProgress
 		}
