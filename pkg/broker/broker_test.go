@@ -124,7 +124,7 @@ func setupTest() (*Broker, MockAtlasClient, context.Context) {
 	}
 	ctx := context.WithValue(context.Background(), ContextKeyAtlasClient, client)
 
-	broker := New(zap.NewNop().Sugar(), nil, "", nil, BasicAuth)
+	broker := New(zap.NewNop().Sugar(), nil, "", nil, nil)
 	return broker, client, ctx
 }
 

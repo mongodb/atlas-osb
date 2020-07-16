@@ -134,11 +134,11 @@ func TestProvisionParams(t *testing.T) {
 		NumShards:                2,
 		ProviderBackupEnabled:    true,
 		ReplicationSpecs: []atlas.ReplicationSpec{
-			atlas.ReplicationSpec{
+			{
 				ID:        "ID",
 				NumShards: 2,
 				RegionsConfig: map[string]atlas.RegionsConfig{
-					"REGION": atlas.RegionsConfig{
+					"REGION": {
 						ElectableNodes: 1,
 						ReadOnlyNodes:  1,
 						AnalyticsNodes: 1,

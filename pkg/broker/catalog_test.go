@@ -27,7 +27,7 @@ func TestWhitelist(t *testing.T) {
 	logger := zap.S()
 	whitelist := Whitelist{}
 	whitelist["AWS"] = []string{"M10"}
-	broker := New(logger, nil, "", whitelist, BasicAuth)
+	broker := New(logger, nil, "", whitelist, nil)
 	services, err := broker.Services(ctx)
 
 	require.Len(t, services, 1)
