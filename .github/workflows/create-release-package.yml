@@ -1,29 +1,28 @@
 # Manually triggered using GitHub UI. 
 # Please, open Actions tab, choose workflow "Create GitHub Package Manually" and press "Run workflow"
-# In progress
+# Tags must be Major.minor.patch, e.g. v0.0.1/v0.0.1-alpha
 name: Create GitHub Package Manually
 
 on:
   workflow_dispatch:
     inputs:
-      release:
+      release: 
         description: "Release name. String"
-        default: "some test"
+        default: "Test Release"  #TODO autogen mb?
         required: true
-      version:
-        description: "Version (release only). String"
-        default: "some test"
+      version: #(major: -M, minor: -m, patch: -p)
+        description: "Version key(-Mmp).Major.minor.patch,e.g. -M/-m/-p/-mp/etc"
+        default: "-p"
         required: true
       draft:
         description: "Draft (release only). Boolean"
-        default: "false"
+        default: "true"
         required: true
-      image-name:
-        description: "Image name for the GitHub Packages"
-        default: "atlas-osb"
+      alpha:
+        description: "Add Posfix alpha and mark it as a release"
+        default: "true"
         required: true
         
-
 jobs:
 
   build:
@@ -39,46 +38,40 @@ jobs:
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    
+      with:
+        fetch-depth: 0
+
+    - name: Increment Step Patch
+      id: semver
+      uses: leo-ri/increment-semver@master
+      with:
+        vlevel: ${{ github.event.inputs.version }}
+        alpha: ${{ github.event.inputs.alpha }}
+
     - name: Build Binary
       run: |
         set -x
         ls -l
         echo $(go version)
-        version=$(git describe --always --dirty)
+        version=${{ steps.semver.outputs.version }}
         echo "Building version=${version}"
         GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="-s -w -X main.releaseVersion=${version}" -o .
-        tar czvf mongodb-atlas-service-broker.tar.gz mongodb-atlas-service-broker
+        tar czvf mongodb-atlas-service-broker-$version.tar.gz mongodb-atlas-service-broker
 
-    - name: Publish Package
-      id: publish_package
+    - name: Make archive
       run: |
-        IMAGE_NAME=${{ github.event.inputs.image-name }}
-        docker build . --file Dockerfile --tag $IMAGE_NAME
-
-        IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/atlas-osb
-        # Change all uppercase to lowercase
-        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-        
-        VERSION="latest" #TODO
-        echo IMAGE_ID=$IMAGE_ID
-        echo VERSION=$VERSION
-
-        echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin #TODO ?
-        docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
-        docker push $IMAGE_ID:$VERSION        
-
+        git archive --format=tar.gz -o ./atlas-osb.${{ steps.semver.outputs.version }}.tar.gz --prefix=atlas-osb/ master
+          
     - name: Create Release
-      # if: github.event_name == 'release'
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: ${{ github.event.inputs.release }} Release ${{ github.ref }}
+        tag_name: ${{ steps.semver.outputs.version }}
+        release_name: ${{ github.event.inputs.release }}
         draft: ${{ github.event.inputs.draft }}
-        prerelease: ${{ github.event.inputs.prerelease }}
+        prerelease: ${{ github.event.inputs.alpha }}
 
     - name: Upload Release Asset
       id: upload-release-asset
@@ -87,6 +80,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./mongodb-atlas-service-broker.tar.gz
-        asset_name: mongodb-atlas-service-broker.tar.gz
+        asset_path: ./atlas-osb.${{ steps.semver.outputs.version }}.tar.gz
+        asset_name: atlas-osb.${{ steps.semver.outputs.version }}.tar.gz
         asset_content_type: application/tgz
