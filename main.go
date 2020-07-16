@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -107,6 +108,13 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	return nil
 }
 
+func tryGetStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.SugaredLogger) string {
+    logger.Info("tryGetStateStorage")
+    cluster, cs, err := statestorage.GetOrgStateStorage(creds, baseURL, logger)
+    logger.Infow("GetOrgStateStorage","cluster",cluster,"cs",cs,"err",err)
+    return cs
+}
+
 func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.Mode, creds *credentials.Credentials, client *mongo.Client) {
 	logger.Info("Deducing catalog mode...")
 
@@ -148,6 +156,11 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.
 
 		return broker.BasicAuth, nil, nil
 	}
+
+	if creds.Broker.DB == "" {
+        stateStorageConnectionString := tryGetStateStorage(creds, baseURL, logger)
+        creds.Broker.DB = stateStorageConnectionString
+    }
 
 	if creds.Broker.DB == "" {
 		if dynPlans {
