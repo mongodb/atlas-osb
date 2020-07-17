@@ -53,7 +53,6 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	cluster, _, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -76,7 +75,6 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	_, _, err = client.DatabaseUsers.Create(ctx, p.Project.ID, user)
 	if err != nil {
 		b.logger.Errorw("Failed to create Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -128,7 +126,6 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	_, _, err = client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -136,7 +133,6 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
 	if err != nil {
 		b.logger.Errorw("Failed to delete Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
-		err = atlasToAPIError(err)
 		return
 	}
 

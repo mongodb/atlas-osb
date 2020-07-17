@@ -96,7 +96,6 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 
 	if err != nil {
 		b.logger.Errorw("Failed to create Atlas cluster", "error", err, "cluster", dp.Cluster)
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -181,7 +180,6 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	// hence we need to fetch the current value from Atlas.
 	existingCluster, _, err := client.Clusters.Get(ctx, oldPlan.Project.ID, oldPlan.Cluster.Name)
 	if err != nil {
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -193,7 +191,21 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	resultingCluster, _, err := client.Clusters.Update(ctx, oldPlan.Project.ID, existingCluster.Name, newPlan.Cluster)
 	if err != nil {
 		b.logger.Errorw("Failed to update Atlas cluster", "error", err, "new_cluster", newPlan.Cluster)
-		err = atlasToAPIError(err)
+		return
+	}
+
+	oldPlan.Cluster = resultingCluster
+	s := domain.GetInstanceDetailsSpec{
+		PlanID:       details.PlanID,
+		ServiceID:    details.ServiceID,
+		DashboardURL: b.GetDashboardURL(oldPlan.Project.ID, oldPlan.Cluster.Name),
+		Parameters: bson.M{
+			"plan": *oldPlan,
+		},
+	}
+
+	err = b.stateStorage.Update(ctx, instanceID, &s)
+	if err != nil {
 		return
 	}
 
@@ -229,7 +241,6 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	_, err = client.Clusters.Delete(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		b.logger.Errorw("Failed to delete Atlas cluster", "error", err, "instance_id", instanceID)
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -276,7 +287,6 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	cluster, r, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil && r.StatusCode != http.StatusNotFound {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
-		err = atlasToAPIError(err)
 		return
 	}
 

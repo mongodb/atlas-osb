@@ -10,6 +10,7 @@ import (
 type StateStorage interface {
 	Put(ctx context.Context, key string, value *domain.GetInstanceDetailsSpec) error
 	Get(ctx context.Context, key string) (*domain.GetInstanceDetailsSpec, error)
+	Update(ctx context.Context, key string, value *domain.GetInstanceDetailsSpec) error
 	Delete(ctx context.Context, key string) error
 }
 
@@ -31,6 +32,14 @@ func (m mongoStorage) Put(ctx context.Context, key string, value *domain.GetInst
 		Database("atlas-broker").
 		Collection("instances").
 		InsertOne(ctx, mongoData{ID: key, Value: value})
+	return err
+}
+
+func (m mongoStorage) Update(ctx context.Context, key string, value *domain.GetInstanceDetailsSpec) error {
+	_, err := m.client.
+		Database("atlas-broker").
+		Collection("instances").
+		UpdateOne(ctx, mongoData{ID: key}, mongoData{ID: key, Value: value})
 	return err
 }
 

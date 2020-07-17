@@ -33,7 +33,7 @@ func TestBind(t *testing.T) {
 	assert.NotEmpty(t, user.Password, "Expected password to have been genereated")
 
 	expectedRoles := []atlas.Role{
-		atlas.Role{
+		{
 			Name:         "readWriteAnyDatabase",
 			DatabaseName: "admin",
 		},
@@ -77,7 +77,7 @@ func TestBindParams(t *testing.T) {
 	assert.Equal(t, "NONE", user.LDAPAuthType)
 
 	expectedRoles := []atlas.Role{
-		atlas.Role{
+		{
 			Name:           "role",
 			DatabaseName:   "database",
 			CollectionName: "collection",

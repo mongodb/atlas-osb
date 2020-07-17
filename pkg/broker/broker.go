@@ -200,24 +200,3 @@ func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
 	apiUrl.Path = fmt.Sprintf("/v2/%s", groupID)
 	return apiUrl.String() + fmt.Sprintf("#clusters/detail/%s", clusterName)
 }
-
-// TODO: do something about this!
-// atlasToAPIError converts an Atlas error to a OSB response error.
-func atlasToAPIError(err error) error {
-	// switch err {
-	// case atlas.ErrClusterNotFound:
-	// 	return apiresponses.ErrInstanceDoesNotExist
-	// case atlas.ErrClusterAlreadyExists:
-	// 	return apiresponses.ErrInstanceAlreadyExists
-	// case atlas.ErrUserAlreadyExists:
-	// 	return apiresponses.ErrBindingAlreadyExists
-	// case atlas.ErrUserNotFound:
-	// 	return apiresponses.ErrBindingDoesNotExist
-	// case atlas.ErrUnauthorized:
-	// 	return apiresponses.NewFailureResponse(err, http.StatusUnauthorized, "")
-	// }
-
-	// Fall back on returning the error again if no others match.
-	// Will result in a 500 Internal Server Error.
-	return err
-}
