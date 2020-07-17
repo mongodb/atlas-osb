@@ -162,6 +162,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	planContext := dynamicplans.Context{
 		"instance_id": instanceID,
 	}
+
 	if len(details.RawParameters) > 0 {
 		err = json.Unmarshal(details.RawParameters, &planContext)
 		if err != nil {
@@ -176,6 +177,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}
 	}
 
+	b.logger.Infow("Update() planContext merged with details.parameters&context",  "planContext", planContext)
 	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
 	if err != nil {
 		return
@@ -211,12 +213,12 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		err = atlasToAPIError(err)
 		return
 	}
-
 	// Construct a cluster from the instance ID, service, plan, and params.
 	cluster, err := b.clusterFromParams(instanceID, details.ServiceID, details.PlanID, planContext)
 	if err != nil {
 		return
 	}
+	b.logger.Infow("Update() back clusterFromParams",  "cluster", cluster)
 
 	// Make sure the cluster provider has all the neccessary params for the
 	// Atlas API. The Atlas API requires both the provider name and instance
@@ -406,6 +408,7 @@ func (b Broker) clusterFromParams(instanceID string, serviceID string, planID st
 
 	out, _ := json.Marshal(planContext)
 	_ = json.Unmarshal(out, &context)
+
 
 	// If the plan ID is specified we construct the provider object from the service and plan.
 	// The plan ID is optional during updates but not during creation.
