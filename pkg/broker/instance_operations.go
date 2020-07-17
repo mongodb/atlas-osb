@@ -204,6 +204,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		},
 	}
 
+	// TODO: make this error-out reversible?
 	err = b.stateStorage.Update(ctx, instanceID, &s)
 	if err != nil {
 		return
@@ -242,6 +243,13 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	if err != nil {
 		b.logger.Errorw("Failed to delete Atlas cluster", "error", err, "instance_id", instanceID)
 		return
+	}
+
+	for _, u := range p.DatabaseUsers {
+		_, err = client.DatabaseUsers.Delete(ctx, u.DatabaseName, p.Project.ID, u.Username)
+		if err != nil {
+			b.logger.Errorw("failed to delete Database user", "error", err, "username", u.Username)
+		}
 	}
 
 	b.logger.Infow("Successfully started Atlas cluster deletion process", "instance_id", instanceID)
@@ -315,7 +323,20 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		if r.StatusCode == http.StatusNotFound || cluster.StateName == "DELETED" {
 			state = domain.Succeeded
 			// TODO: change this?
-			_ = b.stateStorage.Delete(ctx, instanceID)
+			err = b.stateStorage.Delete(ctx, instanceID)
+			if err != nil {
+				b.logger.Errorw("Cannot delete instance from state - broken state storage?", "error", err)
+			}
+			_, err = client.Projects.Delete(ctx, p.Project.ID)
+			if err != nil {
+				b.logger.Errorw(
+					"Cannot delete Atlas Project",
+					"error", err,
+					"projectID", p.Project.ID,
+					"projectName", p.Project.Name,
+				)
+				state = domain.Failed
+			}
 		} else if cluster.StateName == "DELETING" {
 			state = domain.InProgress
 		}
