@@ -7,6 +7,25 @@ on: [push]
 name: Prepare CF. Base scenario.
 
 jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v1
+        with:
+          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
+          version: v1.28
+
+          # Optional: working directory, useful for monorepos
+          # working-directory: 
+
+          # Optional: golangci-lint command line arguments.
+          # args: -issues-exit-code=0
+
+          # Optional: show only new issues if it's a pull request. The default value is `false`.
+          # only-new-issues: true
   basic-plan-cloudfoundry:
     name: basic-plan-cloudfoundry 
     runs-on: ubuntu-latest
