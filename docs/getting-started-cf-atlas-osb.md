@@ -171,6 +171,28 @@ cf app hello-atlas-cf | grep routes | cut -d: -f2 | xargs -I {} google-chrome "{
 
 Note - do not put quotes around the true/value.
 
+### Updateing a cluster
+
+First - note not all possible updates are supported at this time.
+
+In general, to update a plan instance:
+
+```
+ cf create-service -b dyno-ss mongodb-atlas-template basic-plan dyno-ss-4oh -c '{"org_id":"5ea0477597999053a5f9cbec", "cluster" :  { "mongoDBMajorVersion": "4.0" } }'
+
+Creating service instance dyno-ss-4oh in org atlas-broker-demo / space dynoss as admin...
+OK
+```
+
+The syntax for the -c json you send in create-service or update-service is processed in two ways:
+
+1. The document passed is parsed and matched into the template dot-variables, then the template is executed.
+2. The passed document treated as a partial plan-instance and then merged into the results from step 1.
+
+This allows service settings to be updated.
+
+TODO: Add flag in Plan's to enable this feature, default should be False.
+
 ### mongocli
 
 `mongocli` is a tool from MongoDB, https://github.com/mongodb/mongocli.

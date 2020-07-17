@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"encoding/json"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/goccy/go-yaml"
@@ -77,6 +78,15 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp dynamicp
 	if err = yaml.NewDecoder(raw).Decode(&dp); err != nil {
 		return
 	}
+
+    // Attempt to merge in any other values as plan instance data
+    pb, _ := json.Marshal(ctx)
+    err = json.Unmarshal(pb, &dp)
+    if err != nil {
+        b.logger.Errorw("Error trying to merge in planContext as plan instance","err",err)
+    } else {
+        b.logger.Infow("Merged final cluster:",  "dp.Cluster", dp.Cluster)
+    }
 
 	return dp, nil
 }
