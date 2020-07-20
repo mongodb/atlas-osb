@@ -1,4 +1,5 @@
 branch_name=$(echo $GITHUB_REF | awk -F'/' '{print $3}')
+branch_name=${branch_name:0:30} #service name max length is 50 symbols minus prefixes
 commit_id=$(git rev-parse --short HEAD)
 postfix=$branch_name-$commit_id
 
@@ -6,8 +7,8 @@ postfix=$branch_name-$commit_id
 ORG_NAME="atlas-test-$branch_name"
 SPACE_NAME=$commit_id
 BROKER=atlas-broker-$postfix
-BROKER_APP=atlas-osb-app-$postfix
+BROKER_APP=aosb-app-$postfix
 CREDHUB=credhub-$postfix
 TEST_SIMPLE_APP=simple-app-$postfix
 TEST_SPRING_APP=music-$postfix
-SERVICE_ATLAS=aws-atlas-test-instance-$postfix
+SERVICE_ATLAS=instance-$postfix
