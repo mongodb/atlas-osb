@@ -1,0 +1,15 @@
+name: 'Delete projects in Atlas'
+description: 'Deletes all clusters highter M0 and delete projects in the organization'
+inputs:
+  atlas_public_key:
+    description: "organization public key"
+    required: true
+  atlas_private_key:
+    description: "organization private key"
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.atlas_public_key }}
+    - ${{ inputs.atlas_private_key }}

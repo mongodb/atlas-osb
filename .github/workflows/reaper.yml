@@ -1,0 +1,18 @@
+# Destroy clusters from organization
+
+on:
+    workflow_dispatch:
+
+name: Cluster Reaper
+
+jobs:
+  reaper:
+    name: Destroy all clusters (except M0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: delete clusters and projects
+        uses: ./.github/actions/reaper
+        with:
+          public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}

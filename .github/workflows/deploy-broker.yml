@@ -7,6 +7,26 @@ on: [push]
 name: Prepare CF. Base scenario.
 
 jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v1
+        with:
+          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
+          version: v1.28
+
+          # Optional: working directory, useful for monorepos
+          # working-directory: 
+
+          # Optional: golangci-lint command line arguments.
+          # args: -issues-exit-code=0
+
+          # Optional: show only new issues if it's a pull request. The default value is `false`.
+          # only-new-issues: true
+          
   basic-plan-cloudfoundry:
     name: basic-plan-cloudfoundry 
     runs-on: ubuntu-latest
@@ -45,19 +65,19 @@ jobs:
 
           #for simple-app block (prepare-cf/entrypoint.sh)
           APP_URL=${APP_URL}/service/mongo/test3
-          status=$(curl -X PUT -d '{"data":"sometest130"}' ${APP_URL})
+          status=$(curl -s -X PUT -d '{"data":"sometest130"}' ${APP_URL})
           if [[ $status != "success" ]]; then
-             echo "Error: check application"
+             echo "Error: can't perform PUT request"
              exit 1
           fi
-          result=$(echo $(curl -X GET ${APP_URL}))
-          if [ "${result}" = '{"data":"sometest130"}' ]; then
+          result=$(echo $(curl -s -X GET ${APP_URL}))
+          if [ "${result}" == '{"data":"sometest130"}' ]; then
               echo "Application is working"
               echo "Cleaning data.."
               curl -X DELETE ${APP_URL}
           else
               echo "GET ${APP_URL} finished with result: ${result}"
-              echo "FAILED. Application doesn't work"
+              echo "FAILED. Application doesn't work. Can't get data from DB"
               exit 1
           fi
 
