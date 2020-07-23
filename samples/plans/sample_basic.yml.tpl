@@ -2,6 +2,9 @@ name: basic-plan
 description: This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection.
 free: true
 apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}
+settings:
+  overrideBindDB: "default"
+  overrideBindDBRole: "readWrite" 
 project:
   name: {{ .instance_name }}
   desc: Created from a template

@@ -56,7 +56,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return spec, fmt.Errorf("service ID %q not found in catalog", details.ServiceID)
 	}
 
-	_, ok = b.catalog.plans[details.PlanID]
+    _, ok = b.catalog.plans[details.PlanID]
 	if !ok {
 		return spec, fmt.Errorf("plan ID %q not found in catalog", details.PlanID)
 	}
@@ -66,6 +66,13 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return
 	}
 
+    // Grab the dynamic plan behind this, to check any overrides.
+
+	dp, err := b.parsePlan(nil, details.PlanID)
+    if err != nil {
+        return
+    }
+    b.logger.Infow("Found dyno plan for bind--->","dp",dp)
 	// Fetch the cluster from Atlas to ensure it exists.
 	cluster, _, err := client.Clusters.Get(ctx, gid, name)
 	if err != nil {
@@ -83,7 +90,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	}
 
 	// Construct a cluster definition from the instance ID, service, plan, and params.
-	user, err := userFromParams(bindingID, password, details.RawParameters,&b)
+	user, err := userFromParams(bindingID, password, details.RawParameters,&b, &dp)
 	if err != nil {
 		b.logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
 		return
@@ -195,7 +202,7 @@ func generatePassword() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func userFromParams(bindingID string, password string, rawParams []byte, broker *Broker) (*mongodbatlas.DatabaseUser, error) {
+func userFromParams(bindingID string, password string, rawParams []byte, broker *Broker, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
 		User *mongodbatlas.DatabaseUser `json:"user"`
@@ -218,6 +225,30 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
         params.User.DatabaseName = "admin"
     }
     broker.logger.Infow("userFromParams",params,"params")
+
+
+    // See if any default binding roles for this user
+	//c := broker.client.Database("atlas-broker").Collection("instances")
+	//s := serviceInstance{}
+
+    //err := c.FindOne(context.Background(), bson.M{"id": instanceID}).Decode(&s)
+	//if err != nil {
+	//	return nil, err
+	//}
+    //broker.logger.Infow("---->> lookup instance",s,"s")
+    if plan.Settings != nil {
+        if overrideDBName, ok := plan.Settings[dynamicplans.BROKER_SETTING_OVERRIDE_BIND_DB]; ok {
+            overrideDBRole, ok := plan.Settings[dynamicplans.BROKER_SETTING_OVERRIDE_BIND_DB_ROLE]
+            if !ok {
+                overrideDBRole = "readWrite"
+            }
+            overrideRole := mongodbatlas.Role{
+                DatabaseName: overrideDBName,
+                RoleName: overrideDBRole,
+            }
+            params.User.Roles = append(params.User.Roles, overrideRole)
+        }
+    }
 	// If no role is specified we default to read/write on any database.
 	// This is the default role when creating a user through the Atlas UI.
 	if len(params.User.Roles) == 0 {
@@ -228,6 +259,7 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 			},
 		}
 	}
+
 
 	return params.User, nil
 }

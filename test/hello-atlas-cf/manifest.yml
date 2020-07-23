@@ -1,8 +1,8 @@
 ---
 applications:
 - name: hello-atlas-cf 
-  memory: 128MB
-  disk_quota: 256MB
+  #memory: 128MB
+  #disk_quota: 256MB
   random-route: true
   buildpack: python_buildpack
   command: python hello-atlas-cf.py
