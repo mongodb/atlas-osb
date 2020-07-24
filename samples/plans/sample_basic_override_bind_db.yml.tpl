@@ -1,5 +1,5 @@
-name: basic-plan
-description: This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection.
+name: override-bind-db-plan
+description: This is an extension of the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection. But it added the ability to override the bind db.
 free: true
 apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}
 settings:
