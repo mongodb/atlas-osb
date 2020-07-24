@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+    "time"
 	"net/http"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
@@ -281,11 +282,28 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	}
 
 	b.logger.Infow("Successfully started Atlas cluster deletion process", "instance_id", instanceID)
+    go b.CleanupPlan(context.Background(), client, gid)
 
 	return domain.DeprovisionServiceSpec{
 		IsAsync:       true,
 		OperationData: OperationDeprovision,
 	}, nil
+}
+
+// Keep trying for awhile to delete the project
+// need to wait until the cluster is cleaned up.
+func (b Broker) CleanupPlan(ctx context.Context, client *mongodbatlas.Client, groupID string) (error) {
+	b.logger.Infow("Plan cleanup started, pausing for cluster cleanup", "groupID", groupID)
+    time.Sleep(30 * time.Second)
+    res, err := client.Projects.Delete(ctx, groupID)
+    if err != nil {
+        b.logger.Errorw("Plan cleanup error. Will try again...","err",err)
+        go b.CleanupPlan(ctx, client, groupID)
+    } else {
+        b.logger.Infow("Plan cleanup complete.","res",res)
+        return nil
+    }
+    return nil
 }
 
 // GetInstance is currently not supported as specified by the
