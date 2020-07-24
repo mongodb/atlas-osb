@@ -19,8 +19,6 @@ import (
 
 const (
 	name              = "atlas-service-broker"
-	basicAuthUsername = "username"
-	basicAuthPassword = "password"
 )
 
 var (
