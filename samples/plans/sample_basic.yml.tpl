@@ -3,7 +3,7 @@ description: This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuse
 free: true
 apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}
 settings:
-  overrideBindDB: "default"
+  overrideBindDB: "OriginalMongoDBTileForPCFDBName"
   overrideBindDBRole: "readWrite" 
 project:
   name: {{ .instance_name }}

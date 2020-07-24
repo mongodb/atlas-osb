@@ -352,6 +352,38 @@ The format for the JSON available for binding in `VCAP_SERVICES` is:
 
 Please see the [test/hello-atlas-cf](test/hello-atlas-cf) sample app to see details on the binding information available to apps.
 
+#### Overriding the database for all bindings
+
+Certain customers may wish to control the exact name of the database to which apps using Atlas services can use. This is controlled by inserting the database name into the connection string (as the last forward-slash piece before the query string) which is constructed during a call to the brokers Bind function.
+
+In general, we do not recommend using this feature. However it will be released as "Deprecated" in the Beta release for the broker. Customers are encouraged to refactor their dependencies on fixing this database name.
+
+##### How to fix the name of the database used for all connection string for a given plan
+
+1. There are some new fields to the `Plan` type. For each plan you wish to fix the database name, edit the plan template and the settings section appropriately:
+
+```yaml
+name: basic-plan
+description: This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection.
+free: true
+apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}
+settings:
+  overrideBindDB: "SomeFixedDatabaseName"
+  overrideBindDBRole: "readWrite"
+project:
+  name: {{ .instance_name }}
+  desc: Created from a template
+  orgId: {{ .org_id }}
+...
+```
+
+Note - both settings for DB and DBRole are required. This is functionality works *exactly* the same way as documented in the [binding section of the getting started guide](./getting-started-cf-atlas-osb.md#getting-started-cf-atlas-osb.md#how-to-bind-db)
+
+How to bind and connect to a specific database)
+
+Any settings passed along as `-c` params will override this setting. 
+
+
 _*FUTURE SPRINT PROPOSAL*_
 
 The binding feature will be enchanced to support different connection string format.

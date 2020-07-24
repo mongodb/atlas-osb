@@ -224,18 +224,8 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
     if len(params.User.DatabaseName) == 0 {
         params.User.DatabaseName = "admin"
     }
-    broker.logger.Infow("userFromParams",params,"params")
 
 
-    // See if any default binding roles for this user
-	//c := broker.client.Database("atlas-broker").Collection("instances")
-	//s := serviceInstance{}
-
-    //err := c.FindOne(context.Background(), bson.M{"id": instanceID}).Decode(&s)
-	//if err != nil {
-	//	return nil, err
-	//}
-    //broker.logger.Infow("---->> lookup instance",s,"s")
     if plan.Settings != nil {
         if overrideDBName, ok := plan.Settings[dynamicplans.BROKER_SETTING_OVERRIDE_BIND_DB]; ok {
             overrideDBRole, ok := plan.Settings[dynamicplans.BROKER_SETTING_OVERRIDE_BIND_DB_ROLE]
@@ -246,6 +236,7 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
                 DatabaseName: overrideDBName,
                 RoleName: overrideDBRole,
             }
+            broker.logger.Infow("OVERRIDE BIND DB SETTINGS - (this feature is deprecated)",overrideRole,"overrideRole")
             params.User.Roles = append(params.User.Roles, overrideRole)
         }
     }
