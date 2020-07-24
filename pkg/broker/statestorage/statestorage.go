@@ -3,6 +3,8 @@ package statestorage
 import (
 	"context"
 	"fmt"
+    "log"
+    "errors"
 	"net/http"
     "net/url"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
@@ -10,6 +12,101 @@ import (
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"go.uber.org/zap"
 )
+
+const (
+    BROKER_MAINENTANCE_PROJECT_NAME = "Atlas Service Broker Mainentance"
+    BROKER_REALM_STATE_APP_NAME = "broker-state"
+)
+
+
+type RealmStateStorage struct {
+	OrgID       string                 `json:"orgId,omitempty"`
+	Client      *mongodbatlas.Client   
+    RealmApp    *mongodbatlas.RealmApp
+    RealmProject  *mongodbatlas.Project
+}
+
+func GetRealmStateStorage(orgID string, client *mongodbatlas.Client) (*RealmStateStorage, error) {
+    if len(orgID) == 0 {
+        return nil, errors.New("orgID must be set")
+    }
+    if client == nil {
+        return nil, errors.New("client must be set")
+    }
+
+    // Get or create a RealmApp for this orgID -
+    // Each Organization using the broker will have 1 special 
+    // Atlas Group - called "Atlas Service Broker"
+    //
+    mainPrj, err := getOrCreateBrokerMaintentaceGroup(orgID, client)
+    if err != nil {
+        log.Fatalf(err.Error())
+        return nil, err
+    }
+    realmApp, err := getOrCreateRealmAppForOrg(mainPrj.ID, client)
+    rss := &RealmStateStorage{
+        OrgID: orgID,
+        Client: client,
+        RealmApp: realmApp,
+        RealmProject: mainPrj,
+    }
+    return rss, nil
+}
+
+func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client) (*mongodbatlas.Project, error) {
+    p := BROKER_MAINENTANCE_PROJECT_NAME
+    project, _, err := client.Projects.GetOneProjectByName(context.Background(), p)
+    if err != nil {
+        log.Printf("getOrCreateBrokerMaintentaceGroup err:%+v",err)
+        prj := mongodbatlas.Project{
+            Name: p,
+            OrgID: orgID,
+        }
+        project, _, err = client.Projects.Create(context.Background(), &prj)
+        if err != nil {
+            return nil, err
+        }
+    }
+    return project, nil
+}
+func getOrCreateRealmAppForOrg(groupID string, client *mongodbatlas.Client) (*mongodbatlas.RealmApp, error) {
+    app := mongodbatlas.RealmAppInput{
+        Name: BROKER_REALM_STATE_APP_NAME,
+        ClientAppID: "atlas-osb",
+        Location: "to-do-can-we-get-cf-space-info",
+    }
+
+    realmApp, _, err := client.RealmApps.Get(context.Background(), groupID, app.Name)
+    if err != nil {
+        log.Printf("Error fetching maintenance realm app: %+v",err)
+        log.Printf("Attempt create app: %+v",app)
+        realmApp, _, err := client.RealmApps.Create(context.Background(), groupID, &app)  
+        if err != nil {
+            log.Fatalf(err.Error())
+            return nil, err
+        }
+        log.Printf("Created realm app: %+v",realmApp)
+        return nil, err
+    } else {
+        log.Printf("Found existing realm app: %+v",realmApp)
+    }
+    return realmApp, nil
+}
+
+func (ss *RealmStateStorage) Put(key string, value map[string]interface{}) (*mongodbatlas.RealmValue, error) {
+    val := &mongodbatlas.RealmValue{
+        Name: key,
+        Value: value,
+    }
+    v, _, err := ss.Client.RealmValues.Create(context.Background(),ss.RealmProject.ID,ss.RealmApp.ID, val)
+    return v, err
+}
+
+func (ss *RealmStateStorage) Get(key string) (*mongodbatlas.RealmValue, error) {
+    v, _, err := ss.Client.RealmValues.Get(context.Background(),ss.RealmProject.ID,ss.RealmApp.ID, key)
+    return v, err
+}
+
 
 
 var defaultUser = &mongodbatlas.DatabaseUser{
