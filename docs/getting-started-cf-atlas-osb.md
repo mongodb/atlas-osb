@@ -149,7 +149,7 @@ Grab the route and load it up in your browser. You should see connection informa
 
 You can inspect more scenarios over in our Github [actions](/.github/actions) and [workflows](./github/workflows). 
 
-### How to bind and connect to a specific database
+### [How to bind and connect to a specific database](#how-to-bind-db)
 
 You need to override the role when creating the binding like this:
 

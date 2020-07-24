@@ -321,6 +321,8 @@ func createLogger(levelName string) (*zap.SugaredLogger, error) {
 
 	config := zap.NewProductionConfig()
 	config.Level = zap.NewAtomicLevelAt(level)
+    // https://github.com/uber-go/zap/issues/584
+    config.OutputPaths = []string{"stdout"}
 
 	logger, err := config.Build()
 	if err != nil {
