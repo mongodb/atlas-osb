@@ -213,7 +213,12 @@ func startBrokerServer() {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync() // Flushes buffer, if any
+	defer func() {
+        err := logger.Sync() // Flushes buffer, if any
+        if err != nil {
+            panic(err)
+        }
+    }()
 
 	b := createBroker(logger)
 

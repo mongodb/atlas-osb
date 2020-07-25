@@ -34,7 +34,10 @@ func digestParts(resp *http.Response) map[string]string {
 // getMD5 will calculate the MD5 hash of a string.
 func getMD5(text string) string {
 	hasher := md5.New()
-	hasher.Write([]byte(text))
+    _, err := hasher.Write([]byte(text))
+	if err != nil {
+		panic("Error during getMD5: " + err.Error())
+	}
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
