@@ -54,9 +54,9 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	}
 
 	if b.mode == DynamicPlans && gid == "" {
-		p := &mongodbatlas.Project{}
-		p, err = b.createResources(ctx, client, details.PlanID, planContext)
-		if err != nil {
+		//p := &mongodbatlas.Project{}
+        p, err2 := b.createResources(ctx, client, details.PlanID, planContext)
+		if err2 != nil {
 			return
 		}
 
@@ -100,7 +100,10 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 
 		defer func() {
 			if err != nil {
-				col.DeleteOne(ctx, s)
+                _, err = col.DeleteOne(ctx, s)
+                if err != nil {
+                    panic("Error during provision, broker maintenance: " + err.Error())
+                }
 			}
 		}()
 	}
@@ -283,6 +286,9 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 
 	b.logger.Infow("Successfully started Atlas cluster deletion process", "instance_id", instanceID)
     go b.CleanupPlan(context.Background(), client, gid)
+	//if err != nil {
+	//	b.logger.Errorw("Failed to clean up plan from Atlas", "error", err, "instance_id", instanceID)
+	//}
 
 	return domain.DeprovisionServiceSpec{
 		IsAsync:       true,
@@ -292,18 +298,18 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 
 // Keep trying for awhile to delete the project
 // need to wait until the cluster is cleaned up.
-func (b Broker) CleanupPlan(ctx context.Context, client *mongodbatlas.Client, groupID string) (error) {
+func (b Broker) CleanupPlan(ctx context.Context, client *mongodbatlas.Client, groupID string) {
 	b.logger.Infow("Plan cleanup started, pausing for cluster cleanup", "groupID", groupID)
     time.Sleep(30 * time.Second)
     res, err := client.Projects.Delete(ctx, groupID)
     if err != nil {
         b.logger.Errorw("Plan cleanup error. Will try again...","err",err)
         go b.CleanupPlan(ctx, client, groupID)
-    } else {
-        b.logger.Infow("Plan cleanup complete.","res",res)
-        return nil
-    }
-    return nil
+        //if err != nil {
+        //    b.logger.Errorw("Clean up plan error, check logs", "error", err, "groupID", groupID, "instance_id", instanceID)
+        //}
+    } 
+    b.logger.Infow("Plan cleanup complete.","res",res)
 }
 
 // GetInstance is currently not supported as specified by the
@@ -383,7 +389,10 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 			state = domain.Succeeded
 			if b.client != nil {
 				// TODO: change this?
-				b.client.Database("atlas-broker").Collection("instances").DeleteOne(ctx, bson.M{"id": instanceID})
+                _, err := b.client.Database("atlas-broker").Collection("instances").DeleteOne(ctx, bson.M{"id": instanceID})
+                if err != nil {
+                    b.logger.Errorw("Failed to clean up instance from maintenance store","err",err)
+                }
 			}
 		} else if cluster.StateName == "DELETING" {
 			state = domain.InProgress
