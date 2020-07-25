@@ -19,8 +19,6 @@ import (
 
 const (
 	name              = "atlas-service-broker"
-	basicAuthUsername = "username"
-	basicAuthPassword = "password"
 )
 
 var (
@@ -165,7 +163,7 @@ func registerBroker(namespace string) error {
 
 	// Create secret to hold the basic auth credentials for the broker.
 	// The broker expects Atlas API credentials as part of the basic auth.
-	kubeClient.CoreV1().Secrets(namespace).Create(&v1.Secret{
+	_, err := kubeClient.CoreV1().Secrets(namespace).Create(&v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: authSecretName,
 		},
@@ -174,12 +172,15 @@ func registerBroker(namespace string) error {
 			"password": []byte(password),
 		},
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	servicebroker := v1beta1.ServiceBroker{}
 	testutil.ReadInYAMLFileAndConvert("../../samples/kubernetes/service-broker.yaml", &servicebroker)
 	servicebroker.Spec.URL = fmt.Sprintf("http://%s.%s", "atlas-service-broker", namespace)
 
-	_, err := svcatClient.ServicecatalogV1beta1().ServiceBrokers(namespace).Create(&servicebroker)
+	_, err = svcatClient.ServicecatalogV1beta1().ServiceBrokers(namespace).Create(&servicebroker)
 
 	return err
 }

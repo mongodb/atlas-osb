@@ -36,9 +36,15 @@ func setupTest(t *testing.T, expectedPath string, method string, status int, res
 
 		if response != nil {
 			data, _ := json.Marshal(response)
-			rw.Write(data)
+			_, err := rw.Write(data)
+			if err != nil {
+				panic(err)
+			}
 		} else {
-			rw.Write([]byte{})
+			_, err := rw.Write([]byte{})
+			if err != nil {
+				panic(err)
+			}
 		}
 	}))
 

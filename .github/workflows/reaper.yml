@@ -10,7 +10,7 @@ jobs:
     name: Destroy all clusters (except M0)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2.3.1
       - name: delete clusters and projects
         uses: ./.github/actions/reaper
         with:
