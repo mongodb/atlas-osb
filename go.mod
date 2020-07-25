@@ -2,16 +2,16 @@ module github.com/mongodb/mongodb-atlas-service-broker
 
 go 1.11
 
-replace github.com/mongodb/go-client-mongodb-atlas => /home/jason/work/go-client-mongodb-atlas
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/Sectorbob/mlab-ns2 v0.0.0-20171030222938-d3aa0c295a8a
 	github.com/drewolson/testflight v1.0.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/go-test/deep v1.0.1
 	github.com/goccy/go-yaml v1.7.18
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/google/uuid v1.1.1
+	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/mux v1.7.3
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/kubernetes-incubator/service-catalog v0.2.1

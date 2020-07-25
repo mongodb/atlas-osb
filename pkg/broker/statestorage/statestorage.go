@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/mongodbrealm"
 	"go.uber.org/zap"
 )
 
@@ -22,16 +23,53 @@ const (
 type RealmStateStorage struct {
 	OrgID       string                 `json:"orgId,omitempty"`
 	Client      *mongodbatlas.Client   
-    RealmApp    *mongodbatlas.RealmApp
+    RealmClient *mongodbrealm.Client
+    RealmApp    *mongodbrealm.RealmApp
     RealmProject  *mongodbatlas.Project
 }
+func keyForOrg(key *mongodbatlas.APIKey, orgID string) (bool) {
+    for role := range key.Roles {
+        if key.Roles[role].OrgID == orgID {
+            return true
+        }
+    }
+    return false
+}
 
-func GetRealmStateStorage(orgID string, client *mongodbatlas.Client) (*RealmStateStorage, error) {
+func GetRealmStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.SugaredLogger, orgID string) (*RealmStateStorage, error) {
     if len(orgID) == 0 {
         return nil, errors.New("orgID must be set")
     }
-    if client == nil {
-        return nil, errors.New("client must be set")
+
+	if len(creds.Orgs)==0 {
+        return nil, fmt.Errorf("Cannot use OrgStateStorage without Org apikey")
+	}
+
+    var orgKey *mongodbatlas.APIKey
+
+    for k, v := range creds.Orgs {
+        if keyForOrg(&v.APIKey, orgID) {
+            orgKey = &v.APIKey
+		    logger.Infow("Using org key for realm storage", "k", k)
+        }
+    }
+
+	if orgKey==nil {
+		return nil, fmt.Errorf("Not able to find orgID=%s in credentials", orgID)
+	}
+
+    hc, err := digest.NewTransport(orgKey.PublicKey, orgKey.PrivateKey).Client()
+    if err != nil {
+        return nil, err
+    }
+
+    client, err := mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
+    if err != nil {
+        return nil, err
+    }
+    realmClient, err := mongodbrealm.New(hc, mongodbrealm.SetBaseURL(baseURL))
+    if err != nil {
+        return nil, err
     }
 
     // Get or create a RealmApp for this orgID -
@@ -43,10 +81,11 @@ func GetRealmStateStorage(orgID string, client *mongodbatlas.Client) (*RealmStat
         log.Fatalf(err.Error())
         return nil, err
     }
-    realmApp, err := getOrCreateRealmAppForOrg(mainPrj.ID, client)
+    realmApp, err := getOrCreateRealmAppForOrg(mainPrj.ID, realmClient)
     rss := &RealmStateStorage{
         OrgID: orgID,
         Client: client,
+        RealmClient: realmClient,
         RealmApp: realmApp,
         RealmProject: mainPrj,
     }
@@ -69,18 +108,18 @@ func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client
     }
     return project, nil
 }
-func getOrCreateRealmAppForOrg(groupID string, client *mongodbatlas.Client) (*mongodbatlas.RealmApp, error) {
-    app := mongodbatlas.RealmAppInput{
+func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client) (*mongodbrealm.RealmApp, error) {
+    app := mongodbrealm.RealmAppInput{
         Name: BROKER_REALM_STATE_APP_NAME,
         ClientAppID: "atlas-osb",
         Location: "to-do-can-we-get-cf-space-info",
     }
 
-    realmApp, _, err := client.RealmApps.Get(context.Background(), groupID, app.Name)
+    realmApp, _, err := realmClient.RealmApps.Get(context.Background(), groupID, app.Name)
     if err != nil {
         log.Printf("Error fetching maintenance realm app: %+v",err)
         log.Printf("Attempt create app: %+v",app)
-        realmApp, _, err := client.RealmApps.Create(context.Background(), groupID, &app)  
+        realmApp, _, err := realmClient.RealmApps.Create(context.Background(), groupID, &app)  
         if err != nil {
             log.Fatalf(err.Error())
             return nil, err
@@ -93,17 +132,17 @@ func getOrCreateRealmAppForOrg(groupID string, client *mongodbatlas.Client) (*mo
     return realmApp, nil
 }
 
-func (ss *RealmStateStorage) Put(key string, value map[string]interface{}) (*mongodbatlas.RealmValue, error) {
-    val := &mongodbatlas.RealmValue{
+func (ss *RealmStateStorage) Put(key string, value map[string]interface{}) (*mongodbrealm.RealmValue, error) {
+    val := &mongodbrealm.RealmValue{
         Name: key,
         Value: value,
     }
-    v, _, err := ss.Client.RealmValues.Create(context.Background(),ss.RealmProject.ID,ss.RealmApp.ID, val)
+    v, _, err := ss.RealmClient.RealmValues.Create(context.Background(),ss.RealmProject.ID,ss.RealmApp.ID, val)
     return v, err
 }
 
-func (ss *RealmStateStorage) Get(key string) (*mongodbatlas.RealmValue, error) {
-    v, _, err := ss.Client.RealmValues.Get(context.Background(),ss.RealmProject.ID,ss.RealmApp.ID, key)
+func (ss *RealmStateStorage) Get(key string) (*mongodbrealm.RealmValue, error) {
+    v, _, err := ss.RealmClient.RealmValues.Get(context.Background(),ss.RealmProject.ID,ss.RealmApp.ID, key)
     return v, err
 }
 
