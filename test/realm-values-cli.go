@@ -114,7 +114,7 @@ func main() {
                 v, _ := json.Marshal(value)
                 fmt.Println(string(v))
             } else {
-                log.Printf(fmt.Sprintf("Found key %s but no value, attempt get value with _id=%s",key,key))
+                log.Printf("Found key %s but no value, attempt get value with _id=%s",key,key)
                 value, _, err := atlasclient.RealmValues.Get(context.Background(),groupID,appID,key)
                 if err != nil {
                     log.Fatalf(err.Error())
@@ -154,6 +154,9 @@ func main() {
                 log.Fatalf("create-app set but no --value")
             }
             appInput,err := atlasclient.RealmAppInputFromString(value)
+            if err != nil {
+                log.Fatalf(err.Error())
+            }
             log.Printf("Attempt create appInput: %+v",appInput)
             app, _, err := atlasclient.RealmApps.Create(context.Background(), groupID, appInput)  
             if err != nil {

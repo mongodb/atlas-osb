@@ -58,9 +58,9 @@ type RealmValue struct {
 
 
 // realmValuesResponse is the response from the RealmValuesService.List.
-type realmValuesResponse struct {
-        Apps []RealmValue  
-}
+//type realmValuesResponse struct {
+//        Apps []RealmValue  
+//}
 
 func (s *RealmValuesServiceOp) AddRealmAuthToRequest(ctx context.Context,request *http.Request) (error) {
 
@@ -112,7 +112,11 @@ func (s *RealmValuesServiceOp) List(ctx context.Context, groupID string, appID s
             return nil, nil, err
     }
     
-    s.AddRealmAuthToRequest(ctx,req)
+    err = s.AddRealmAuthToRequest(ctx,req)
+    if err != nil {
+            return nil, nil, err
+    }
+
     //log.Printf("REALM - check token in header %v", req.Header)
     
     //log.Printf("values List path=%+v",path)
@@ -148,7 +152,11 @@ func (s *RealmValuesServiceOp) Get(ctx context.Context, groupID string, appID st
                 return nil, nil, err
         }
 
-        s.AddRealmAuthToRequest(ctx,req)
+        err = s.AddRealmAuthToRequest(ctx,req)
+        if err != nil {
+                return nil, nil, err
+        }
+
         root := new(RealmValue)
         resp, err := s.Client.Do(ctx, req, root)
         if err != nil {
@@ -174,7 +182,10 @@ func (s *RealmValuesServiceOp) Create(ctx context.Context, groupID string, appID
                 return nil, nil, err
         }
 
-        s.AddRealmAuthToRequest(ctx,req)
+        err = s.AddRealmAuthToRequest(ctx,req)
+        if err != nil {
+                return nil, nil, err
+        }
         root := new(RealmValue)
         resp, err := s.Client.Do(ctx, req, root)
         if err != nil {
@@ -202,7 +213,10 @@ func (s *RealmValuesServiceOp) Update(ctx context.Context, groupID string, appID
                 return nil, nil, err
         }
 
-        s.AddRealmAuthToRequest(ctx,req)
+        err = s.AddRealmAuthToRequest(ctx,req)
+        if err != nil {
+                return nil, nil, err
+        }
         root := new(RealmValue)
         resp, err := s.Client.Do(ctx, req, root)
         if err != nil {
@@ -230,7 +244,10 @@ func (s *RealmValuesServiceOp) Delete(ctx context.Context, groupID, appID string
                 return nil, err
         }
 
-        s.AddRealmAuthToRequest(ctx,req)
+        err = s.AddRealmAuthToRequest(ctx,req)
+        if err != nil {
+                return nil, err
+        }
         resp, err := s.Client.Do(ctx, req, nil)
 
         return resp, err

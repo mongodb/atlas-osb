@@ -82,9 +82,9 @@ type RealmApp struct {
 }
 
 // realmAppsResponse is the response from the RealmAppsService.List.
-type realmAppsResponse struct {
-	Apps []RealmApp  
-}
+//type realmAppsResponse struct {
+//	Apps []RealmApp  
+//}
 
 var currentRealmAuth *RealmAuth
 var currentRealmAtlasApiKey *RealmAtlasApiKey
@@ -143,7 +143,10 @@ func (s *RealmAppsServiceOp) List(ctx context.Context, groupID string, listOptio
 		return nil, nil, err
 	}
     
-    s.AddRealmAuthToRequest(ctx,req)
+    err = s.AddRealmAuthToRequest(ctx,req)
+	if err != nil {
+		return nil, nil, err
+	}
     log.Printf("REALM - check token in header %v", req.Header)
     
     //root := new(realmAppsResponse)
@@ -176,7 +179,10 @@ func (s *RealmAppsServiceOp) Get(ctx context.Context, groupID string, appID stri
 		return nil, nil, err
 	}
 
-    s.AddRealmAuthToRequest(ctx,req)
+    err = s.AddRealmAuthToRequest(ctx,req)
+	if err != nil {
+		return nil, nil, err
+	}
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
 	if err != nil {
@@ -202,7 +208,10 @@ func (s *RealmAppsServiceOp) Create(ctx context.Context, groupID string, createR
 		return nil, nil, err
 	}
 
-    s.AddRealmAuthToRequest(ctx,req)
+    err = s.AddRealmAuthToRequest(ctx,req)
+	if err != nil {
+		return nil, nil, err
+	}
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
 	if err != nil {
@@ -230,7 +239,10 @@ func (s *RealmAppsServiceOp) Update(ctx context.Context, groupID, appID string, 
 		return nil, nil, err
 	}
 
-    s.AddRealmAuthToRequest(ctx,req)
+    err = s.AddRealmAuthToRequest(ctx,req)
+	if err != nil {
+		return nil, nil, err
+	}
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
 	if err != nil {
@@ -258,7 +270,10 @@ func (s *RealmAppsServiceOp) Delete(ctx context.Context, groupID, appID string) 
 		return nil, err
 	}
 
-    s.AddRealmAuthToRequest(ctx,req)
+    err = s.AddRealmAuthToRequest(ctx,req)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := s.Client.Do(ctx, req, nil)
 
 	return resp, err

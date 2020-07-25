@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -98,12 +97,6 @@ type ErrorResponse struct {
 	Detail string `json:"detail,omitempty"`
 }
 
-func (resp *Response) getCurrentPageLink() (*mongodbatlas.Link, error) {
-	if link := resp.getLinkByRef("self"); link != nil {
-		return link, nil
-	}
-	return nil, errors.New("no self link found")
-}
 
 func (resp *Response) getLinkByRef(ref string) *mongodbatlas.Link {
 	for i := range resp.Links {

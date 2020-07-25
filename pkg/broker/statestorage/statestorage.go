@@ -82,6 +82,10 @@ func GetRealmStateStorage(creds *credentials.Credentials, baseURL string,logger 
         return nil, err
     }
     realmApp, err := getOrCreateRealmAppForOrg(mainPrj.ID, realmClient)
+    if err != nil {
+        log.Fatalf(err.Error())
+        return nil, err
+    }
     rss := &RealmStateStorage{
         OrgID: orgID,
         Client: client,
@@ -183,14 +187,14 @@ func GetOrgStateStorage(creds *credentials.Credentials, baseURL string,logger *z
     // this project will have a known fixed-format name.
     // such as, "atlas-osb"
     projectName := "atlas-osb"
-    fmt.Sprintf("atlas-osb-%s",okey)
+    logger.Infof("atlas-osb-%s",okey)
     project, r, err := client.Projects.GetOneProjectByName(context.Background(), projectName)
 	if err != nil && (r.StatusCode == http.StatusNotFound || r.StatusCode ==http.StatusUnauthorized) {
 		logger.Infow("statestorage project not found, attempt create", "error", err, "projectName", projectName)
 		project = &mongodbatlas.Project{}
         project.Name = projectName
         project.OrgID = creds.Orgs[okey].Roles[0].OrgID
-        project, r, err = client.Projects.Create(context.Background(), project)
+        project, _, err = client.Projects.Create(context.Background(), project)
 		logger.Infow("statestorage project created","project", project)
 	}
     if err != nil {
@@ -198,7 +202,7 @@ func GetOrgStateStorage(creds *credentials.Credentials, baseURL string,logger *z
     }
 
     clusterName := "statestorage"
-    cluster, r, err := client.Clusters.Get(context.Background(), project.ID, clusterName)
+    cluster, _, err := client.Clusters.Get(context.Background(), project.ID, clusterName)
 	if err != nil && r.StatusCode == http.StatusNotFound {
 		logger.Errorw("Failed to get statestorage cluster", "error", err, "clusterName", clusterName)
         // We can add broker config to allow override for these settings.
@@ -211,7 +215,7 @@ func GetOrgStateStorage(creds *credentials.Credentials, baseURL string,logger *z
                 RegionName:       "US_EAST_1",
                 },
         }
-	    cluster, r, err = client.Clusters.Create(context.Background(), project.ID, cluster)
+	    cluster, _, err = client.Clusters.Create(context.Background(), project.ID, cluster)
         if err != nil {
             return nil, "", err
         }
@@ -224,7 +228,6 @@ func GetOrgStateStorage(creds *credentials.Credentials, baseURL string,logger *z
         if err != nil {
             return nil, "", err
         }
-        err = nil 
         logger.Infow("statestorage cluster created: default","user", user)
 
     }
