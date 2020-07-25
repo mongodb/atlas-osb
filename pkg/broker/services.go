@@ -140,7 +140,7 @@ func (b *Broker) buildServiceTemplate() (service domain.Service) {
 	return domain.Service{
 		ID:                   serviceIDForProvider("template"),
 		Name:                 "mongodb-atlas-template",
-		Description:          fmt.Sprintf(`MonogoDB Atlas Plan Template Deployments`),
+		Description:          "MonogoDB Atlas Plan Template Deployments",
 		Bindable:             true,
 		InstancesRetrievable: true,
 		BindingsRetrievable:  false,

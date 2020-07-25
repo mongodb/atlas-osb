@@ -11,7 +11,7 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.1
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v1
         with:
@@ -31,7 +31,7 @@ jobs:
     name: basic-plan-cloudfoundry 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2.3.1
       
       - name: Create CF org, space, broker, service and push app)
         id: prepare
