@@ -1,6 +1,7 @@
 package broker
 
 import (
+    "os"
 	"bytes"
 	"context"
 	"fmt"
@@ -68,6 +69,7 @@ func (b *Broker) buildCatalog() error {
 
 		for _, p := range svc.Plans {
 			b.catalog.plans[p.ID] = p
+
 		}
 
 		b.catalog.providers[svc.ID] = atlasprivate.Provider{Name: "template"}
@@ -139,7 +141,7 @@ func (b *Broker) buildService(provider *atlasprivate.Provider) (service domain.S
 func (b *Broker) buildServiceTemplate() (service domain.Service) {
 	return domain.Service{
 		ID:                   serviceIDForProvider("template"),
-		Name:                 "mongodb-atlas-template",
+        Name:                 getEnvOrDefault("BROKER_OSB_SERVICE_NAME", "atlas"),
 		Description:          "MonogoDB Atlas Plan Template Deployments",
 		Bindable:             true,
 		InstancesRetrievable: true,
@@ -314,3 +316,15 @@ func planIDForInstanceSize(providerName string, instanceSize atlasprivate.Instan
 func planIDForDynamicPlan(providerName string, planName string) string {
 	return fmt.Sprintf("%s-plan-%s-%s", idPrefix, strings.ToLower(providerName), strings.ToLower(planName))
 }
+
+// getEnvOrDefault will try getting an environment variable and return a default
+// value in case it doesn't exist.
+func getEnvOrDefault(name string, def string) string {
+	value, exists := os.LookupEnv(name)
+	if !exists {
+		return def
+	}
+
+	return value
+}
+
