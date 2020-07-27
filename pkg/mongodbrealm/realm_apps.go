@@ -116,7 +116,7 @@ func (s *RealmAppsServiceOp) AddRealmAuthToRequest(ctx context.Context,request *
 		return err
 	}
 
-	log.Printf("REALM AUTH root: %v", root)
+	//log.Printf("REALM AUTH root: %v", root)
     currentRealmAuth = root
     token := fmt.Sprintf("Bearer %s", currentRealmAuth.AccessToken)
 	//log.Printf("REALM AUTH token: %s", token)

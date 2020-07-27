@@ -47,8 +47,6 @@ type RealmValuesServiceOp service
 
 var _ RealmValuesService = &RealmValuesServiceOp{}
 
-
-// RealmValuesInput represents MongoDB API key input request for Create.
 type RealmValue struct {
     ID          string                      `json:"_id,omitempty"`
     Name        string                      `json:"name,omitempty"`

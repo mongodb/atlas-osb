@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"net/http"
@@ -14,8 +13,6 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -108,14 +105,19 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	return nil
 }
 
-func tryGetStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.SugaredLogger) string {
+func tryGetStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.SugaredLogger, orgID string) (*statestorage.RealmStateStorage, error) {
     logger.Info("tryGetStateStorage")
-    cluster, cs, err := statestorage.GetOrgStateStorage(creds, baseURL, logger)
-    logger.Infow("GetOrgStateStorage","cluster",cluster,"cs",cs,"err",err)
-    return cs
+    ss, err := statestorage.GetStateStorage(creds, baseURL, logger, orgID)
+    logger.Info("foofoo")
+    if err != nil {
+        logger.Errorw("Failed to get statestorage","err",err)
+        return nil, err
+    }
+    logger.Infow("GetOrgStateStorage","ss.RealmApp",ss.RealmApp)
+    return ss, nil
 }
 
-func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.Mode, creds *credentials.Credentials, client *mongo.Client) {
+func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.Mode, creds *credentials.Credentials, state *statestorage.RealmStateStorage) {
 	logger.Info("Deducing catalog mode...")
 
 	dynPlans := false
@@ -157,48 +159,27 @@ func deduceModeAndCreds(logger *zap.SugaredLogger, baseURL string) (mode broker.
 		return broker.BasicAuth, nil, nil
 	}
 
-	if creds.Broker.DB == "" {
-        stateStorageConnectionString := tryGetStateStorage(creds, baseURL, logger)
-        creds.Broker.DB = stateStorageConnectionString
-    }
-
-	if creds.Broker.DB == "" {
-		if dynPlans {
-			logger.Fatal("Cannot use dynamic plans without DB connection")
-		}
-		if !autoPlans {
-			logger.Fatal("Cannot use Multi-Group with static plans and no DB connection")
-		}
-	} else {
-		client, err = mongo.NewClient(options.Client().ApplyURI(creds.Broker.DB))
-		if err != nil {
-			logger.Fatalf("Cannot create Mongo client: %v", err)
-		}
-
-		err = client.Connect(context.Background())
-		if err != nil {
-			logger.Fatalf("Cannot connect to Mongo database: %v", err)
-		}
-	}
-
 	if err := creds.FlattenOrgs(baseURL); err != nil {
 		logger.Fatalw("Cannot parse Org API Keys", "error", err)
 	}
+    // find 1st org -- need to deal with this better
+    if len(creds.Orgs)<= 0 {
+		logger.Fatal("Need 1 org key")
+    }
 
-	if dynPlans {
-		return broker.DynamicPlans, creds, client
-	}
+    state, err = tryGetStateStorage(creds, baseURL, logger, "")
+    if err != nil {
+		logger.Fatalw("Error getting state storage", "error", err)
+    }
 
-	if autoPlans {
-		return broker.MultiGroupAutoPlans, creds, client
-	}
-	return broker.MultiGroup, creds, client
+
+	return broker.DynamicPlans, creds, state
 
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	baseURL := getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL)
-	mode, creds, client := deduceModeAndCreds(logger, baseURL)
+	mode, creds, state := deduceModeAndCreds(logger, baseURL)
 
 	if mode != broker.DynamicPlans {
 		logger.Fatalw("Only Dynamic Plans are currently supported")
@@ -208,7 +189,7 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	if !hasWhitelist {
 		logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", "NONE")
-		return broker.New(logger, creds, baseURL, nil, client, mode)
+		return broker.New(logger, creds, baseURL, nil, state, mode)
 	}
 
 	whitelist, err := broker.ReadWhitelistFile(pathToWhitelistFile)
@@ -217,7 +198,7 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	}
 
 	logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", pathToWhitelistFile)
-	return broker.New(logger, creds, baseURL, whitelist, client, mode)
+	return broker.New(logger, creds, baseURL, whitelist, state, mode)
 }
 
 func startBrokerServer() {

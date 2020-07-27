@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,17 +34,17 @@ type Broker struct {
 	baseURL     string
 	mode        Mode
 	catalog     *catalog
-	client      *mongo.Client
+    state       *statestorage.RealmStateStorage
 }
 
 // New creates a new Broker with a logger.
-func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, client *mongo.Client, mode Mode) *Broker {
+func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, state *statestorage.RealmStateStorage, mode Mode) *Broker {
 	b := &Broker{
 		logger:      logger,
 		credentials: credentials,
 		baseURL:     baseURL,
 		whitelist:   whitelist,
-		client:      client,
+		state:       state,
 		mode:        mode,
 	}
 
@@ -129,7 +130,7 @@ func (b *Broker) getGroupIDByInstanceID(ctx context.Context, instanceID string) 
 }
 
 func (b *Broker) getClusterNameByInstanceID(ctx context.Context, instanceID string) (string, error) {
-	if b.client == nil {
+	if b.state == nil {
 		return NormalizeClusterName(instanceID), nil
 	}
 

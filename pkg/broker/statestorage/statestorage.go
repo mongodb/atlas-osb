@@ -3,7 +3,6 @@ package statestorage
 import (
 	"context"
 	"fmt"
-    "log"
     "errors"
 	"net/http"
     "net/url"
@@ -19,6 +18,13 @@ const (
     BROKER_REALM_STATE_APP_NAME = "broker-state"
 )
 
+//type StateStorage interface {
+//    FindOne(context.Context, string)                   (*map[string]interface{}, error)
+//    InsertOne(context.Context, string, interface{})    (*map[string]interface{}, error)
+//    DeleteOne(context.Context, string)                 (error)
+//
+//}
+
 
 type RealmStateStorage struct {
 	OrgID       string                 `json:"orgId,omitempty"`
@@ -27,6 +33,7 @@ type RealmStateStorage struct {
     RealmApp    *mongodbrealm.RealmApp
     RealmProject  *mongodbatlas.Project
 }
+
 func keyForOrg(key *mongodbatlas.APIKey, orgID string) (bool) {
     for role := range key.Roles {
         if key.Roles[role].OrgID == orgID {
@@ -36,14 +43,30 @@ func keyForOrg(key *mongodbatlas.APIKey, orgID string) (bool) {
     return false
 }
 
-func GetRealmStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.SugaredLogger, orgID string) (*RealmStateStorage, error) {
-    if len(orgID) == 0 {
-        return nil, errors.New("orgID must be set")
+func OrgIDs(creds *credentials.Credentials) ([]string) {
+    orgs := make([]string, 0, len(creds.Orgs))
+    for _, value := range creds.Orgs {
+        for role := range value.APIKey.Roles {
+            orgs = append(orgs, value.APIKey.Roles[role].OrgID)
+        }
     }
+    return orgs
+}
 
+func GetStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.SugaredLogger, orgID string) (*RealmStateStorage, error) {
 	if len(creds.Orgs)==0 {
         return nil, fmt.Errorf("Cannot use OrgStateStorage without Org apikey")
 	}
+
+    if len(orgID) == 0 {
+        orgs := OrgIDs(creds)
+
+        if len(orgs) == 0 {
+            return nil, errors.New("orgID must be set")
+        }
+        orgID = orgs[0]
+    }
+
 
     var orgKey *mongodbatlas.APIKey
 
@@ -71,19 +94,24 @@ func GetRealmStateStorage(creds *credentials.Credentials, baseURL string,logger 
     if err != nil {
         return nil, err
     }
+    realmClient.SetCurrentRealmAtlasApiKey ( &mongodbrealm.RealmAtlasApiKey{
+        Username: orgKey.PublicKey,
+        Password: orgKey.PrivateKey,
+    })
 
     // Get or create a RealmApp for this orgID -
     // Each Organization using the broker will have 1 special 
     // Atlas Group - called "Atlas Service Broker"
     //
-    mainPrj, err := getOrCreateBrokerMaintentaceGroup(orgID, client)
+    mainPrj, err := getOrCreateBrokerMaintentaceGroup(orgID, client, logger)
     if err != nil {
-        log.Fatalf(err.Error())
+        logger.Errorw("Error getOrCreateBrokerMaintentaceGroup","err",err)
         return nil, err
     }
-    realmApp, err := getOrCreateRealmAppForOrg(mainPrj.ID, realmClient)
+    logger.Infow("Found mainteneance project","mainPrj",mainPrj)
+    realmApp, err := getOrCreateRealmAppForOrg(mainPrj.ID, realmClient, logger)
     if err != nil {
-        log.Fatalf(err.Error())
+        logger.Errorw("Error getOrCreateRealmAppForOrg","err",err)
         return nil, err
     }
     rss := &RealmStateStorage{
@@ -96,11 +124,11 @@ func GetRealmStateStorage(creds *credentials.Credentials, baseURL string,logger 
     return rss, nil
 }
 
-func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client) (*mongodbatlas.Project, error) {
+func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client,logger *zap.SugaredLogger) (*mongodbatlas.Project, error) {
     p := BROKER_MAINENTANCE_PROJECT_NAME
     project, _, err := client.Projects.GetOneProjectByName(context.Background(), p)
     if err != nil {
-        log.Printf("getOrCreateBrokerMaintentaceGroup err:%+v",err)
+        logger.Infow("getOrCreateBrokerMaintentaceGroup","err",err)
         prj := mongodbatlas.Project{
             Name: p,
             OrgID: orgID,
@@ -109,44 +137,76 @@ func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client
         if err != nil {
             return nil, err
         }
+        logger.Infow("getOrCreateBrokerMaintentaceGroup CREATED","project",project)
     }
+    logger.Infow("getOrCreateBrokerMaintentaceGroup FOUND","project",project)
     return project, nil
 }
-func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client) (*mongodbrealm.RealmApp, error) {
+
+func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client,logger *zap.SugaredLogger) (*mongodbrealm.RealmApp, error) {
     app := mongodbrealm.RealmAppInput{
         Name: BROKER_REALM_STATE_APP_NAME,
         ClientAppID: "atlas-osb",
-        Location: "to-do-can-we-get-cf-space-info",
+        Location: "US-VA",
+        /* [US-VA, AU, US-OR, IE] */
     }
 
-    realmApp, _, err := realmClient.RealmApps.Get(context.Background(), groupID, app.Name)
-    if err != nil {
-        log.Printf("Error fetching maintenance realm app: %+v",err)
-        log.Printf("Attempt create app: %+v",app)
+    apps, _, err := realmClient.RealmApps.List(context.Background(),groupID,nil)
+    var realmApp *mongodbrealm.RealmApp
+
+    for _, ra := range apps {
+        logger.Infow("Found realm app","ra",ra)
+        if ra.Name == app.Name {
+            realmApp = &ra
+        }
+    }
+    //realmApp, _, err := realmClient.RealmApps.Get(context.Background(), groupID, app.Name)
+    if realmApp == nil {
+        logger.Infow("Error fetching maintenance realm app","err",err)
+        logger.Infow("Attempt create","app",app)
         realmApp, _, err := realmClient.RealmApps.Create(context.Background(), groupID, &app)  
         if err != nil {
-            log.Fatalf(err.Error())
+            logger.Errorw("Error createing realm app", "err", err)
             return nil, err
         }
-        log.Printf("Created realm app: %+v",realmApp)
+        logger.Infow("Created realm app","realmApp",realmApp)
         return nil, err
     } else {
-        log.Printf("Found existing realm app: %+v",realmApp)
+        logger.Infow("Found existing realm app","realmApp",realmApp)
     }
     return realmApp, nil
 }
 
-func (ss *RealmStateStorage) Put(key string, value map[string]interface{}) (*mongodbrealm.RealmValue, error) {
+
+
+func (ss *RealmStateStorage) FindOne(ctx context.Context, key string)    (*map[string]interface{}, error) {
+    val, err := ss.Get(ctx,key)
+    return &val.Value, err
+}
+
+func (ss *RealmStateStorage) InsertOne(ctx context.Context, key string, value interface{})  (*map[string]interface{}, error) {
+    mv := value.(map[string]interface{})
+    v, err := ss.Put(ctx,key,mv)
+    return &v.Value, err
+}
+
+func (ss *RealmStateStorage) DeleteOne(ctx context.Context, key string) (error) {
+    _, err := ss.RealmClient.RealmValues.Delete(ctx,ss.RealmProject.ID,ss.RealmApp.ID, key)
+    return err
+
+}
+
+func (ss *RealmStateStorage) Put(ctx context.Context, key string, value map[string]interface{}) (*mongodbrealm.RealmValue, error) {
     val := &mongodbrealm.RealmValue{
         Name: key,
         Value: value,
     }
-    v, _, err := ss.RealmClient.RealmValues.Create(context.Background(),ss.RealmProject.ID,ss.RealmApp.ID, val)
+    v, _, err := ss.RealmClient.RealmValues.Create(ctx,ss.RealmProject.ID,ss.RealmApp.ID, val)
     return v, err
 }
 
-func (ss *RealmStateStorage) Get(key string) (*mongodbrealm.RealmValue, error) {
-    v, _, err := ss.RealmClient.RealmValues.Get(context.Background(),ss.RealmProject.ID,ss.RealmApp.ID, key)
+func (ss *RealmStateStorage) Get(ctx context.Context, key string) (*mongodbrealm.RealmValue, error) {
+    v, _, err := ss.RealmClient.RealmValues.Get(ctx,ss.RealmProject.ID,ss.RealmApp.ID, key)
     return v, err
 }
 

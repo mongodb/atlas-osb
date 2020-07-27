@@ -8,6 +8,7 @@ import (
     "time"
 	"net/http"
 
+    "github.com/mitchellh/mapstructure"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
@@ -91,16 +92,15 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		},
 	}
 
-	if b.client != nil {
-		col := b.client.Database("atlas-broker").Collection("instances")
-		_, err = col.InsertOne(ctx, s)
+	if b.state != nil {
+		_, err = b.state.InsertOne(ctx, s.ID, s)
 		if err != nil {
 			return
 		}
 
 		defer func() {
 			if err != nil {
-                _, err = col.DeleteOne(ctx, s)
+                err = b.state.DeleteOne(ctx, s.ID)
                 if err != nil {
                     panic("Error during provision, broker maintenance: " + err.Error())
                 }
@@ -244,7 +244,9 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		err = atlasToAPIError(err)
 		return
 	}
-
+    // TODO: @pavel, do we need to call state.Update? here
+    //
+    //s, err := b.state.UpdateOne(instanceID,
 	b.logger.Infow("Successfully started Atlas cluster update process", "instance_id", instanceID, "cluster", resultingCluster)
 
 	return domain.UpdateServiceSpec{
@@ -317,17 +319,23 @@ func (b Broker) CleanupPlan(ctx context.Context, client *mongodbatlas.Client, gr
 func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
 	b.logger.Infow("Fetching instance", "instance_id", instanceID)
 
-	if b.client == nil {
+	if b.state == nil {
 		err = apiresponses.NewFailureResponse(errors.New("Fetching instances is not supported in stateless mode"), http.StatusNotImplemented, "get-instance")
 		return
 	}
 
-	c := b.client.Database("atlas-broker").Collection("instances")
 	s := serviceInstance{}
 
-	err = c.FindOne(ctx, bson.M{"id": instanceID}).Decode(&s)
+    instance, err := b.state.FindOne(ctx, instanceID)
 	if err != nil {
-		return
+        b.logger.Errorw("GetInstance error","err",err)
+        return
+	}
+
+    err = mapstructure.Decode(instance, &s)
+	if err != nil {
+        b.logger.Errorw("GetInstance error","err",err)
+        return 
 	}
 
 	return domain.GetInstanceDetailsSpec{
@@ -387,9 +395,9 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		// scenarios indicate that a cluster has been successfully deleted.
 		if r.StatusCode == http.StatusNotFound || cluster.StateName == "DELETED" {
 			state = domain.Succeeded
-			if b.client != nil {
+			if b.state != nil {
 				// TODO: change this?
-                _, err := b.client.Database("atlas-broker").Collection("instances").DeleteOne(ctx, bson.M{"id": instanceID})
+                err := b.state.DeleteOne(ctx, instanceID)
                 if err != nil {
                     b.logger.Errorw("Failed to clean up instance from maintenance store","err",err)
                 }
