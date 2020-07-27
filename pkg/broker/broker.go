@@ -203,7 +203,17 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 			oid := dp.Project.OrgID
 			c, ok := b.credentials.Orgs[oid]
 			if !ok {
-				return nil, "", fmt.Errorf("credentials for org ID %q not found", oid)
+                keys := make([]string, len(b.credentials.Orgs))
+                i := 0
+                for k := range b.credentials.Orgs {
+                    keys[i] = k
+                    i++
+                }
+                c, ok = b.credentials.Orgs[keys[0]]
+			    if !ok {
+				    return nil, "", fmt.Errorf("credentials for org ID %q not found", oid)
+                } 
+                // TODO -- log that we just grab the 1st org key there
 			}
 
 			hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()
