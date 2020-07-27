@@ -58,6 +58,8 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		//p := &mongodbatlas.Project{}
         p, err2 := b.createResources(ctx, client, details.PlanID, planContext)
 		if err2 != nil {
+            b.logger.Errorw("createResource - not able to create resource before cluster","err2",err2)
+            err = err2
 			return
 		}
 
