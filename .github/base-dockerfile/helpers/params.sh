@@ -12,3 +12,5 @@ CREDHUB=credhub-$postfix
 TEST_SIMPLE_APP=simple-app-$postfix
 TEST_SPRING_APP=music-$postfix
 SERVICE_ATLAS=instance-$postfix
+
+BROKER_OSB_SERVICE_NAME="atlas"
