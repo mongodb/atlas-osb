@@ -1,0 +1,13 @@
+---
+applications:
+- name: atlas-osb
+  instances: 2
+  memory: 256MB
+  disk_quota: 512MB
+  buildpacks:
+    - go_buildpack
+  env:
+    BROKER_HOST: "0.0.0.0"
+    BROKER_PORT: "8080"
+    ATLAS_BROKER_TEMPLATEDIR: "samples/plans"
+    BROKER_OSB_SERVICE_NAME: "atlas" 

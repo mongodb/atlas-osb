@@ -1,4 +1,5 @@
 #!/bin/bash
+cd atlas-osb
 
 source ".github/base-dockerfile/helpers/tmp-helper.sh"
 source ".github/base-dockerfile/helpers/cf-helper.sh"
@@ -17,11 +18,11 @@ cf create-space $SPACE_NAME && cf target -s $SPACE_NAME
 
 echo "Create service-broker"
 cf push $BROKER_APP --no-start
-cf set-env $BROKER_APP BROKER_HOST 0.0.0.0
-cf set-env $BROKER_APP BROKER_PORT 8080
+# cf set-env $BROKER_APP BROKER_HOST 0.0.0.0
+# cf set-env $BROKER_APP BROKER_PORT 8080
 cf set-env $BROKER_APP BROKER_APIKEYS $(awk NF=NF RS= OFS= < apikeys-config.json)
-cf set-env $BROKER_APP ATLAS_BROKER_TEMPLATEDIR ./samples/plans
-cf set-env $BROKER_APP BROKER_OSB_SERVICE_NAME $BROKER_OSB_SERVICE_NAME 
+# cf set-env $BROKER_APP ATLAS_BROKER_TEMPLATEDIR ./samples/plans
+# cf set-env $BROKER_APP BROKER_OSB_SERVICE_NAME $BROKER_OSB_SERVICE_NAME 
 
 cf start $BROKER_APP
 check_app_started $BROKER_APP
