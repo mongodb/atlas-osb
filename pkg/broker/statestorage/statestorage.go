@@ -61,12 +61,6 @@ func GetStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.
     if len(orgID) == 0 {
         orgs := OrgIDs(creds)
         logger.Infow("GetStateStorage --- ","creds",creds)
-        for k, value := range creds.Orgs {
-            logger.Infow("GetState --- range---> ","k",k,"value",value)
-            for role := range value.APIKey.Roles {
-                orgs = append(orgs, value.APIKey.Roles[role].OrgID)
-            }
-        }
 
         logger.Infow("GetStateStorage --- ","orgs",orgs)
         if len(orgs) == 0 {
