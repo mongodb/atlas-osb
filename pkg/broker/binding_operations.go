@@ -20,6 +20,7 @@ type ConnectionDetails struct {
 	Password         string `json:"password"`
 	URI              string `json:"uri"`
 	ConnectionString string `json:"connectionString"`
+    Database         string `json:"database"`
 }
 
 // Bind will create a new database user with a username matching the binding ID
@@ -113,23 +114,27 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	cs.Path = user.DatabaseName
 
+    connDetails := ConnectionDetails{
+			Username:         bindingID,
+			Password:         password,
+			URI:              cluster.SrvAddress,
+	}
+
     if len(user.Roles)>0 {
         cs.Path = user.Roles[0].DatabaseName
 	    b.logger.Infow("Detected roles, override the name of the db to connect", "connectionString", cs)
     }
+
+	connDetails.ConnectionString = cs.String()
+    connDetails.Database = cs.Path
 
 	b.logger.Infow("New User ConnectionString", "connectionString", cs)
 
 	cs.User = url.UserPassword(user.Username, user.Password)
 
 	spec = domain.Binding{
-		Credentials: ConnectionDetails{
-			Username:         bindingID,
-			Password:         password,
-			URI:              cluster.SrvAddress,
-			ConnectionString: cs.String(),
-		},
-	}
+		Credentials: connDetails,
+    }
 	return
 }
 
