@@ -95,19 +95,19 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	}
 
 	if b.state != nil {
-		_, err = b.state.InsertOne(ctx, s.ID, s)
+        v, err := b.state.InsertOne(ctx, s.ID, s)
 		if err != nil {
-			return
+            panic("Error during provision, broker maintenance: " + err.Error())
 		}
-
-		defer func() {
-			if err != nil {
-                err = b.state.DeleteOne(ctx, s.ID)
-                if err != nil {
-                    panic("Error during provision, broker maintenance: " + err.Error())
-                }
-			}
-		}()
+        b.logger.Infow("Inserted new state value","v",v)
+		//defer func() {
+		//	if err != nil {
+        //        err = b.state.DeleteOne(ctx, s.ID)
+        //        if err != nil {
+        //            panic("Error during provision, broker maintenance: " + err.Error())
+        //        }
+		//	}
+		//}()
 	}
 
 	// Create a new Atlas cluster from the generated definition

@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
+    "errors"
+
 	"net/http"
 	"net/url"
 	"reflect"
@@ -320,17 +321,12 @@ func CheckResponse(r *http.Response) error {
 		return nil
 	}
 
-	errorResponse := &ErrorResponse{Response: r}
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && len(data) > 0 {
-		err := json.Unmarshal(data, errorResponse)
-		if err != nil {
-			log.Printf("[DEBUG] unmarshal error response: %s", err)
-			errorResponse.Reason = string(data)
-		}
+	    return errors.New(string(data))
 	}
 
-	return errorResponse
+	return nil 
 }
 
 // DoRequestWithClient submits an HTTP request using the specified client.

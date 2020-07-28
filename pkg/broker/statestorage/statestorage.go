@@ -183,12 +183,24 @@ func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client,
 
 func (ss *RealmStateStorage) FindOne(ctx context.Context, key string)    (*map[string]interface{}, error) {
     val, err := ss.Get(ctx,key)
+    if err != nil {
+        return nil, err
+    }
+    if val.Value == nil {
+        return nil, errors.New("val.Value was nil from realm, should never happen")
+    }
     return &val.Value, err
 }
 
 func (ss *RealmStateStorage) InsertOne(ctx context.Context, key string, value interface{})  (*map[string]interface{}, error) {
     mv := value.(map[string]interface{})
     v, err := ss.Put(ctx,key,mv)
+    if err != nil {
+        return nil, err
+    }
+    if v.Value == nil {
+        return nil, errors.New("v.Value was nil from realm, should never happen")
+    }
     return &v.Value, err
 }
 
