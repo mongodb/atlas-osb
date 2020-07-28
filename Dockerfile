@@ -1,5 +1,6 @@
 # Build stage uses a full golang image to build a statically linked binary
-FROM golang:1.12 AS builder
+#FROM golang:1.12 AS builder
+FROM golangci/golangci-lint AS builder
 WORKDIR /usr/src
 
 # Download and cache dependencies

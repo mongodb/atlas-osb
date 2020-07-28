@@ -125,12 +125,12 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	    b.logger.Infow("Detected roles, override the name of the db to connect", "connectionString", cs)
     }
 
-	connDetails.ConnectionString = cs.String()
-    connDetails.Database = cs.Path
-
 	b.logger.Infow("New User ConnectionString", "connectionString", cs)
 
 	cs.User = url.UserPassword(user.Username, user.Password)
+	connDetails.ConnectionString = cs.String()
+    connDetails.Database = cs.Path
+
 
 	spec = domain.Binding{
 		Credentials: connDetails,
