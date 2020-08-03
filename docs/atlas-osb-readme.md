@@ -34,7 +34,7 @@ Custom plans use the Atlas API resources and allow users to define reusable pack
 
 # Getting Started
 
-## Prereq's
+## Prereq's for Cloud Foundry
 
 Typical cli/bash commands are used for this procedure along with the following tools:
 
