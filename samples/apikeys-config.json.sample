@@ -1,0 +1,21 @@
+{
+	"broker": {
+		"username": "admin",
+		"password": "admin",
+		"db": "${INPUT_BROKER_DB_CONNECTION_STRING}"
+	},
+	"projects": {
+		"${INPUT_ATLAS_PROJECT_ID}": {
+            "publicKey": "${INPUT_ATLAS_PUBLIC_KEY}",
+			"privateKey": "${INPUT_ATLAS_PRIVATE_KEY}",
+            "desc": "one project"
+		}
+	},
+	"orgs": {
+		"${INPUT_ATLAS_ORG_ID}": {
+			"publicKey": "${INPUT_ATLAS_PUBLIC_KEY}",
+			"privateKey": "${INPUT_ATLAS_PRIVATE_KEY}",
+			"desc": "org-key"
+		}
+	}
+}
