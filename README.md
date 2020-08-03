@@ -25,7 +25,7 @@ New plan template spec: [custom-plans.md](/docs/custom-plans.md)
 ## Configuration
 
 Configuration is handled with environment variables. Logs are written to
-`stderr` and each line is in a structured JSON format.
+`stdout/stderr` as appropriate and each line is in a structured JSON format.
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
