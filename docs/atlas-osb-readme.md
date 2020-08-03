@@ -1,6 +1,16 @@
-<img src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"/> 
+<img align="left" width="100" height="100" 
+src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg">
 atlas-osb
-=====
+</img>
+
+
+[![Generic badge](https://img.shields.io/badge/WORKING-PREBETA-YELLOW.svg)](https://shields.io/)
+
+[![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
+
+
+
+<img align="right" src="/docs/coming-later.svg">
 
 Table of Contents
 =====
