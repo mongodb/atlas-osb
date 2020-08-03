@@ -227,6 +227,7 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 	params.User.Username = bindingID
 	params.User.Password = password
     if len(params.User.DatabaseName) == 0 {
+        broker.logger.Info("Bind --- no `databaseName` in User, setting to `admin` fo Atlas.")
         params.User.DatabaseName = "admin"
     }
 

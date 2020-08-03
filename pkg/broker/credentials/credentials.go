@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
@@ -82,7 +83,19 @@ func FromEnv() (*Credentials, error) {
 
 	creds := Credentials{}
 	if err := json.Unmarshal([]byte(env), &creds); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
+		file, err := os.Open(env)
+		if err != nil {
+			return nil, fmt.Errorf("cannot find BROKER_APIKEYS: %v", err)
+		}
+		defer file.Close()
+
+		fileData, err := ioutil.ReadAll(file)
+		if err != nil {
+			return nil, fmt.Errorf("cannot read BROKER_APIKEYS: %v", err)
+		}
+		if err := json.Unmarshal([]byte(fileData), &creds); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
+		}
 	}
 
 	if err := creds.validate(); err != nil {
