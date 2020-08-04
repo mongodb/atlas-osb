@@ -21,6 +21,7 @@ func (c *Client) RealmValueFromString(key string, value string) (*RealmValue, er
     }
 
     v := &RealmValue{
+        ID: key,
         Name: key,
         Value: t,
     }
