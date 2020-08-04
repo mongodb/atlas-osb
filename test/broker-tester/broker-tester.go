@@ -64,23 +64,6 @@ func GetBroker(URL string) (osb.Client, *mongodbatlas.Client, error) {
 	return client, atlasclient, nil
 }
 
-func getMap(stringOrFile string) map[string]interface{} {
-    t := make(map[string]interface{})
-    log.Println("stringOrFile:",stringOrFile)
-    yamlFile, err := ioutil.ReadFile(stringOrFile)
-    if err != nil {
-        log.Printf("yamlFile.Get err   #%v ", err)
-        yamlFile = []byte(stringOrFile)
-
-    }
-    log.Println("yamlFile:",yamlFile)
-    err = json.Unmarshal(yamlFile, &t)
-    if err != nil {
-        log.Printf("Unmarshal: %v", err)
-        return t
-    }
-    return t
-}
 
 func main() {
 
@@ -117,8 +100,20 @@ func main() {
     var parameters map[string]interface{}
 
     if len(params) > 0 {
-       parameters := getMap(params)
+        yamlFile, err := ioutil.ReadFile(params)
+        if err != nil {
+            log.Printf("yamlFile.Get err   #%v ", err)
+            yamlFile = []byte(params)
+
+        }
+        log.Println("yamlFile:",yamlFile)
+        err = json.Unmarshal(yamlFile, &parameters)
+        if err != nil {
+            log.Fatalf("Unmarshal: %v", err)
+        }
         log.Println("parameters:",parameters)
+    } else {
+        log.Println("where is my automobile?")
     }
 
 
@@ -182,6 +177,7 @@ func main() {
     }
     if operation == "create-service" {
         log.Printf("create-service")
+        log.Println("parameters:",parameters)
         if len(plan)==0 || len(name)==0 {
           log.Fatalln("missing --plan or --name")
         }

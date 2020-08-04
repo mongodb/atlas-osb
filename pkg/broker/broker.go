@@ -16,9 +16,8 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
-    "strings"
+    "go.mongodb.org/mongo-driver/bson"
 )
 
 // Ensure broker adheres to the ServiceBroker interface.
@@ -32,30 +31,25 @@ type Broker struct {
 	whitelist   Whitelist
 	credentials *credentials.Credentials
 	baseURL     string
-	mode        Mode
 	catalog     *catalog
     state       *statestorage.RealmStateStorage
 }
 
 // New creates a new Broker with a logger.
-func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, state *statestorage.RealmStateStorage, mode Mode) *Broker {
+func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, state *statestorage.RealmStateStorage) *Broker {
 	b := &Broker{
 		logger:      logger,
 		credentials: credentials,
 		baseURL:     baseURL,
 		whitelist:   whitelist,
 		state:       state,
-		mode:        mode,
 	}
 
-	if err := b.buildCatalog(); err != nil {
-		logger.Fatalw("Cannot build service catalog", "error", err)
-	}
-
+	b.buildCatalog()
 	return b
 }
 
-func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp dynamicplans.Plan, err error) {
+func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamicplans.Plan, err error) {
 	sp, ok := b.catalog.plans[planID]
 	if !ok {
 		err = fmt.Errorf("plan ID %q not found in catalog", planID)
@@ -76,7 +70,8 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp dynamicp
 
 	b.logger.Infow("Parsed plan", "plan", raw.String())
 
-	if err = yaml.NewDecoder(raw).Decode(&dp); err != nil {
+	dp = &dynamicplans.Plan{}
+	if err = yaml.NewDecoder(raw).Decode(dp); err != nil {
 		return
 	}
 
@@ -93,166 +88,112 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp dynamicp
 	return dp, nil
 }
 
-func (b *Broker) getInstanceState(ctx context.Context, instanceID string) (primitive.M, error) {
-	i, err := b.GetInstance(ctx, instanceID)
+func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynamicplans.Plan, error) {
+    i, err := b.GetInstance(ctx, instanceID)
 	if err != nil {
 		return nil, err
 	}
 
-	p, ok := i.Parameters.(primitive.D)
+	params, ok := i.Parameters.(bson.D)
 	if !ok {
+		b.logger.Errorf("%#v", i)
 		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
 	}
 
-	return p.Map(), nil
+	p, found := params.Map()["plan"]
+	if !found {
+		return nil, fmt.Errorf("plan not found in instance metadata")
+	}
+
+	d, ok := p.(bson.D)
+	if !ok {
+		return nil, fmt.Errorf("instance metadata plan has the wrong type %T", p)
+	}
+
+	plan := dynamicplans.Plan{}
+	bytes, err := bson.Marshal(d)
+	if err != nil {
+		return nil, err
+	}
+
+	err = bson.Unmarshal(bytes, &plan)
+	return &plan, err
 }
 
-func (b *Broker) getGroupIDByInstanceID(ctx context.Context, instanceID string) (string, error) {
-	s, err := b.getInstanceState(ctx, instanceID)
+func (b *Broker) createClient(k credentials.APIKey) (*mongodbatlas.Client, error) {
+	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
 	if err != nil {
-		// no metadata - not an error in our case
-		// if err == mongo.ErrNoDocuments {
-        b.logger.Infow("====================================>","err",err,"InstanceNotFound",statestorage.InstanceNotFound)
-        if strings.Contains(err.Error(), statestorage.InstanceNotFound.Error()) {
-            b.logger.Infow("~~~~~~~~~~~~~~~ going to return now ~~~~~~~~~~~~")
-			return "", nil
-		}
-		return "", err
+		return nil, err
 	}
 
-	gidi, ok := s["groupID"]
-	if !ok {
-		return "", fmt.Errorf("groupID not found in instance metadata for %q", instanceID)
-	}
-
-	gid, ok := gidi.(string)
-	if !ok {
-		return "", fmt.Errorf("groupID from instance metadata has the wrong type %T", gidi)
-	}
-
-	return gid, nil
+	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
 }
 
-func (b *Broker) getClusterNameByInstanceID(ctx context.Context, instanceID string) (string, error) {
-	if b.state == nil {
-		return NormalizeClusterName(instanceID), nil
+func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (dp *dynamicplans.Plan, err error) {
+	// existing instance: try to get from state store
+	dp, err = b.getInstancePlan(ctx, instanceID)
+	if err == nil {
+		return
 	}
 
-	s, err := b.getInstanceState(ctx, instanceID)
+	// new instance: get from plan
+	dp, err = b.parsePlan(planCtx, planID)
 	if err != nil {
-		return "", err
+		return
 	}
 
-	ci, ok := s["clusterName"]
-	if !ok {
-		return "", fmt.Errorf("clusterName not found in instance metadata for %q", instanceID)
+	if dp.Project == nil {
+		err = fmt.Errorf("missing Project in plan definition")
+		return
 	}
 
-	c, ok := ci.(string)
-	if !ok {
-		return "", fmt.Errorf("clusterName from instance metadata has the wrong type %T", ci)
-	}
-
-	return c, nil
+	return
 }
 
-func (b *Broker) getClient(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (client *mongodbatlas.Client, gid string, err error) {
-	switch b.mode {
-	case BasicAuth:
-		client, err = atlasClientFromContext(ctx)
-		if err != nil {
-			return
-		}
-		gid, err = groupIDFromContext(ctx)
-		return client, gid, err
-
-	case MultiGroup:
-		panic("not implemented")
-
-	case MultiGroupAutoPlans:
-		gid, err = b.catalog.findGroupIDByPlanID(planID)
-		if err != nil {
-			return nil, gid, err
-		}
-
-	case DynamicPlans:
-		// try to get groupID for existing instances
-		gid, err = b.getGroupIDByInstanceID(ctx, instanceID)
-		if err != nil {
-			return
-		}
-
-		if gid != "" {
-			break
-		}
-
-		// new instance: get groupID from params
-		dp := dynamicplans.Plan{}
-		dp, err = b.parsePlan(planCtx, planID)
-		if err != nil {
-			return
-		}
-
-		if dp.Project == nil {
-			err = fmt.Errorf("missing Project in plan definition")
-			return
-		}
-
-		// use existing project
-		if dp.Project.ID != "" {
-			gid = dp.Project.ID
-			break
-		}
-
-		if dp.Project.OrgID != "" {
-			oid := dp.Project.OrgID
-			c, ok := b.credentials.Orgs[oid]
-			if !ok {
-                keys := make([]string, len(b.credentials.Orgs))
-                i := 0
-                for k := range b.credentials.Orgs {
-                    keys[i] = k
-                    i++
-                }
-                c, ok = b.credentials.Orgs[keys[0]]
-			    if !ok {
-				    return nil, "", fmt.Errorf("credentials for org ID %q not found", oid)
-                } 
-                // TODO -- log that we just grab the 1st org key there
-			}
-
-			hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()
-			if err != nil {
-				return nil, "", err
-			}
-
-			client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
-
-			if dp.Project.Name != "" {
-				p, _, err := client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
-				if err == nil {
-					return client, p.ID, err
-				}
-			}
-			return client, "", err
-		}
-
-	default:
-		panic("invalid broker mode")
-	}
-
-	c, ok := b.credentials.Projects[gid]
-	if !ok {
-		return nil, gid, fmt.Errorf("credentials for project ID %q not found", gid)
-	}
-
-	hc, err := digest.NewTransport(c.PublicKey, c.PrivateKey).Client()
+func (b *Broker) getClient(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (client *mongodbatlas.Client, dp *dynamicplans.Plan, err error) {
+	dp, err = b.getPlan(ctx, instanceID, planID, planCtx)
 	if err != nil {
-		return nil, gid, err
+		return
 	}
 
-	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
-	return client, gid, err
+	if dp.Project.ID != "" {
+		c, ok := b.credentials.Projects[dp.Project.ID]
+		if !ok {
+			err = fmt.Errorf("credentials for project ID %q not found", dp.Project.ID)
+			return
+		}
+
+		client, err = b.createClient(c)
+		return
+	}
+
+	if dp.Project.OrgID != "" {
+		oid := dp.Project.OrgID
+		c, ok := b.credentials.Orgs[oid]
+		if !ok {
+			err = fmt.Errorf("credentials for org ID %q not found", oid)
+			return
+		}
+
+		client, err = b.createClient(c)
+		if err != nil {
+			return
+		}
+
+		// try to merge existing project into plan, don't error out if not found
+		var existing *mongodbatlas.Project
+		existing, _, err = client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
+		if err == nil {
+			dp.Project = existing
+			return
+		} else {
+			err = nil
+		}
+		return
+	}
+
+	err = fmt.Errorf("project info must contain either ID or OrgID & project name, got %+v", dp.Project)
+	return
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
@@ -270,25 +211,4 @@ func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
 	}
 	apiUrl.Path = fmt.Sprintf("/v2/%s", groupID)
 	return apiUrl.String() + fmt.Sprintf("#clusters/detail/%s", clusterName)
-}
-
-// TODO: do something about this!
-// atlasToAPIError converts an Atlas error to a OSB response error.
-func atlasToAPIError(err error) error {
-	// switch err {
-	// case atlas.ErrClusterNotFound:
-	// 	return apiresponses.ErrInstanceDoesNotExist
-	// case atlas.ErrClusterAlreadyExists:
-	// 	return apiresponses.ErrInstanceAlreadyExists
-	// case atlas.ErrUserAlreadyExists:
-	// 	return apiresponses.ErrBindingAlreadyExists
-	// case atlas.ErrUserNotFound:
-	// 	return apiresponses.ErrBindingDoesNotExist
-	// case atlas.ErrUnauthorized:
-	// 	return apiresponses.NewFailureResponse(err, http.StatusUnauthorized, "")
-	// }
-
-	// Fall back on returning the error again if no others match.
-	// Will result in a 500 Internal Server Error.
-	return err
 }

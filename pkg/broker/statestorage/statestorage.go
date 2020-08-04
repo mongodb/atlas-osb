@@ -10,6 +10,7 @@ import (
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/mongodbrealm"
+	"github.com/pivotal-cf/brokerapi/domain"
 	"go.uber.org/zap"
     "strings"
 )
@@ -186,7 +187,7 @@ func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client,
 
 
 
-func (ss *RealmStateStorage) FindOne(ctx context.Context, key string)    (*map[string]interface{}, error) {
+func (ss *RealmStateStorage) FindOne(ctx context.Context, key string) (*domain.GetInstanceDetailsSpec, error) {
     val, err := ss.Get(ctx,key)
     if err != nil {
         // return proper InstanceNotFound, if error is realm
@@ -198,19 +199,14 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, key string)    (*map[s
     if val.Value == nil {
         return nil, errors.New("val.Value was nil from realm, should never happen")
     }
-    return &val.Value, err
-}
+    spec := &domain.GetInstanceDetailsSpec{
+        ServiceID: fmt.Sprintf("%s",val.Value["serviceID"]),
+        PlanID: val.Value["planID"].(string),
+        DashboardURL: val.Value["dashboardURL"].(string),
+        Parameters: val.Value["parameters"].(interface{}),
+    }
 
-func (ss *RealmStateStorage) InsertOne(ctx context.Context, key string, value interface{})  (*map[string]interface{}, error) {
-    mv := value.(map[string]interface{})
-    v, err := ss.Put(ctx,key,mv)
-    if err != nil {
-        return nil, err
-    }
-    if v.Value == nil {
-        return nil, errors.New("v.Value was nil from realm, should never happen")
-    }
-    return &v.Value, err
+    return spec, nil
 }
 
 func (ss *RealmStateStorage) DeleteOne(ctx context.Context, key string) (error) {
@@ -219,10 +215,16 @@ func (ss *RealmStateStorage) DeleteOne(ctx context.Context, key string) (error) 
 
 }
 
-func (ss *RealmStateStorage) Put(ctx context.Context, key string, value map[string]interface{}) (*mongodbrealm.RealmValue, error) {
+func (ss *RealmStateStorage) Put(ctx context.Context, key string, value *domain.GetInstanceDetailsSpec) (*mongodbrealm.RealmValue, error) {
+
+    vv := make(map[string]interface{})
+    vv["serviceID"]=value.ServiceID
+    vv["planID"]=value.PlanID
+    vv["dashboardURL"]=value.DashboardURL
+    vv["parameters"]=value.Parameters
     val := &mongodbrealm.RealmValue{
         Name: key,
-        Value: value,
+        Value: vv,
     }
     v, _, err := ss.RealmClient.RealmValues.Create(ctx,ss.RealmProject.ID,ss.RealmApp.ID, val)
     return v, err
