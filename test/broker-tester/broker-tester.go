@@ -21,8 +21,7 @@ const (
 	privateKeyAPIEnv = "ATLAS_PRIVATE_KEY"
 	brokerHTTPAuthUsernameEnv  = "ATLAS_BROKER_HTTP_AUTH_USERNAME"
 	brokerHTTPAuthPasswordEnv = "ATLAS_BROKER_HTTP_AUTH_PASSWORD"
-	projectIDEnv  = "ATLAS_PROJECT_ID"
-    appIDEnv = "ATLAS_APP_ID"
+	//projectIDEnv  = "ATLAS_PROJECT_ID"
 )
 
 var (
@@ -30,7 +29,6 @@ var (
 	envPrivateAPIKey = os.Getenv(privateKeyAPIEnv)
 	envBrokerHTTPAuthUsername = os.Getenv(brokerHTTPAuthUsernameEnv)
 	envBrokerHTTPAuthPassword = os.Getenv(brokerHTTPAuthPasswordEnv)
-	envProjectID  = os.Getenv(projectIDEnv)
 )
 
 
@@ -201,9 +199,6 @@ func main() {
 
         resp, err := broker.ProvisionInstance(request)
         if err != nil {
-            // Use the IsHTTPError method to test and convert errors from Brokers
-            // into the standard broker error type, allowing access to conventional
-            // broker-provided fields.
             fmt.Println(">>>>>>>",err)
             errHttp, isError := osb.IsHTTPError(err)
             if isError {
@@ -216,6 +211,26 @@ func main() {
         }
 
         log.Println("resp:",resp)
+    }
+    if operation == "get-instance" {
+        req := &osb.GetInstanceRequest{
+            InstanceID: name,
+        }
+        resp, err := broker.GetInstance( req )
+        if err != nil {
+            fmt.Println(">>>>>>>",err)
+            errHttp, isError := osb.IsHTTPError(err)
+            if isError {
+                // handle error response from broker
+                fmt.Println("errHttp:",errHttp)
+            } else {
+                // handle errors communicating with the broker
+                fmt.Println("error provision:",err)
+            }
+        }
+
+        log.Println("resp:",resp)
+
     }
     if operation == "bind" || operation == "unbind" {
 

@@ -188,7 +188,25 @@ func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client,
 
 
 func (ss *RealmStateStorage) FindOne(ctx context.Context, key string) (*domain.GetInstanceDetailsSpec, error) {
-    val, err := ss.Get(ctx,key)
+    // Need to find the one value whose "name" = key
+    values, _, err := ss.RealmClient.RealmValues.List(ctx,ss.RealmProject.ID,ss.RealmApp.ID,nil)
+    if err != nil {
+        // return proper InstanceNotFound, if error is realm
+        if strings.Contains(err.Error(), "value not found") {
+            err = InstanceNotFound
+        }
+        return nil, err
+    }
+
+    idForKey := ""
+
+    for _, v := range values {
+        if v.Name == key {
+            idForKey = v.ID
+        }
+    }
+
+    val, err := ss.Get(ctx,idForKey)
     if err != nil {
         // return proper InstanceNotFound, if error is realm
         if strings.Contains(err.Error(), "value not found") {

@@ -74,13 +74,14 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	b.logger.Infow("Creating cluster", "instance_name", planContext["instance_name"])
 	// TODO - add this context info about k8s/namespace or pcf space into labels
 
+    parms := make(map[string]interface{})
+    parms["plan"]=*dp
+
 	s := domain.GetInstanceDetailsSpec{
 		PlanID:       details.PlanID,
 		ServiceID:    details.ServiceID,
 		DashboardURL: b.GetDashboardURL(dp.Project.ID, dp.Cluster.Name),
-		Parameters: bson.M{
-			"plan": *dp,
-		},
+		Parameters:  parms,
 	}
 
     v, err := b.state.Put(context.Background(), instanceID, &s)
