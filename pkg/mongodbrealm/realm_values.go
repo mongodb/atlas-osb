@@ -6,7 +6,6 @@ import (
         "encoding/json"
         "net/http"
         "net/url"
-        "log"
 	    "github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 )
 const (
@@ -18,7 +17,6 @@ func (c *Client) RealmValueFromString(key string, value string) (*RealmValue, er
     t := make(map[string]interface{})
     err := json.Unmarshal([]byte(value), &t)
     if err != nil {
-        log.Printf("Unmarshal: %v", err)
         return nil, err
     }
 
@@ -63,8 +61,6 @@ type RealmValue struct {
 func (s *RealmValuesServiceOp) AddRealmAuthToRequest(ctx context.Context,request *http.Request) (error) {
 
         path := fmt.Sprintf("%s%s",realmDefaultBaseURL,realmLoginPath)
-        realmAuth := currentRealmAuth
-        log.Printf("Got realmAuth=%+v",realmAuth)
         data := map[string]interface{}{
             "username": currentRealmAtlasApiKey.Username,
             "apiKey":   currentRealmAtlasApiKey.Password,
@@ -78,14 +74,11 @@ func (s *RealmValuesServiceOp) AddRealmAuthToRequest(ctx context.Context,request
         root := &RealmAuth{}
         _, err = s.Client.Do(ctx, loginReq, root)
         if err != nil {
-            log.Printf("REALM AUTH error: %s", err)
-                return err
+            return err
         }
 
-        log.Printf("REALM AUTH root: %v", root)
         currentRealmAuth = root
         token := fmt.Sprintf("Bearer %s", currentRealmAuth.AccessToken)
-        log.Printf("REALM AUTH token: %s", token)
 
         request.Header.Add("Authorization", token )
     return nil
@@ -115,19 +108,12 @@ func (s *RealmValuesServiceOp) List(ctx context.Context, groupID string, appID s
             return nil, nil, err
     }
 
-    //log.Printf("REALM - check token in header %v", req.Header)
-    
-    //log.Printf("values List path=%+v",path)
-
-    //root := new(realmValuesResponse)
     root := make([]RealmValue,0)
     resp, err := s.Client.Do(ctx, req, &root)
     if err != nil {
             return nil, resp, err
     }
 
-    log.Printf("root %+v",root)
-    log.Printf("resp ------>>> %+v",resp)
 
     return root, resp, nil
 }

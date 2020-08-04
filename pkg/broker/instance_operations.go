@@ -31,6 +31,7 @@ const (
 // The process is always async.
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
 	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
+    b.logger.Infow(" *********** =====>","ctx",ctx)
 
 	planContext := dynamicplans.Context{
 		"instance_id": instanceID,
@@ -53,8 +54,8 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	if err != nil {
 		return
 	}
-
 	if b.mode == DynamicPlans && gid == "" {
+        b.logger.Infow("about try createResources","instanceID",instanceID,"gid",gid)
 		//p := &mongodbatlas.Project{}
         p, err2 := b.createResources(ctx, client, details.PlanID, planContext)
 		if err2 != nil {
@@ -94,21 +95,12 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		},
 	}
 
-	if b.state != nil {
-        v, err := b.state.InsertOne(ctx, s.ID, s)
-		if err != nil {
-            panic("Error during provision, broker maintenance: " + err.Error())
-		}
-        b.logger.Infow("Inserted new state value","v",v)
-		//defer func() {
-		//	if err != nil {
-        //        err = b.state.DeleteOne(ctx, s.ID)
-        //        if err != nil {
-        //            panic("Error during provision, broker maintenance: " + err.Error())
-        //        }
-		//	}
-		//}()
-	}
+    v, err := b.state.InsertOne(context.Background(), s.ID, s)
+    if err != nil {
+        b.logger.Errorw("Error during provision, broker maintenance:","err",err)
+        panic("Error during provision, broker maintenance: " + err.Error())
+    }
+    b.logger.Infow("Inserted new state value","v",v)
 
 	// Create a new Atlas cluster from the generated definition
 	resultingCluster, _, err := client.Clusters.Create(ctx, gid, cluster)
@@ -131,6 +123,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Client, planID string, planContext dynamicplans.Context) (*mongodbatlas.Project, error) {
 	dp, err := b.parsePlan(planContext, planID)
 	if err != nil {
+        b.logger.Errorw("createResources b.parsePlan returned error","err",err,"dp",dp)
 		return nil, err
 	}
 
@@ -138,8 +131,10 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 		return nil, fmt.Errorf("missing Project in plan definition")
 	}
 
+    b.logger.Infow("createResources db.Project","Project",dp.Project)
 	p, _, err := client.Projects.Create(ctx, dp.Project)
 	if err != nil {
+        b.logger.Errorw("createResources--> create project error","err",err)
 		return nil, err
 	}
 
@@ -320,6 +315,7 @@ func (b Broker) CleanupPlan(ctx context.Context, client *mongodbatlas.Client, gr
 // InstancesRetrievable setting in the service catalog.
 func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
 	b.logger.Infow("Fetching instance", "instance_id", instanceID)
+    b.logger.Infow(" *********** =====>","ctx",ctx)
 
 	if b.state == nil {
 		err = apiresponses.NewFailureResponse(errors.New("Fetching instances is not supported in stateless mode"), http.StatusNotImplemented, "get-instance")
@@ -328,15 +324,19 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 
 	s := serviceInstance{}
 
-    instance, err := b.state.FindOne(ctx, instanceID)
+    instance, err := b.state.FindOne(context.Background(), instanceID)
 	if err != nil {
-        b.logger.Errorw("GetInstance error","err",err)
-        return
+        err = fmt.Errorf("Error finding instance in maintenance DB: %w", err)
+		err = apiresponses.NewFailureResponse(err, http.StatusNotImplemented, "get-instance")
+        b.logger.Errorw("Unable to FineOne","instanceID",instanceID,"err",err)
+        return 
 	}
 
     err = mapstructure.Decode(instance, &s)
 	if err != nil {
-        b.logger.Errorw("GetInstance error","err",err)
+        err = fmt.Errorf("Error finding instance in maintenance DB: %w", err)
+		err = apiresponses.NewFailureResponse(err, http.StatusNotImplemented, "get-instance")
+        b.logger.Errorw("Unable to Decode","instanceID",instanceID,"instance",instance,"err",err)
         return 
 	}
 
@@ -399,7 +399,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 			state = domain.Succeeded
 			if b.state != nil {
 				// TODO: change this?
-                err := b.state.DeleteOne(ctx, instanceID)
+                err := b.state.DeleteOne(context.Background(), instanceID)
                 if err != nil {
                     b.logger.Errorw("Failed to clean up instance from maintenance store","err",err)
                 }

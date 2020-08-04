@@ -11,11 +11,16 @@ import (
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/mongodbrealm"
 	"go.uber.org/zap"
+    "strings"
 )
 
 const (
     BROKER_MAINENTANCE_PROJECT_NAME = "Atlas Service Broker Mainentance"
     BROKER_REALM_STATE_APP_NAME = "broker-state"
+)
+
+var (
+    InstanceNotFound    = errors.New("unable to find instance in state storage")
 )
 
 //type StateStorage interface {
@@ -184,6 +189,10 @@ func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client,
 func (ss *RealmStateStorage) FindOne(ctx context.Context, key string)    (*map[string]interface{}, error) {
     val, err := ss.Get(ctx,key)
     if err != nil {
+        // return proper InstanceNotFound, if error is realm
+        if strings.Contains(err.Error(), "value not found") {
+            err = InstanceNotFound
+        }
         return nil, err
     }
     if val.Value == nil {

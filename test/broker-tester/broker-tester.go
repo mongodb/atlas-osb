@@ -16,26 +16,32 @@ import (
 	//osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
     osb "sigs.k8s.io/go-open-service-broker-client/v2"
 )
+const (
+	publicKeyAPIEnv  = "ATLAS_PUBLIC_KEY"
+	privateKeyAPIEnv = "ATLAS_PRIVATE_KEY"
+	brokerHTTPAuthUsernameEnv  = "ATLAS_BROKER_HTTP_AUTH_USERNAME"
+	brokerHTTPAuthPasswordEnv = "ATLAS_BROKER_HTTP_AUTH_PASSWORD"
+	projectIDEnv  = "ATLAS_PROJECT_ID"
+    appIDEnv = "ATLAS_APP_ID"
+)
+
+var (
+    envPublicAPIKey  = os.Getenv(publicKeyAPIEnv)
+	envPrivateAPIKey = os.Getenv(privateKeyAPIEnv)
+	envBrokerHTTPAuthUsername = os.Getenv(brokerHTTPAuthUsernameEnv)
+	envBrokerHTTPAuthPassword = os.Getenv(brokerHTTPAuthPasswordEnv)
+	envProjectID  = os.Getenv(projectIDEnv)
+)
+
 
 func GetBroker(URL string) (osb.Client, *mongodbatlas.Client, error) {
 	config := osb.DefaultClientConfiguration()
 	config.URL = URL
-    publicKey := os.Getenv("ATLAS_PUBLIC_KEY")
-    privateKey := os.Getenv("ATLAS_PRIVATE_KEY")
-    groupId := os.Getenv("ATLAS_GROUP_ID")
-    log.Println(publicKey, privateKey, groupId)
     
-    var username string
-    if groupId == "" {
-		username = publicKey
-
-    } else {
-		username = fmt.Sprintf("%s@%s",publicKey,groupId)
-	}
 
     basicAuthConfig := &osb.BasicAuthConfig{
-				Username: username,
-				Password: privateKey,
+				Username: envBrokerHTTPAuthUsername,
+				Password: envBrokerHTTPAuthPassword,
     }
 
     config.AuthConfig = &osb.AuthConfig{
@@ -47,7 +53,7 @@ func GetBroker(URL string) (osb.Client, *mongodbatlas.Client, error) {
 		return nil, nil, err
 	}
 
-    t := digest.NewTransport(publicKey, privateKey)
+    t := digest.NewTransport(envPublicAPIKey, envPrivateAPIKey)
     tc, err := t.Client()
     if err != nil {
         log.Fatalf(err.Error())
@@ -79,6 +85,8 @@ func getMap(stringOrFile string) map[string]interface{} {
 func main() {
 
 
+    var plan string
+    var name string
     var params string
     var operation string
     var otherArgs []string
@@ -87,35 +95,39 @@ func main() {
     flag.BoolVar(&verbose,"verbose",false,"Enable verbose output")
     flag.StringVar(&operation, "op", "catalog", "Broker operation catalog, provision, etc")
     flag.StringVar(&params, "values", "", "parameters in yaml filename or string")
+    flag.StringVar(&plan, "plan", "", "name of plan to create")
+    flag.StringVar(&name, "name", "", "name for plan instance (service name)")
+
     flag.Parse()
 
-    if !verbose {
-        log.SetOutput(ioutil.Discard)
-    }
+    //if !verbose {
+    //    log.SetOutput(ioutil.Discard)
+    //}
 
     // if flag.NArg() == 0 {
     //    flag.Usage()
     //    os.Exit(1)
     //}
 
+
     otherArgs = flag.Args()
     log.Printf("other args: %+v\n", otherArgs)
 
     log.Println("params:",params)
+    var parameters map[string]interface{}
 
-    parameters := getMap(params)
-
-    log.Println("parameters:",parameters)
-    //spew.Dump(parameters)
+    if len(params) > 0 {
+       parameters := getMap(params)
+        log.Println("parameters:",parameters)
+    }
 
 
     broker, client, err := GetBroker("http://localhost:4000")
     if err != nil {
         log.Fatalf("Error: %v",err)
     }
-    //svpew.Dump(broker)
-    log.Println("foo")
     if operation == "catalog" {
+
         catalog, err2 := broker.GetCatalog()
         log.Println("catalog",catalog)
         if err2 != nil {
@@ -169,12 +181,13 @@ func main() {
         
     }
     if operation == "create-service" {
-        if len(otherArgs) < 2 {
-        log.Fatalln("Missing <PLAN_NAME> <SERVICE_INSTANCE_NAME>")
+        log.Printf("create-service")
+        if len(plan)==0 || len(name)==0 {
+          log.Fatalln("missing --plan or --name")
         }
         serviceId := "aosb-cluster-service-template"
-        servicePlan := fmt.Sprintf("%s-%s","aosb-cluster-plan-template",otherArgs[0])
-        serviceInstanceName := otherArgs[1]
+        servicePlan := fmt.Sprintf("%s-%s","aosb-cluster-plan-template",plan)
+        serviceInstanceName := name
 
         log.Println("servicePlan:",servicePlan)
         log.Println("serviceInstanceName:",serviceInstanceName)

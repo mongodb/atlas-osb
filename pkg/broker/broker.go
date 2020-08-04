@@ -17,8 +17,8 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
+    "strings"
 )
 
 // Ensure broker adheres to the ServiceBroker interface.
@@ -82,11 +82,12 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp dynamicp
 
     // Attempt to merge in any other values as plan instance data
     pb, _ := json.Marshal(ctx)
+    b.logger.Infow("Found plan instance data to merge","pb",pb)
     err = json.Unmarshal(pb, &dp)
     if err != nil {
         b.logger.Errorw("Error trying to merge in planContext as plan instance","err",err)
     } else {
-        b.logger.Infow("Merged final cluster:",  "dp.Cluster", dp.Cluster)
+        b.logger.Infow("Merged final plan instance:", "dp", dp)
     }
 
 	return dp, nil
@@ -110,7 +111,10 @@ func (b *Broker) getGroupIDByInstanceID(ctx context.Context, instanceID string) 
 	s, err := b.getInstanceState(ctx, instanceID)
 	if err != nil {
 		// no metadata - not an error in our case
-		if err == mongo.ErrNoDocuments {
+		// if err == mongo.ErrNoDocuments {
+        b.logger.Infow("====================================>","err",err,"InstanceNotFound",statestorage.InstanceNotFound)
+        if strings.Contains(err.Error(), statestorage.InstanceNotFound.Error()) {
+            b.logger.Infow("~~~~~~~~~~~~~~~ going to return now ~~~~~~~~~~~~")
 			return "", nil
 		}
 		return "", err
