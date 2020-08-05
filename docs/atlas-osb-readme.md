@@ -6,8 +6,7 @@ atlas-osb
 
 [![Generic badge](https://img.shields.io/badge/WORKING-PREBETA-YELLOW.svg)](https://shields.io/)
 
-[![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
-
+https://github.com/jasonmimick/atlas-osb/workflows/clean-cf/badge.svg
 
 
 <img align="right" src="/docs/coming-later.svg">
