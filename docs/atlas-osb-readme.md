@@ -508,11 +508,11 @@ TODO: MARK WHICH FIELDS ARE READ-ONLY? ie. users need to understand what can be 
 
 :construction:
 
-##Test Status
+## Test Status
 
 ![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Prepare%20CF.%20Base%20scenario./badge.svg)
 
-##Product Snapshot
+## Product Snapshot
 
 The following badges provide version and version-support information about Atlas-OSB for VMware Tanzu.
 
@@ -523,15 +523,19 @@ The following badges provide version and version-support information about Atlas
 ![Credhubversion](https://img.shields.io/badge/CredHub%20version-1.4.7-important)
 ![IaaS support](https://img.shields.io/badge/IaaS%20Support-AWS,%20Asure,%20GCP-important)
 
-##Notes
+## Notes
 
 * Deploying Atlas-OSB to CF. There are [several ways](http://cli.cloudfoundry.org/en-US/v7/push.html) to deploy atlas-osb to cloud foundry:
-    * with docker image `cf push APP_NAME --docker-image [REGISTRY_HOST:PORT/]IMAGE[:TAG] [--docker-username USERNAME] [-c COMMAND] [-f MANIFEST_PATH | --no-manifest] [--no-start] [--no-wait] [-i NUM_INSTANCES]`
+    * with docker image
+    ```bash 
+    cf push APP_NAME --docker-image [REGISTRY_HOST:PORT/]IMAGE[:TAG] [--docker-username USERNAME] [-c COMMAND] [-f MANIFEST_PATH | --no-manifest] [--no-start] [--no-wait] [-i NUM_INSTANCES]
+    ```
     * with manifest (to specify a manifest use `-f` with the path to a manifest)
-
+    
 * Please note that Atlas-OSB does not support the free tier of cluster creation: M0 (Atlas API doesn't have such support)
 
 * By default, when our manifest is used, it deploys only one instance of Atlas-OSB. However, the number of instances can be specified by adding "instances: < count >" to the manifest, it is also possible to use `cf` command
+
 ## License
 
 See [LICENSE](LICENSE). Licenses for all third-party dependencies are included in [notices](notices).
