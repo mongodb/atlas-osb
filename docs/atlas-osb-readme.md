@@ -505,11 +505,15 @@ TODO: MARK WHICH FIELDS ARE READ-ONLY? ie. users need to understand what can be 
 
 
 # VMWare Tanzu Application Service
+
 :construction:
+
 ##Test Status
+
 ![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Prepare%20CF.%20Base%20scenario./badge.svg)
 
 ##Product Snapshot
+
 The following badges provide version and version-support information about Atlas-OSB for VMware Tanzu.
 
 ![Last Released Version](https://img.shields.io/github/v/release/jasonmimick/atlas-osb)
@@ -520,6 +524,7 @@ The following badges provide version and version-support information about Atlas
 ![IaaS support](https://img.shields.io/badge/IaaS%20Support-AWS,%20Asure,%20GCP-important)
 
 ##Notes
+
 * Deploying Atlas-OSB to CF. There are [several ways](http://cli.cloudfoundry.org/en-US/v7/push.html) to deploy atlas-osb to cloud foundry:
     * with docker image `cf push APP_NAME --docker-image [REGISTRY_HOST:PORT/]IMAGE[:TAG] [--docker-username USERNAME] [-c COMMAND] [-f MANIFEST_PATH | --no-manifest] [--no-start] [--no-wait] [-i NUM_INSTANCES]`
     * with manifest (to specify a manifest use `-f` with the path to a manifest)
