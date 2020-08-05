@@ -6,7 +6,7 @@ atlas-osb
 
 [![Generic badge](https://img.shields.io/badge/WORKING-PREBETA-YELLOW.svg)](https://shields.io/)
 
-https://github.com/jasonmimick/atlas-osb/workflows/basic-plan-cloudfoundry/badge.svg
+![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/basic-plan-cloudfoundry/badge.svg)
 
 
 <img align="right" src="/docs/coming-later.svg">
