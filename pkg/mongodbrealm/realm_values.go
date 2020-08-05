@@ -49,7 +49,8 @@ var _ RealmValuesService = &RealmValuesServiceOp{}
 type RealmValue struct {
     ID          string                      `json:"_id,omitempty"`
     Name        string                      `json:"name,omitempty"`
-    Value       map[string]interface{}      `json:"value,omitempty"`
+    //Value       map[string]interface{}      `json:"value,omitempty"`
+    Value       interface{}      `json:"value,omitempty"`
     Private     bool                        `json:"private,omitempty"`
 }
 

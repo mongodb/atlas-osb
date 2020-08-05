@@ -13,6 +13,8 @@ import (
 	"github.com/pivotal-cf/brokerapi/domain"
 	"go.uber.org/zap"
     "strings"
+    "reflect"
+    "encoding/json"
 )
 
 const (
@@ -38,6 +40,7 @@ type RealmStateStorage struct {
     RealmClient *mongodbrealm.Client
     RealmApp    *mongodbrealm.RealmApp
     RealmProject  *mongodbatlas.Project
+    Logger      *zap.SugaredLogger
 }
 
 func keyForOrg(key *mongodbatlas.APIKey, orgID string) (bool) {
@@ -128,6 +131,7 @@ func GetStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.
         RealmClient: realmClient,
         RealmApp: realmApp,
         RealmProject: mainPrj,
+        Logger: logger,
     }
     return rss, nil
 }
@@ -217,14 +221,23 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, key string) (*domain.G
     if val.Value == nil {
         return nil, errors.New("val.Value was nil from realm, should never happen")
     }
-    spec := &domain.GetInstanceDetailsSpec{
-        ServiceID: fmt.Sprintf("%s",val.Value["serviceID"]),
-        PlanID: val.Value["planID"].(string),
-        DashboardURL: val.Value["dashboardURL"].(string),
-        Parameters: val.Value["parameters"].(interface{}),
+    spec := domain.GetInstanceDetailsSpec{}
+    //err = json.Unmarshal([]byte(val.Value), &spec)
+    sss := reflect.ValueOf(val.Value).Interface().(string) 
+    err = json.Unmarshal(([]byte)sss, &spec)
+    if err != nil {
+        return nil, err
     }
 
-    return spec, nil
+
+    //spec := &domain.GetInstanceDetailsSpec{
+    //    ServiceID: fmt.Sprintf("%s",val.Value["serviceID"]),
+    //    PlanID: val.Value["planID"].(string),
+    //    DashboardURL: val.Value["dashboardURL"].(string),
+    //    Parameters: reflect.ValueOf(val.Value["parameters"]).Interface().(interface{}),
+    //}
+
+    return &spec, nil
 }
 
 func (ss *RealmStateStorage) DeleteOne(ctx context.Context, key string) (error) {

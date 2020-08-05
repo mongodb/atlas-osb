@@ -8,7 +8,7 @@ import (
     "time"
 	"net/http"
 
-    "github.com/mitchellh/mapstructure"
+    "github.com/jinzhu/copier"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
@@ -319,14 +319,14 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
         return 
 	}
 
-    err = mapstructure.Decode(instance, &s)
-	if err != nil {
-        err = fmt.Errorf("Error finding instance in maintenance DB: %w", err)
-		err = apiresponses.NewFailureResponse(err, http.StatusNotImplemented, "get-instance")
-        b.logger.Errorw("Unable to Decode","instanceID",instanceID,"instance",instance,"err",err)
-        return 
-	}
-
+    //err = mapstructure.Decode(instance, &s)
+	//if err != nil {
+    //    err = fmt.Errorf("Error finding instance in maintenance DB: %w", err)
+	//	err = apiresponses.NewFailureResponse(err, http.StatusNotImplemented, "get-instance")
+    //    b.logger.Errorw("Unable to Decode","instanceID",instanceID,"instance",instance,"err",err)
+    //    return 
+	//}
+    copier.Copy(s,instance)
 	return s, nil
 }
 

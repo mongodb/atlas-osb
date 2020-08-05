@@ -22,6 +22,7 @@ const (
 	brokerHTTPAuthUsernameEnv  = "ATLAS_BROKER_HTTP_AUTH_USERNAME"
 	brokerHTTPAuthPasswordEnv = "ATLAS_BROKER_HTTP_AUTH_PASSWORD"
 	//projectIDEnv  = "ATLAS_PROJECT_ID"
+    brokerHostportEnv = "ATLAS_BROKER_HOSTPORT"
 )
 
 var (
@@ -29,12 +30,14 @@ var (
 	envPrivateAPIKey = os.Getenv(privateKeyAPIEnv)
 	envBrokerHTTPAuthUsername = os.Getenv(brokerHTTPAuthUsernameEnv)
 	envBrokerHTTPAuthPassword = os.Getenv(brokerHTTPAuthPasswordEnv)
+	envBrokerHostport = os.Getenv(brokerHostportEnv)
 )
 
 
 func GetBroker(URL string) (osb.Client, *mongodbatlas.Client, error) {
 	config := osb.DefaultClientConfiguration()
 	config.URL = URL
+    config.Insecure = true
     
 
     basicAuthConfig := &osb.BasicAuthConfig{
@@ -114,8 +117,12 @@ func main() {
         log.Println("where is my automobile?")
     }
 
-
-    broker, client, err := GetBroker("http://localhost:4000")
+    url := envBrokerHostport
+    if len(url)==0 {
+        url="http://localhost:4000"
+    }
+    log.Println("url",url)
+    broker, client, err := GetBroker(url)
     if err != nil {
         log.Fatalf("Error: %v",err)
     }
