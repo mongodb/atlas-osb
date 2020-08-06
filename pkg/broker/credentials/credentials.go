@@ -21,7 +21,7 @@ type Credentials struct {
 type BrokerAuth struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-	DB       string `json:"db"`
+	// DB       string `json:"db"`
 }
 
 type credHub struct {
@@ -72,7 +72,10 @@ func FromEnv(baseURL string) (*Credentials, error) {
 		return nil, nil
 	}
 
-	creds := Credentials{}
+	creds := Credentials{
+		projects: map[string]mongodbatlas.APIKey{},
+		Orgs:     map[string]mongodbatlas.APIKey{},
+	}
 	if err := json.Unmarshal([]byte(env), &creds); err != nil {
 		file, err := os.Open(env)
 		if err != nil {
