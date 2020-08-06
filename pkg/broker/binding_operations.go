@@ -15,6 +15,11 @@ import (
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
 
+const (
+	overrideBindDB     = "overrideBindDB"
+	overrideBindDBRole = "overrideBindDBRole"
+)
+
 // ConnectionDetails will be returned when a new binding is created.
 type ConnectionDetails struct {
 	Username         string `json:"username"`
@@ -67,7 +72,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	password, err := generatePassword()
 	if err != nil {
 		b.logger.Errorw("Failed to generate password", "error", err, "instance_id", instanceID, "binding_id", bindingID)
-		err = errors.New("Failed to generate binding password")
+		err = errors.New("failed to generate binding password")
 		return
 	}
 
@@ -166,7 +171,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec domain.GetBindingSpec, err error) {
 	b.logger.Infow("Retrieving binding", "instance_id", instanceID, "binding_id", bindingID)
 
-	err = apiresponses.NewFailureResponse(fmt.Errorf("Unknown binding ID %s", bindingID), 404, "get-binding")
+	err = apiresponses.NewFailureResponse(fmt.Errorf("unknown binding ID %s", bindingID), 404, "get-binding")
 	return
 }
 
@@ -215,8 +220,8 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 	}
 
 	if plan.Settings != nil {
-		if overrideDBName, ok := plan.Settings[dynamicplans.BROKER_SETTING_OVERRIDE_BIND_DB]; ok {
-			overrideDBRole, ok := plan.Settings[dynamicplans.BROKER_SETTING_OVERRIDE_BIND_DB_ROLE]
+		if overrideDBName, ok := plan.Settings[overrideBindDB]; ok {
+			overrideDBRole, ok := plan.Settings[overrideBindDBRole]
 			if !ok {
 				overrideDBRole = "readWrite"
 			}

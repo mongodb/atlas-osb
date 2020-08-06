@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	InstanceNotFound = errors.New("unable to find instance in state storage")
+	ErrInstanceNotFound = errors.New("unable to find instance in state storage")
 )
 
 //type StateStorage interface {
@@ -110,6 +110,7 @@ func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client,
 	var realmApp *mongodbrealm.RealmApp
 
 	for _, ra := range apps {
+		ra := ra
 		logger.Infow("Found realm app", "ra", ra)
 		if ra.Name == app.Name {
 			realmApp = &ra
@@ -137,7 +138,7 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, key string) (*domain.G
 	if err != nil {
 		// return proper InstanceNotFound, if error is realm
 		if strings.Contains(err.Error(), "value not found") {
-			err = InstanceNotFound
+			err = ErrInstanceNotFound
 		}
 		return nil, err
 	}
@@ -154,7 +155,7 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, key string) (*domain.G
 	if err != nil {
 		// return proper InstanceNotFound, if error is realm
 		if strings.Contains(err.Error(), "value not found") {
-			err = InstanceNotFound
+			err = ErrInstanceNotFound
 		}
 		return nil, err
 	}
@@ -181,7 +182,6 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, key string) (*domain.G
 func (ss *RealmStateStorage) DeleteOne(ctx context.Context, key string) error {
 	_, err := ss.RealmClient.RealmValues.Delete(ctx, ss.RealmProject.ID, ss.RealmApp.ID, key)
 	return err
-
 }
 
 func (ss *RealmStateStorage) Put(ctx context.Context, key string, value *domain.GetInstanceDetailsSpec) (*mongodbrealm.RealmValue, error) {
@@ -294,5 +294,4 @@ func GetOrgStateStorage(creds *credentials.Credentials, baseURL string, logger *
 
 	connstr := conn.String()
 	return cluster, connstr, nil
-
 }

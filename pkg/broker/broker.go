@@ -176,9 +176,9 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		if err == nil {
 			dp.Project = existing
 			return
-		} else {
-			err = nil
 		}
+
+		err = nil
 		return
 	}
 
@@ -195,10 +195,10 @@ func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
 }
 
 func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
-	apiUrl, err := url.Parse(b.baseURL)
+	apiURL, err := url.Parse(b.baseURL)
 	if err != nil {
 		return err.Error()
 	}
-	apiUrl.Path = fmt.Sprintf("/v2/%s", groupID)
-	return apiUrl.String() + fmt.Sprintf("#clusters/detail/%s", clusterName)
+	apiURL.Path = fmt.Sprintf("/v2/%s", groupID)
+	return apiURL.String() + fmt.Sprintf("#clusters/detail/%s", clusterName)
 }

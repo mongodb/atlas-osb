@@ -2,31 +2,26 @@ package main
 
 import (
 	"context"
-	"flag"
-
-	//"github.com/davecgh/go-spew/spew"
-	//"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/mongodbrealm"
-	//"gopkg.in/yaml.v2"
-	//osb "sigs.k8s.io/go-open-service-broker-client/v2"
 )
 
 const (
-	publicKeyApiEnv  = "ATLAS_PUBLIC_KEY"
-	privateKeyApiEnv = "ATLAS_PRIVATE_KEY"
+	publicKeyAPIEnv  = "ATLAS_PUBLIC_KEY"
+	privateKeyAPIEnv = "ATLAS_PRIVATE_KEY"
 	projectIDEnv     = "ATLAS_PROJECT_ID"
 	appIDEnv         = "ATLAS_APP_ID"
 )
 
 var (
-	envPublicApiKey  = os.Getenv(publicKeyApiEnv)
-	envPrivateApiKey = os.Getenv(privateKeyApiEnv)
+	envPublicAPIKey  = os.Getenv(publicKeyAPIEnv)
+	envPrivateAPIKey = os.Getenv(privateKeyAPIEnv)
 	envProjectID     = os.Getenv(projectIDEnv)
 	envAppID         = os.Getenv(appIDEnv)
 )
@@ -34,8 +29,8 @@ var (
 var (
 	groupID       = flag.String("groupid", envProjectID, "MongoDB Atlas Project Id, env ATLAS_PROJECT_ID")
 	appID         = flag.String("appid", envAppID, "MongoDB Realm App Id, env ATLAS_APP_ID")
-	publicApiKey  = flag.String("publicApiKey", envPublicApiKey, "MongoDB Atlas Public Api Key, or ATLAS_PUBLIC_KEY")
-	privateApiKey = flag.String("privateApiKey", envPrivateApiKey, "MongoDB Atlas Private Api Key, or ATLAS_PUBLIC_KEY")
+	publicAPIKey  = flag.String("publicApiKey", envPublicAPIKey, "MongoDB Atlas Public Api Key, or ATLAS_PUBLIC_KEY")
+	privateAPIKey = flag.String("privateApiKey", envPrivateAPIKey, "MongoDB Atlas Private Api Key, or ATLAS_PUBLIC_KEY")
 	key           = flag.String("key", "", "Key for new value, or used as keyid without value or for --delete")
 	value         = flag.String("value", "", "JSON string for your new value")
 	verbose       = flag.Bool("verbose", false, "Enable verbose output")
@@ -59,7 +54,7 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 	}
 
-	atlasclient, err := mongodbrealm.New(context.Background(), nil, nil, mongodbrealm.SetAPIAuth(*publicApiKey, *privateApiKey))
+	atlasclient, err := mongodbrealm.New(context.Background(), nil, nil, mongodbrealm.SetAPIAuth(*publicAPIKey, *privateAPIKey))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -104,7 +99,6 @@ func main() {
 
 	if len(*appID) > 0 { // list values
 		if *deleteApp {
-
 			log.Printf("attempt delete realm app with appID: %+v", *appID)
 			app, err := atlasclient.RealmApps.Delete(context.Background(), *groupID, *appID)
 			if err != nil {
@@ -125,7 +119,6 @@ func main() {
 		}
 	} else { // list apps
 		if *createApp {
-
 			if len(*value) == 0 {
 				log.Fatalf("create-app set but no --value")
 			}
@@ -141,7 +134,6 @@ func main() {
 
 			v, _ := json.Marshal(app)
 			fmt.Println(string(v))
-
 		} else {
 			apps, _, err := atlasclient.RealmApps.List(context.Background(), *groupID, nil)
 			if err != nil {
@@ -152,5 +144,4 @@ func main() {
 			fmt.Println(string(v))
 		}
 	}
-
 }

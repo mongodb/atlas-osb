@@ -28,11 +28,6 @@ func (c *Client) RealmAppInputFromString(value string) (*RealmAppInput, error) {
 	return &t, nil
 }
 
-type RealmAtlasApiKey struct {
-	Username string
-	Password string
-}
-
 type RealmAuth struct {
 	AccessToken  string `json:"access_token,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`

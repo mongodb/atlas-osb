@@ -305,13 +305,13 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 	b.logger.Infow("Fetching instance", "instance_id", instanceID)
 
 	if b.state == nil {
-		err = apiresponses.NewFailureResponse(errors.New("Fetching instances is not supported in stateless mode"), http.StatusNotImplemented, "get-instance")
+		err = apiresponses.NewFailureResponse(errors.New("fetching instances is not supported in stateless mode"), http.StatusNotImplemented, "get-instance")
 		return
 	}
 
 	instance, err := b.state.FindOne(context.Background(), instanceID)
 	if err != nil {
-		err = fmt.Errorf("Error finding instance in maintenance DB: %w", err)
+		err = fmt.Errorf("error finding instance in maintenance DB: %w", err)
 		err = apiresponses.NewFailureResponse(err, http.StatusNotImplemented, "get-instance")
 		b.logger.Errorw("Unable to FineOne", "instanceID", instanceID, "err", err)
 		return
@@ -348,7 +348,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 
 	b.logger.Infow("Found existing cluster", "cluster", cluster)
 
-	state := domain.LastOperationState(domain.Failed)
+	state := domain.Failed
 
 	switch details.OperationData {
 	case OperationProvision, OperationUpdate:
@@ -406,7 +406,7 @@ func NormalizeClusterName(name string) string {
 	const maximumNameLength = 23
 
 	if len(name) > maximumNameLength {
-		return string(name[0:maximumNameLength])
+		return name[0:maximumNameLength]
 	}
 
 	return name

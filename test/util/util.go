@@ -52,7 +52,7 @@ func ReadInYAMLFileAndConvert(pathToYamlFile string, crd interface{}) interface{
 
 	// Map yamlFile to interface
 	var body interface{}
-	if err := yaml.Unmarshal([]byte(yamlFile), &body); err != nil {
+	if err := yaml.Unmarshal(yamlFile, &body); err != nil {
 		panic(err)
 	}
 

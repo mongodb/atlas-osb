@@ -84,7 +84,7 @@ func FromEnv(baseURL string) (*Credentials, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot read BROKER_APIKEYS: %v", err)
 		}
-		if err := json.Unmarshal([]byte(fileData), &creds); err != nil {
+		if err := json.Unmarshal(fileData, &creds); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
 		}
 	}

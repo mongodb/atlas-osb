@@ -15,7 +15,7 @@ func ReadWhitelistFile(path string) (Whitelist, error) {
 	}
 
 	whitelist := Whitelist{}
-	if err := json.Unmarshal([]byte(bytes), &whitelist); err != nil {
+	if err := json.Unmarshal(bytes, &whitelist); err != nil {
 		return nil, err
 	}
 
