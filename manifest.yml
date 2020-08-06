@@ -10,4 +10,4 @@ applications:
     BROKER_PORT: "8080"
     ATLAS_BROKER_TEMPLATEDIR: "samples/plans"
     BROKER_OSB_SERVICE_NAME: "atlas" 
-    BROKER_APIKEYS: "samples/apikeys-config.json"
+#    BROKER_APIKEYS: "samples/apikeys-config.json"

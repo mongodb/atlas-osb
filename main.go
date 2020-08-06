@@ -24,6 +24,7 @@ const (
 	DefaultLogLevel = "INFO"
 
 	DefaultAtlasBaseURL = "https://cloud.mongodb.com/api/atlas/v1.0/"
+	DefaultRealmBaseURL = "https://realm.mongodb.com/api/admin/v3.0/"
 
 	DefaultServerHost = "127.0.0.1"
 	DefaultServerPort = 4000
@@ -73,11 +74,11 @@ Docker Image: quay.io/mongodb/mongodb-atlas-service-broker`
 	return fmt.Sprintf(helpMessage, releaseVersion)
 }
 
-func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
+func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.Credentials {
 	logger.Info("Deducing credentials source...")
 
 	logger.Info("Trying Multi-Project credentials from env...")
-	creds, err := credentials.FromEnv()
+	creds, err := credentials.FromEnv(atlasURL)
 	switch {
 	case err == nil && creds == nil:
 		logger.Infow("Rejected Multi-Project (env): not enabled by user")
@@ -89,7 +90,7 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	}
 
 	logger.Info("Trying Multi-Project credentials from CredHub...")
-	creds, err = credentials.FromCredHub()
+	creds, err = credentials.FromCredHub(atlasURL)
 	switch {
 	case err == nil && creds == nil:
 		logger.Infow("Rejected Multi-Project (CredHub): not in CF")
@@ -105,56 +106,35 @@ func deduceCredentials(logger *zap.SugaredLogger) *credentials.Credentials {
 	return nil
 }
 
-func tryGetStateStorage(creds *credentials.Credentials, baseURL string,logger *zap.SugaredLogger, orgID string) (*statestorage.RealmStateStorage, error) {
-    logger.Info("tryGetStateStorage")
-    ss, err := statestorage.GetStateStorage(creds, baseURL, logger, orgID)
-    logger.Info("foofoo")
-    if err != nil {
-        logger.Errorw("Failed to get statestorage","err",err)
-        return nil, err
-    }
-    logger.Infow("GetOrgStateStorage","ss.RealmApp",ss.RealmApp)
-    return ss, nil
-}
+func createCredsAndDB(logger *zap.SugaredLogger, atlasURL string, realmURL string) (creds *credentials.Credentials, state *statestorage.RealmStateStorage) {
+	creds = deduceCredentials(logger, atlasURL)
 
-func createCredsAndDB(logger *zap.SugaredLogger, baseURL string) (creds *credentials.Credentials, state *statestorage.RealmStateStorage) {
-	creds = deduceCredentials(logger)
-
-	if creds.Broker.DB == "" {
-		logger.Fatal("Cannot create state storage without DB connection")
-	}
-
-	//client, err := mongo.NewClient(options.Client().ApplyURI(creds.Broker.DB))
-	//if err != nil {
-	//	logger.Fatalf("Cannot create Mongo client: %v", err)
-	//}
-    // find 1st org -- need to deal with this better
-    if len(creds.Orgs)<= 0 {
-		logger.Fatal("Need 1 org key")
-    }
-
-    state, err := tryGetStateStorage(creds, baseURL, logger, "")
-    if err != nil {
-		logger.Fatalw("Error getting state storage", "error", err)
-    }
-
-	if err := creds.FlattenOrgs(baseURL); err != nil {
+	if err := creds.FlattenOrgs(atlasURL); err != nil {
 		logger.Fatalw("Cannot parse Org API Keys", "error", err)
 	}
 
-	return creds, state
+	id, _ := creds.RandomKey()
+	ss, err := statestorage.GetStateStorage(creds, atlasURL, realmURL, logger, id)
+	if err != nil {
+		logger.Fatalw("Failed to get statestorage", "error", err)
+	}
+
+	logger.Debugw("GetOrgStateStorage", "ss.RealmApp", ss.RealmApp)
+
+	return creds, ss
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
-	baseURL := getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL)
+	atlasURL := getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL)
+	realmURL := getEnvOrDefault("REALM_BASE_URL", DefaultRealmBaseURL)
 
-	creds, state := createCredsAndDB(logger, baseURL)
+	creds, state := createCredsAndDB(logger, atlasURL, realmURL)
 
 	// Administrators can control what providers/plans are available to users
 	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
 	if !hasWhitelist {
-		logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", "NONE")
-		return broker.New(logger, creds, baseURL, nil, state)
+		logger.Infow("Creating broker", "atlas_base_url", atlasURL, "whitelist_file", "NONE")
+		return broker.New(logger, creds, atlasURL, nil, state)
 	}
 
 	// TODO
@@ -165,8 +145,8 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 		logger.Fatal("Cannot load providers whitelist: %v", err)
 	}
 
-	logger.Infow("Creating broker", "atlas_base_url", baseURL, "whitelist_file", pathToWhitelistFile)
-	return broker.New(logger, creds, baseURL, whitelist, state)
+	logger.Infow("Creating broker", "atlas_base_url", atlasURL, "whitelist_file", pathToWhitelistFile)
+	return broker.New(logger, creds, atlasURL, whitelist, state)
 }
 
 func startBrokerServer() {
@@ -176,11 +156,11 @@ func startBrokerServer() {
 		panic(err)
 	}
 	defer func() {
-        err := logger.Sync() // Flushes buffer, if any
-        if err != nil {
-            panic(err)
-        }
-    }()
+		err := logger.Sync() // Flushes buffer, if any
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	b := createBroker(logger)
 
@@ -275,8 +255,8 @@ func createLogger(levelName string) (*zap.SugaredLogger, error) {
 
 	config := zap.NewProductionConfig()
 	config.Level = zap.NewAtomicLevelAt(level)
-    // https://github.com/uber-go/zap/issues/584
-    config.OutputPaths = []string{"stdout"}
+	// https://github.com/uber-go/zap/issues/584
+	config.OutputPaths = []string{"stdout"}
 
 	logger, err := config.Build()
 	if err != nil {

@@ -9,21 +9,17 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drewolson/testflight v1.0.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/go-test/deep v1.0.1
 	github.com/goccy/go-yaml v1.7.18
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-querystring v1.0.0
-	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/kubernetes-incubator/service-catalog v0.2.1
 	github.com/kubernetes-sigs/service-catalog v0.2.1
-	github.com/mitchellh/mapstructure v1.3.3
 	github.com/mongodb/go-client-mongodb-atlas v0.3.0
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pivotal-cf/brokerapi v5.1.0+incompatible
-	github.com/pkg/errors v0.8.1 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.5.1
 	github.com/tidwall/pretty v1.0.0 // indirect
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect

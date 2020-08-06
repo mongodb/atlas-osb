@@ -3,12 +3,11 @@ package broker
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
-	"encoding/json"
 
-	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/goccy/go-yaml"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
@@ -16,8 +15,8 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
-    "go.mongodb.org/mongo-driver/bson"
 )
 
 // Ensure broker adheres to the ServiceBroker interface.
@@ -32,7 +31,7 @@ type Broker struct {
 	credentials *credentials.Credentials
 	baseURL     string
 	catalog     *catalog
-    state       *statestorage.RealmStateStorage
+	state       *statestorage.RealmStateStorage
 }
 
 // New creates a new Broker with a logger.
@@ -75,37 +74,37 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 		return
 	}
 
-    // Attempt to merge in any other values as plan instance data
-    pb, _ := json.Marshal(ctx)
-    b.logger.Infow("Found plan instance data to merge","pb",pb)
-    err = json.Unmarshal(pb, &dp)
-    if err != nil {
-        b.logger.Errorw("Error trying to merge in planContext as plan instance","err",err)
-    } else {
-        b.logger.Infow("Merged final plan instance:", "dp", dp)
-    }
+	// Attempt to merge in any other values as plan instance data
+	pb, _ := json.Marshal(ctx)
+	b.logger.Infow("Found plan instance data to merge", "pb", pb)
+	err = json.Unmarshal(pb, &dp)
+	if err != nil {
+		b.logger.Errorw("Error trying to merge in planContext as plan instance", "err", err)
+	} else {
+		b.logger.Infow("Merged final plan instance:", "dp", dp)
+	}
 
 	return dp, nil
 }
 
 func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynamicplans.Plan, error) {
-    i, err := b.GetInstance(ctx, instanceID)
+	i, err := b.GetInstance(ctx, instanceID)
 	if err != nil {
 		return nil, err
 	}
 
-	params, ok := i.Parameters.(bson.D)
+	params, ok := i.Parameters.(map[string]interface{})
 	if !ok {
 		b.logger.Errorf("%#v", i)
 		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
 	}
 
-	p, found := params.Map()["plan"]
+	p, found := params["plan"]
 	if !found {
 		return nil, fmt.Errorf("plan not found in instance metadata")
 	}
 
-	d, ok := p.(bson.D)
+	d, ok := p.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("instance metadata plan has the wrong type %T", p)
 	}
@@ -118,15 +117,6 @@ func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynam
 
 	err = bson.Unmarshal(bytes, &plan)
 	return &plan, err
-}
-
-func (b *Broker) createClient(k credentials.APIKey) (*mongodbatlas.Client, error) {
-	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
-	if err != nil {
-		return nil, err
-	}
-
-	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
 }
 
 func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (dp *dynamicplans.Plan, err error) {
@@ -157,13 +147,13 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 	}
 
 	if dp.Project.ID != "" {
-		c, ok := b.credentials.Projects[dp.Project.ID]
-		if !ok {
-			err = fmt.Errorf("credentials for project ID %q not found", dp.Project.ID)
+		var k mongodbatlas.APIKey
+		k, err = b.credentials.GetProjectKey(dp.Project.ID)
+		if err != nil {
 			return
 		}
 
-		client, err = b.createClient(c)
+		client, err = b.credentials.Client(b.baseURL, k)
 		return
 	}
 
@@ -175,7 +165,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 			return
 		}
 
-		client, err = b.createClient(c)
+		client, err = b.credentials.Client(b.baseURL, c)
 		if err != nil {
 			return
 		}

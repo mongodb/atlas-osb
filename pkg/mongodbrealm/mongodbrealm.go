@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-    "errors"
 
 	"net/http"
 	"net/url"
@@ -15,12 +14,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/google/go-querystring/query"
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"github.com/pkg/errors"
 )
 
 const (
-	defaultBaseURL = "https://cloud.mongodb.com/api/atlas/v1.0/"
+	defaultBaseURL = "https://realm.mongodb.com/api/admin/v3.0/"
 	userAgent      = "go-mongodbrealm"
 	jsonMediaType  = "application/json"
 	gzipMediaType  = "application/gzip"
@@ -53,8 +53,12 @@ type Client struct {
 	UserAgent string
 
 	// Services used for communicating with the API
-    RealmApps                           RealmAppsService
-    RealmValues                         RealmValuesService
+	RealmApps   RealmAppsService
+	RealmValues RealmValuesService
+
+	publicKey  string
+	privateKey string
+	auth       *RealmAuth
 
 	onRequestCompleted RequestCompletionCallback
 }
@@ -98,7 +102,6 @@ type ErrorResponse struct {
 	Detail string `json:"detail,omitempty"`
 }
 
-
 func (resp *Response) getLinkByRef(ref string) *mongodbatlas.Link {
 	for i := range resp.Links {
 		if resp.Links[i].Rel == ref {
@@ -124,7 +127,7 @@ func (resp *Response) CurrentPage() (int, error) {
 	//if err != nil {
 	//	return 0, err
 	//}
-    pageNumStr := "0"
+	pageNumStr := "0"
 	pageNum, err := strconv.Atoi(pageNumStr)
 	if err != nil {
 		return 0, fmt.Errorf("error getting current page: %s", err)
@@ -141,10 +144,14 @@ func NewClient(httpClient *http.Client) *Client {
 
 	baseURL, _ := url.Parse(defaultBaseURL)
 
-	c := &Client{client: httpClient, BaseURL: baseURL, UserAgent: userAgent}
+	c := &Client{client: httpClient,
+		BaseURL:   baseURL,
+		UserAgent: userAgent,
+		auth:      &RealmAuth{},
+	}
 
-    c.RealmApps = &RealmAppsServiceOp{Client: c}
-    c.RealmValues = &RealmValuesServiceOp{Client: c}
+	c.RealmApps = &RealmAppsServiceOp{Client: c}
+	c.RealmValues = &RealmValuesServiceOp{Client: c}
 
 	return c
 }
@@ -152,17 +159,18 @@ func NewClient(httpClient *http.Client) *Client {
 // ClientOpt are options for New.
 type ClientOpt func(*Client) error
 
-
 // New returns a new mongodbrealm API client instance.
-func New(httpClient *http.Client, opts ...ClientOpt) (*Client, error) {
+func New(ctx context.Context, httpClient *http.Client, opts ...ClientOpt) (*Client, error) {
 	c := NewClient(httpClient)
+
 	for _, opt := range opts {
 		if err := opt(c); err != nil {
 			return nil, err
 		}
 	}
 
-	return c, nil
+	err := c.getToken(ctx)
+	return c, errors.Wrap(err, "cannot get auth token")
 }
 
 // SetBaseURL is a client option for setting the base URL.
@@ -184,6 +192,33 @@ func SetUserAgent(ua string) ClientOpt {
 		c.UserAgent = fmt.Sprintf("%s %s", ua, c.UserAgent)
 		return nil
 	}
+}
+
+func SetAPIAuth(pub, priv string) ClientOpt {
+	return func(c *Client) error {
+		c.publicKey = pub
+		c.privateKey = priv
+		return nil
+	}
+}
+
+func (c *Client) getToken(ctx context.Context) error {
+	data := map[string]interface{}{
+		"username": c.publicKey,
+		"apiKey":   c.privateKey,
+	}
+
+	loginReq, err := c.NewRequest(ctx, http.MethodPost, realmLoginPath, data)
+	if err != nil {
+		return errors.Wrapf(err, "cannot create login request (public key %q)", c.publicKey)
+	}
+
+	_, err = c.Do(context.TODO(), loginReq, c.auth)
+	if err != nil {
+		return errors.Wrapf(err, "cannot do login request (public key %q)", c.publicKey)
+	}
+
+	return nil
 }
 
 // NewRequest creates an API request. A relative URL can be provided in urlStr, which will be resolved to the
@@ -213,6 +248,9 @@ func (c *Client) NewRequest(ctx context.Context, method, urlStr string, body int
 		req.Header.Set("Content-Type", jsonMediaType)
 	}
 	req.Header.Add("Accept", jsonMediaType)
+	if c.auth.AccessToken != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+	}
 	if c.UserAgent != "" {
 		req.Header.Set("User-Agent", c.UserAgent)
 	}
@@ -323,10 +361,10 @@ func CheckResponse(r *http.Response) error {
 
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && len(data) > 0 {
-	    return errors.New(string(data))
+		return errors.New(string(data))
 	}
 
-	return nil 
+	return nil
 }
 
 // DoRequestWithClient submits an HTTP request using the specified client.

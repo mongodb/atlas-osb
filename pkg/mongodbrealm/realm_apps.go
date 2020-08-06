@@ -2,42 +2,42 @@ package mongodbrealm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-    "encoding/json"
+	"log"
 	"net/http"
 	"net/url"
-    "log"
+
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 )
+
 const (
-    realmAppsPath = "groups/%s/apps"
+	realmAppsPath       = "groups/%s/apps"
 	realmDefaultBaseURL = "https://realm.mongodb.com/api/admin/v3.0/"
-    realmLoginPath = "auth/providers/mongodb-cloud/login"
+	realmLoginPath      = "auth/providers/mongodb-cloud/login"
 )
 
 func (c *Client) RealmAppInputFromString(value string) (*RealmAppInput, error) {
+	var t RealmAppInput
+	err := json.Unmarshal([]byte(value), &t)
+	if err != nil {
+		log.Printf("Unmarshal: %v", err)
+		return nil, err
+	}
 
-
-    var t RealmAppInput
-    err := json.Unmarshal([]byte(value), &t)
-    if err != nil {
-        log.Printf("Unmarshal: %v", err)
-        return nil, err
-    }
-
-    return &t, nil
+	return &t, nil
 }
 
 type RealmAtlasApiKey struct {
-    Username string
-    Password string
+	Username string
+	Password string
 }
 
 type RealmAuth struct {
-	AccessToken string   `json:"access_token,omitempty"`
-	RefreshToken string   `json:"refresh_token,omitempty"`
-	UserID         string      `json:"user_id,omitempty"`
-	DeviceID       string      `json:"device_id,omitempty"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	UserID       string `json:"user_id,omitempty"`
+	DeviceID     string `json:"device_id,omitempty"`
 }
 
 // RealmService is an interface for interfacing with the Realm
@@ -61,71 +61,26 @@ var RealmAccessToken = ""
 
 // RealmAppInput represents MongoDB API key input request for Create.
 type RealmAppInput struct {
-	Name string   `json:"name,omitempty"`
-	ClientAppID       string      `json:"client_app_id,omitempty"`
-	Location string      `json:"location,omitempty"`
-	DeploymentModel string      `json:"deployment_model,omitempty"`
-	Product string      `json:"product,omitempty"`
+	Name            string `json:"name,omitempty"`
+	ClientAppID     string `json:"client_app_id,omitempty"`
+	Location        string `json:"location,omitempty"`
+	DeploymentModel string `json:"deployment_model,omitempty"`
+	Product         string `json:"product,omitempty"`
 }
 
 // RealmApp represents MongoDB API Key.
 //{"_id":"5f12de8c15049be9464eb269","client_app_id":"mad-elion-arays","name":"mad-elion","location":"US-VA","deployment_model":"GLOBAL","domain_id":"5f12de8c15049be9464eb26a","group_id":"5f12d8cc6c2bfd1e0c670f4a","last_used":1595072140,"last_modified":1595072140,"product":"standard"}
 type RealmApp struct {
-	Name string   `json:"name,omitempty"`
-	ID         string      `json:"_id,omitempty"`
-	ClientAppID       string      `json:"client_app_id,omitempty"`
-	Location string      `json:"location,omitempty"`
-	DeploymentModel string      `json:"deployment_model,omitempty"`
-	GroupID string      `json:"group_id,omitempty"`
-	Product string      `json:"product,omitempty"`
-	DomainID string      `json:"domain_id,omitempty"`
+	Name            string `json:"name,omitempty"`
+	ID              string `json:"_id,omitempty"`
+	ClientAppID     string `json:"client_app_id,omitempty"`
+	Location        string `json:"location,omitempty"`
+	DeploymentModel string `json:"deployment_model,omitempty"`
+	GroupID         string `json:"group_id,omitempty"`
+	Product         string `json:"product,omitempty"`
+	DomainID        string `json:"domain_id,omitempty"`
 }
 
-// realmAppsResponse is the response from the RealmAppsService.List.
-//type realmAppsResponse struct {
-//	Apps []RealmApp  
-//}
-
-var currentRealmAuth *RealmAuth
-var currentRealmAtlasApiKey *RealmAtlasApiKey
-
-func (c *Client) SetCurrentRealmAtlasApiKey(rk *RealmAtlasApiKey) {
-    currentRealmAtlasApiKey = rk
-}
-func (c *Client) GetCurrentRealmAtlasApiKey() (*RealmAtlasApiKey) {
-    return currentRealmAtlasApiKey
-}
-
-func (s *RealmAppsServiceOp) AddRealmAuthToRequest(ctx context.Context,request *http.Request) (error) {
-
-	path := fmt.Sprintf("%s%s",realmDefaultBaseURL,realmLoginPath)
-    data := map[string]interface{}{
-		"username": currentRealmAtlasApiKey.Username,
-		"apiKey":   currentRealmAtlasApiKey.Password,
-	}
-
-	loginReq, err := s.Client.NewRequest(ctx, http.MethodPost, path, &data)
-	if err != nil {
-		return err
-	}
-
-    root := &RealmAuth{}
-	_, err = s.Client.Do(ctx, loginReq, root)
-	if err != nil {
-	    log.Printf("REALM AUTH error: %s", err)
-		return err
-	}
-
-	//log.Printf("REALM AUTH root: %v", root)
-    currentRealmAuth = root
-    token := fmt.Sprintf("Bearer %s", currentRealmAuth.AccessToken)
-	//log.Printf("REALM AUTH token: %s", token)
-
-	request.Header.Add("Authorization", token )
-    return nil
-
-
-}
 // List all API-KEY in the organization associated to {ORG-ID}.
 // See more: https://docs.atlas.mongodb.com/reference/api/apiKeys-orgs-get-all/
 func (s *RealmAppsServiceOp) List(ctx context.Context, groupID string, listOptions *ListOptions) ([]RealmApp, *Response, error) {
@@ -137,26 +92,18 @@ func (s *RealmAppsServiceOp) List(ctx context.Context, groupID string, listOptio
 		return nil, nil, err
 	}
 
-	path = fmt.Sprintf("%s%s",realmDefaultBaseURL,path)
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-    
-    err = s.AddRealmAuthToRequest(ctx,req)
+
+	//root := new(realmAppsResponse)
+	root := make([]RealmApp, 0)
+	resp, err := s.Client.Do(ctx, req, &root)
 	if err != nil {
-		return nil, nil, err
-	}
-    log.Printf("REALM - check token in header %v", req.Header)
-    
-    //root := new(realmAppsResponse)
-    root := make([]RealmApp,0)	
-    resp, err := s.Client.Do(ctx, req, &root)
-	if err != nil {
-        log.Printf("realmapps List - resp: %+v",resp)
+		log.Printf("realmapps List - resp: %+v", resp)
 		return nil, resp, err
 	}
-
 
 	return root, resp, nil
 }
@@ -174,15 +121,11 @@ func (s *RealmAppsServiceOp) Get(ctx context.Context, groupID string, appID stri
 
 	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
 
-	req, err := s.Client.NewRequest(ctx, http.MethodGet,path, nil)
+	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
-    err = s.AddRealmAuthToRequest(ctx,req)
-	if err != nil {
-		return nil, nil, err
-	}
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
 	if err != nil {
@@ -199,7 +142,7 @@ func (s *RealmAppsServiceOp) Create(ctx context.Context, groupID string, createR
 		return nil, nil, mongodbatlas.NewArgError("createRequest", "cannot be nil")
 	}
 
-    path := fmt.Sprintf(realmAppsPath, groupID)
+	path := fmt.Sprintf(realmAppsPath, groupID)
 
 	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
 
@@ -208,10 +151,6 @@ func (s *RealmAppsServiceOp) Create(ctx context.Context, groupID string, createR
 		return nil, nil, err
 	}
 
-    err = s.AddRealmAuthToRequest(ctx,req)
-	if err != nil {
-		return nil, nil, err
-	}
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
 	if err != nil {
@@ -239,10 +178,6 @@ func (s *RealmAppsServiceOp) Update(ctx context.Context, groupID, appID string, 
 		return nil, nil, err
 	}
 
-    err = s.AddRealmAuthToRequest(ctx,req)
-	if err != nil {
-		return nil, nil, err
-	}
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
 	if err != nil {
@@ -270,11 +205,6 @@ func (s *RealmAppsServiceOp) Delete(ctx context.Context, groupID, appID string) 
 		return nil, err
 	}
 
-    err = s.AddRealmAuthToRequest(ctx,req)
-	if err != nil {
-		return nil, err
-	}
 	resp, err := s.Client.Do(ctx, req, nil)
-
 	return resp, err
 }

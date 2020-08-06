@@ -3,25 +3,19 @@ package credentials
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"github.com/pkg/errors"
 )
 
-// FIXME: temporary hack for old secrets
-type APIKey struct {
-	mongodbatlas.APIKey
-	DisplayName string `json:"display_name,omitempty"`
-}
-
 type Credentials struct {
-	Projects map[string]APIKey `json:"projects"`
-	Orgs     map[string]APIKey `json:"orgs"`
-	Broker   *BrokerAuth       `json:"broker"`
+	projects map[string]mongodbatlas.APIKey
+	Orgs     map[string]mongodbatlas.APIKey `json:"orgs"`
+	Broker   *BrokerAuth                    `json:"broker"`
 }
 
 type BrokerAuth struct {
@@ -40,7 +34,7 @@ type services struct {
 	UserProvided []credHub `json:"user-provided"`
 }
 
-func FromCredHub() (*Credentials, error) {
+func FromCredHub(baseURL string) (*Credentials, error) {
 	env, found := os.LookupEnv("VCAP_SERVICES")
 	if !found {
 		return nil, nil
@@ -52,14 +46,11 @@ func FromCredHub() (*Credentials, error) {
 	}
 
 	result := Credentials{
-		Projects: map[string]APIKey{},
-		Orgs:     map[string]APIKey{},
+		projects: map[string]mongodbatlas.APIKey{},
+		Orgs:     map[string]mongodbatlas.APIKey{},
 	}
 
 	for _, c := range append(services.CredHub, services.UserProvided...) {
-		for k, v := range c.Credentials.Projects {
-			result.Projects[k] = v
-		}
 		for k, v := range c.Credentials.Orgs {
 			result.Orgs[k] = v
 		}
@@ -75,7 +66,7 @@ func FromCredHub() (*Credentials, error) {
 	return &result, nil
 }
 
-func FromEnv() (*Credentials, error) {
+func FromEnv(baseURL string) (*Credentials, error) {
 	env, found := os.LookupEnv("BROKER_APIKEYS")
 	if !found {
 		return nil, nil
@@ -110,34 +101,60 @@ func (c *Credentials) validate() error {
 		return errors.New("no broker credentials specified")
 	}
 
-	if len(c.Projects)+len(c.Orgs) == 0 {
-		return errors.New("no Project/Org credentials specified")
+	if len(c.Orgs) == 0 {
+		return errors.New("no Org credentials specified")
 	}
 
 	return nil
 }
 
+func (c *Credentials) GetProjectKey(id string) (mongodbatlas.APIKey, error) {
+	k, ok := c.projects[id]
+	if !ok {
+		return k, fmt.Errorf("no API key for project %s", id)
+	}
+	return k, nil
+}
+
+func (c *Credentials) AddProjectKey(k mongodbatlas.APIKey) {
+	c.projects[k.ID] = k
+}
+
+func (c *Credentials) Client(baseURL string, k mongodbatlas.APIKey) (*mongodbatlas.Client, error) {
+	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create Digest client")
+	}
+
+	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
+}
+
+// TODO: should be removed on proper release?
+func (c *Credentials) RandomKey() (orgID string, key mongodbatlas.APIKey) {
+	for k, v := range c.Orgs {
+		return k, v
+	}
+
+	return
+}
+
 func (c *Credentials) FlattenOrgs(baseURL string) error {
 	for k, v := range c.Orgs {
-		hc, err := digest.NewTransport(v.PublicKey, v.PrivateKey).Client()
+		client, err := c.Client(baseURL, v)
 		if err != nil {
-			return err
-		}
-
-		client, err := mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
-		if err != nil {
-			return err
+			return errors.Wrap(err, "cannot create Atlas client")
 		}
 
 		p, _, err := client.Projects.GetAllProjects(context.Background(), nil)
 		if err != nil {
 			return err
 		}
+
 		for _, pp := range p.Results {
 			if pp.OrgID != k {
 				continue
 			}
-			c.Projects[pp.ID] = v
+			c.projects[pp.ID] = v
 		}
 	}
 
