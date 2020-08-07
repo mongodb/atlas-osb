@@ -8,10 +8,6 @@ atlas-osb
 
 [![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
 
-
-
-<img align="right" src="/docs/coming-later.svg">
-
 Table of Contents
 =====
   * [Intoduction](#introduction)
@@ -506,8 +502,6 @@ TODO: MARK WHICH FIELDS ARE READ-ONLY? ie. users need to understand what can be 
 
 # VMWare Tanzu Application Service
 
-:construction:
-
 ## Test Status
 
 ![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Prepare%20CF.%20Base%20scenario./badge.svg)
@@ -533,8 +527,6 @@ The following badges provide version and version-support information about Atlas
     * with manifest (to specify a manifest use `-f` with the path to a manifest)
     
 * Please note that Atlas-OSB does not support the free tier of cluster creation: M0 (Atlas API doesn't have such support)
-
-* By default, when our manifest is used, it deploys only one instance of Atlas-OSB. However, the number of instances can be specified by adding "instances: < count >" to the manifest, it is also possible to use `cf` command
 
 ## License
 
