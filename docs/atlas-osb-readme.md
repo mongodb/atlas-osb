@@ -3,8 +3,9 @@ src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar5
 atlas-osb
 </img>
 
-
 [![Generic badge](https://img.shields.io/badge/WORKING-PREBETA-YELLOW.svg)](https://shields.io/)
+
+![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Clean%20CF/badge.svg)
 
 [![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
 

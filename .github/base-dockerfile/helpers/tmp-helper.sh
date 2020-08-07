@@ -22,7 +22,7 @@ make_multikey_config() {
   if [ -f $file ]; then
       rm $file
   fi
-  cat >$file <<EOF 
+  cat >$file <<EOF
 {
 	"broker": {
 		"username": "admin",
@@ -45,7 +45,10 @@ make_multikey_config() {
 		"${INPUT_ATLAS_ORG_ID}": {
 			"publicKey": "${INPUT_ATLAS_PUBLIC_KEY}",
 			"privateKey": "${INPUT_ATLAS_PRIVATE_KEY}",
-			"desc": "org-key"
+			"desc": "org-key",
+            "roles": [
+                { "orgid" : "${INPUT_ATLAS_ORG_ID}" }
+            ]
 		}
 	}
 }

@@ -2,11 +2,6 @@ package dynamicplans
 
 import "github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 
-const(
-    BROKER_SETTING_OVERRIDE_BIND_DB      = "overrideBindDB"
-    BROKER_SETTING_OVERRIDE_BIND_DB_ROLE = "overrideBindDBRole"
-)
-
 // Plan represents a set of MongoDB Atlas resources
 type Plan struct {
 	Version             string                             `json:"version,omitempty"`
@@ -21,7 +16,7 @@ type Plan struct {
 	DefaultBindingRoles *[]mongodbatlas.Role               `json:"defaultBindingRoles"`
 	Bindings            []*Binding                         `json:"bindings,omitempty"` // READ ONLY! Populated by bind()
 
-    Settings            map[string]string                 `json:"settings,omitempty"`
+	Settings map[string]string `json:"settings,omitempty"`
 }
 
 // Binding info

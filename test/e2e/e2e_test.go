@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	name              = "atlas-service-broker"
+	name = "atlas-service-broker"
 )
 
 var (

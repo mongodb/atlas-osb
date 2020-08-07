@@ -8,10 +8,16 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+)
+
+const (
+	overrideBindDB     = "overrideBindDB"
+	overrideBindDBRole = "overrideBindDBRole"
 )
 
 // ConnectionDetails will be returned when a new binding is created.
@@ -20,7 +26,7 @@ type ConnectionDetails struct {
 	Password         string `json:"password"`
 	URI              string `json:"uri"`
 	ConnectionString string `json:"connectionString"`
-    Database         string `json:"database"`
+	Database         string `json:"database"`
 }
 
 // Bind will create a new database user with a username matching the binding ID
@@ -28,24 +34,17 @@ type ConnectionDetails struct {
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details domain.BindDetails, asyncAllowed bool) (spec domain.Binding, err error) {
 	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	planContext := dynamicplans.Context{
-		"instance_id": instanceID,
-	}
-	if len(details.RawParameters) > 0 {
-		err = json.Unmarshal(details.RawParameters, &planContext)
-		if err != nil {
-			return
-		}
+	p, err := b.getInstancePlan(ctx, instanceID)
+	if err != nil {
+		return
 	}
 
-	if len(details.RawContext) > 0 {
-		err = json.Unmarshal(details.RawContext, &planContext)
-		if err != nil {
-			return
-		}
+	k, err := b.credentials.GetProjectKey(p.Project.ID)
+	if err != nil {
+		return
 	}
 
-	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
+	client, err := b.credentials.Client(b.baseURL, k)
 	if err != nil {
 		return
 	}
@@ -57,28 +56,15 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return spec, fmt.Errorf("service ID %q not found in catalog", details.ServiceID)
 	}
 
-    _, ok = b.catalog.plans[details.PlanID]
+	_, ok = b.catalog.plans[details.PlanID]
 	if !ok {
 		return spec, fmt.Errorf("plan ID %q not found in catalog", details.PlanID)
 	}
 
-	name, err := b.getClusterNameByInstanceID(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-    // Grab the dynamic plan behind this, to check any overrides.
-
-	dp, err := b.parsePlan(nil, details.PlanID)
-    if err != nil {
-        return
-    }
-    b.logger.Infow("Found dyno plan for bind--->","dp",dp)
 	// Fetch the cluster from Atlas to ensure it exists.
-	cluster, _, err := client.Clusters.Get(ctx, gid, name)
+	cluster, _, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -86,22 +72,25 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	password, err := generatePassword()
 	if err != nil {
 		b.logger.Errorw("Failed to generate password", "error", err, "instance_id", instanceID, "binding_id", bindingID)
-		err = errors.New("Failed to generate binding password")
+		err = errors.New("failed to generate binding password")
 		return
 	}
 
-	// Construct a cluster definition from the instance ID, service, plan, and params.
-	user, err := userFromParams(bindingID, password, details.RawParameters,&b, &dp)
+	dp, err := b.getInstancePlan(ctx, instanceID)
+	if err != nil {
+		b.logger.Errorw("Not about to find plan for instance", "err", err)
+		return
+	}
+	user, err := userFromParams(bindingID, password, details.RawParameters, &b, dp)
 	if err != nil {
 		b.logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
 		return
 	}
 
 	// Create a new Atlas database user from the generated definition.
-	_, _, err = client.DatabaseUsers.Create(ctx, gid, user)
+	_, _, err = client.DatabaseUsers.Create(ctx, p.Project.ID, user)
 	if err != nil {
 		b.logger.Errorw("Failed to create Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -114,27 +103,26 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	cs.Path = user.DatabaseName
 
-    connDetails := ConnectionDetails{
-			Username:         bindingID,
-			Password:         password,
-			URI:              cluster.SrvAddress,
+	connDetails := ConnectionDetails{
+		Username: bindingID,
+		Password: password,
+		URI:      cluster.SrvAddress,
 	}
 
-    if len(user.Roles)>0 {
-        cs.Path = user.Roles[0].DatabaseName
-	    b.logger.Infow("Detected roles, override the name of the db to connect", "connectionString", cs)
-    }
+	if len(user.Roles) > 0 {
+		cs.Path = user.Roles[0].DatabaseName
+		b.logger.Infow("Detected roles, override the name of the db to connect", "connectionString", cs)
+	}
 
 	b.logger.Infow("New User ConnectionString", "connectionString", cs)
 
 	cs.User = url.UserPassword(user.Username, user.Password)
 	connDetails.ConnectionString = cs.String()
-    connDetails.Database = cs.Path
-
+	connDetails.Database = cs.Path
 
 	spec = domain.Binding{
 		Credentials: connDetails,
-    }
+	}
 	return
 }
 
@@ -143,32 +131,32 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details domain.UnbindDetails, asyncAllowed bool) (spec domain.UnbindSpec, err error) {
 	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	planContext := dynamicplans.Context{
-		"instance_id": instanceID,
-	}
-	client, gid, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
+	p, err := b.getInstancePlan(ctx, instanceID)
 	if err != nil {
 		return
 	}
 
-	name, err := b.getClusterNameByInstanceID(ctx, instanceID)
+	k, err := b.credentials.GetProjectKey(p.Project.ID)
+	if err != nil {
+		return
+	}
+
+	client, err := b.credentials.Client(b.baseURL, k)
 	if err != nil {
 		return
 	}
 
 	// Fetch the cluster from Atlas to ensure it exists.
-	_, _, err = client.Clusters.Get(ctx, gid, name)
+	_, _, err = client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
-		err = atlasToAPIError(err)
 		return
 	}
 
 	// Delete database user which has the binding ID as its username.
-	_, err = client.DatabaseUsers.Delete(ctx, "admin", gid, bindingID)
+	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
 	if err != nil {
 		b.logger.Errorw("Failed to delete Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
-		err = atlasToAPIError(err)
 		return
 	}
 
@@ -183,7 +171,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec domain.GetBindingSpec, err error) {
 	b.logger.Infow("Retrieving binding", "instance_id", instanceID, "binding_id", bindingID)
 
-	err = apiresponses.NewFailureResponse(fmt.Errorf("Unknown binding ID %s", bindingID), 404, "get-binding")
+	err = apiresponses.NewFailureResponse(fmt.Errorf("unknown binding ID %s", bindingID), 404, "get-binding")
 	return
 }
 
@@ -226,26 +214,31 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 	// Set binding ID as username and add password.
 	params.User.Username = bindingID
 	params.User.Password = password
-    if len(params.User.DatabaseName) == 0 {
-        broker.logger.Info("Bind --- no `databaseName` in User, setting to `admin` fo Atlas.")
-        params.User.DatabaseName = "admin"
-    }
+	if len(params.User.DatabaseName) == 0 {
+		broker.logger.Info("Bind --- no `databaseName` in User, setting to `admin` fo Atlas.")
+		params.User.DatabaseName = "admin"
+	}
 
+	if plan.Settings != nil {
+		if overrideDBName, ok := plan.Settings[overrideBindDB]; ok {
+			overrideDBRole, ok := plan.Settings[overrideBindDBRole]
+			if !ok {
+				overrideDBRole = "readWrite"
+			}
+			overrideRole := mongodbatlas.Role{
+				DatabaseName: overrideDBName,
+				RoleName:     overrideDBRole,
+			}
+			broker.logger.Infow("OVERRIDE BIND DB SETTINGS - (this feature is deprecated)", overrideRole, "overrideRole")
+			params.User.Roles = append(params.User.Roles, overrideRole)
+		}
+	}
 
-    if plan.Settings != nil {
-        if overrideDBName, ok := plan.Settings[dynamicplans.BROKER_SETTING_OVERRIDE_BIND_DB]; ok {
-            overrideDBRole, ok := plan.Settings[dynamicplans.BROKER_SETTING_OVERRIDE_BIND_DB_ROLE]
-            if !ok {
-                overrideDBRole = "readWrite"
-            }
-            overrideRole := mongodbatlas.Role{
-                DatabaseName: overrideDBName,
-                RoleName: overrideDBRole,
-            }
-            broker.logger.Infow("OVERRIDE BIND DB SETTINGS - (this feature is deprecated)",overrideRole,"overrideRole")
-            params.User.Roles = append(params.User.Roles, overrideRole)
-        }
-    }
+	if len(params.User.DatabaseName) == 0 {
+		params.User.DatabaseName = "admin"
+	}
+	broker.logger.Infow("userFromParams", params, "params")
+
 	// If no role is specified we default to read/write on any database.
 	// This is the default role when creating a user through the Atlas UI.
 	if len(params.User.Roles) == 0 {
@@ -256,7 +249,6 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 			},
 		}
 	}
-
 
 	return params.User, nil
 }
