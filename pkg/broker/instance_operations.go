@@ -3,8 +3,6 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -12,6 +10,7 @@ import (
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"github.com/pkg/errors"
 )
 
 // The different async operations that can be performed.
@@ -311,9 +310,9 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 
 	instance, err := b.state.FindOne(context.Background(), instanceID)
 	if err != nil {
-		err = fmt.Errorf("error finding instance in maintenance DB: %w", err)
+		err = errors.Wrap(err, "error finding instance in maintenance DB")
 		err = apiresponses.NewFailureResponse(err, http.StatusNotImplemented, "get-instance")
-		b.logger.Errorw("Unable to FineOne", "instanceID", instanceID, "err", err)
+		b.logger.Errorw("Unable to fetch instance", "instanceID", instanceID, "err", err)
 		return
 	}
 

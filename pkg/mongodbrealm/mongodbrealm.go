@@ -210,6 +210,8 @@ func (c *Client) refreshToken(ctx context.Context) error {
 		return errors.Wrap(err, "cannot create login request")
 	}
 
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.RefreshToken))
+
 	resp, err := c.do(ctx, req, c.auth)
 	if err != nil {
 		return errors.Wrap(err, "cannot do refresh request")
@@ -308,10 +310,7 @@ func (c *Client) OnRequestCompleted(rc RequestCompletionCallback) {
 }
 
 func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Response, error) {
-	if c.auth.AccessToken != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-	}
-
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
 	resp, err := c.do(ctx, req, v)
 	if err != nil {
 		return nil, err
@@ -325,6 +324,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 			return nil, errors.Wrap(err, "cannot refresh auth token")
 		}
 
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
 		return c.do(ctx, req, v)
 	}
 
