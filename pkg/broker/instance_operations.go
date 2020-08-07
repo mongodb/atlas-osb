@@ -327,10 +327,12 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 
 	resp.State = domain.Failed
 
+	// brokerapi will NOT update service state if we return any error, so... we won't?
 	defer func() {
 		if err != nil {
 			resp.State = domain.Failed
 			resp.Description = err.Error()
+			err = nil
 		}
 	}()
 
