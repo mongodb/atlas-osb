@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -310,7 +311,7 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 
 	instance, err := b.state.FindOne(context.Background(), instanceID)
 	if err != nil {
-		err = errors.Wrap(err, "error finding instance in maintenance DB")
+		err = errors.Wrap(err, "cannot find instance in maintenance DB")
 		err = apiresponses.NewFailureResponse(err, http.StatusNotImplemented, "get-instance")
 		b.logger.Errorw("Unable to fetch instance", "instanceID", instanceID, "err", err)
 		return
@@ -323,6 +324,15 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 // of a cluster.
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
+
+	resp.State = domain.Failed
+
+	defer func() {
+		if err != nil {
+			resp.State = domain.Failed
+			resp.Description = err.Error()
+		}
+	}()
 
 	p, err := b.getInstancePlan(ctx, instanceID)
 	if err != nil {
@@ -341,60 +351,66 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 
 	cluster, r, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil && r.StatusCode != http.StatusNotFound {
+		err = errors.Wrap(err, "cannot get existing cluster")
 		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		return
 	}
 
 	b.logger.Infow("Found existing cluster", "cluster", cluster)
 
-	state := domain.Failed
-
 	switch details.OperationData {
 	case OperationProvision, OperationUpdate:
 		if r.StatusCode == http.StatusNotFound {
-			state = domain.Failed
-			break
+			resp.State = domain.Failed
+			resp.Description = "cluster not found"
+			return
 		}
 
 		switch cluster.StateName {
 		// Provision has succeeded if the cluster is in state "idle".
 		case "IDLE":
-			state = domain.Succeeded
+			resp.State = domain.Succeeded
 		case "CREATING", "UPDATING":
-			state = domain.InProgress
+			resp.State = domain.InProgress
+		default:
+			resp.Description = fmt.Sprintf("unknown cluster state %q", cluster.StateName)
 		}
+
 	case OperationDeprovision:
+		switch {
 		// The Atlas API may return a 404 response if a cluster is deleted or it
 		// will return the cluster with a state of "DELETED". Both of these
 		// scenarios indicate that a cluster has been successfully deleted.
-		if r.StatusCode == http.StatusNotFound || cluster.StateName == "DELETED" {
-			state = domain.Succeeded
+		case r.StatusCode == http.StatusNotFound, cluster.StateName == "DELETED":
+			if r.StatusCode == http.StatusNotFound || cluster.StateName == "DELETED" {
+				resp.State = domain.Succeeded
+			}
 
 			_, err = client.Projects.Delete(ctx, p.Project.ID)
 			if err != nil {
+				err = errors.Wrap(err, "cannot delete Atlas project")
 				b.logger.Errorw(
 					"Cannot delete Atlas Project",
 					"error", err,
 					"projectID", p.Project.ID,
 					"projectName", p.Project.Name,
 				)
-				state = domain.Failed
 			}
-			if b.state != nil {
-				// TODO: change this?
-				err := b.state.DeleteOne(context.Background(), instanceID)
-				if err != nil {
-					b.logger.Errorw("Failed to clean up instance from maintenance store", "err", err)
-				}
+
+			errDel := b.state.DeleteOne(ctx, instanceID)
+			if errDel != nil {
+				b.logger.Errorw("Failed to clean up instance from maintenance store", "error", errDel)
 			}
-		} else if cluster.StateName == "DELETING" {
-			state = domain.InProgress
+
+		case cluster.StateName == "DELETING":
+			resp.State = domain.InProgress
+
+		default:
+			resp.Description = fmt.Sprintf("unknown cluster state %q", cluster.StateName)
 		}
 	}
 
-	return domain.LastOperation{
-		State: state,
-	}, nil
+	return resp, err
 }
 
 // NormalizeClusterName will sanitize a name to make sure it will be accepted

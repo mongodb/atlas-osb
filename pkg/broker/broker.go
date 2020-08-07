@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 
 	"github.com/goccy/go-yaml"
 	"github.com/gorilla/mux"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -90,12 +90,11 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynamicplans.Plan, error) {
 	i, err := b.GetInstance(ctx, instanceID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot fetch instance")
 	}
 
 	params, ok := i.Parameters.(map[string]interface{})
 	if !ok {
-		b.logger.Errorf("%#v", i)
 		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
 	}
 
@@ -110,12 +109,7 @@ func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynam
 	}
 
 	plan := dynamicplans.Plan{}
-	bytes, err := bson.Marshal(d)
-	if err != nil {
-		return nil, err
-	}
-
-	err = bson.Unmarshal(bytes, &plan)
+	err = mapstructure.Decode(d, &plan)
 	return &plan, err
 }
 
