@@ -313,19 +313,19 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
 	resp, err := c.do(ctx, req, v)
 	if err != nil {
-		return nil, err
-	}
+		if resp != nil && resp.StatusCode == http.StatusUnauthorized {
+			_ = resp.Body.Close()
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		_ = resp.Body.Close()
+			err = c.refreshToken(ctx)
+			if err != nil {
+				return nil, errors.Wrap(err, "cannot refresh auth token")
+			}
 
-		err = c.refreshToken(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot refresh auth token")
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+			return c.do(ctx, req, v)
 		}
 
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-		return c.do(ctx, req, v)
+		return nil, err
 	}
 
 	return resp, nil
