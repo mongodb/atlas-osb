@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
@@ -273,10 +272,6 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	}
 
 	b.logger.Infow("Successfully started Atlas cluster deletion process", "instance_id", instanceID)
-	go b.CleanupPlan(context.Background(), client, p.Project.ID)
-	//if err != nil {
-	//	b.logger.Errorw("Failed to clean up plan from Atlas", "error", err, "instance_id", instanceID)
-	//}
 
 	return domain.DeprovisionServiceSpec{
 		IsAsync:       true,
@@ -284,37 +279,23 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	}, nil
 }
 
-// Keep trying for awhile to delete the project
-// need to wait until the cluster is cleaned up.
-func (b Broker) CleanupPlan(ctx context.Context, client *mongodbatlas.Client, groupID string) {
-	b.logger.Infow("Plan cleanup started, pausing for cluster cleanup", "groupID", groupID)
-	time.Sleep(30 * time.Second)
-	res, err := client.Projects.Delete(ctx, groupID)
-	if err != nil {
-		b.logger.Errorw("Plan cleanup error. Will try again...", "err", err)
-		go b.CleanupPlan(ctx, client, groupID)
-		//if err != nil {
-		//    b.logger.Errorw("Clean up plan error, check logs", "error", err, "groupID", groupID, "instance_id", instanceID)
-		//}
-	}
-	b.logger.Infow("Plan cleanup complete.", "res", res)
-}
-
 // GetInstance should fetch the stored instance from state storage
 func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
 	b.logger.Infow("Fetching instance", "instance_id", instanceID)
 
-	if b.state == nil {
-		err = apiresponses.NewFailureResponse(errors.New("fetching instances is not supported in stateless mode"), http.StatusNotImplemented, "get-instance")
-		return
+	spec, err = b.getInstance(ctx, instanceID)
+	if err != nil {
+		b.logger.Errorw("Unable to fetch instance", "instanceID", instanceID, "err", err)
+		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "get-instance")
 	}
 
-	instance, err := b.state.FindOne(context.Background(), instanceID)
+	return spec, nil
+}
+
+func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
+	instance, err := b.state.FindOne(ctx, instanceID)
 	if err != nil {
-		err = errors.Wrap(err, "cannot find instance in maintenance DB")
-		err = apiresponses.NewFailureResponse(err, http.StatusNotImplemented, "get-instance")
-		b.logger.Errorw("Unable to fetch instance", "instanceID", instanceID, "err", err)
-		return
+		return spec, errors.Wrap(err, "cannot find instance in maintenance DB")
 	}
 
 	return *instance, nil

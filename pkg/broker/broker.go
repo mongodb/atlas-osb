@@ -88,7 +88,7 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 }
 
 func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynamicplans.Plan, error) {
-	i, err := b.GetInstance(ctx, instanceID)
+	i, err := b.getInstance(ctx, instanceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot fetch instance")
 	}
