@@ -3,13 +3,11 @@ src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar5
 atlas-osb
 </img>
 
-
 [![Generic badge](https://img.shields.io/badge/WORKING-PREBETA-YELLOW.svg)](https://shields.io/)
 
 ![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Clean%20CF/badge.svg)
 
-
-<img align="right" src="/docs/coming-later.svg">
+[![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
 
 Table of Contents
 =====
@@ -21,6 +19,7 @@ Table of Contents
     * [Atlas Plan Templates](#atlas-plan-templates)
     * [Reference Sample Basic Full Example](#reference-sample-basic-full-example)
   * [VMWare Tanzu Application Service](#vmware-tanzu-application-service)
+  * [Notes](#notes)
   * [License](#license)
   * [Development](#development)
 
@@ -342,7 +341,7 @@ ipWhitelists:
     K8s - mount configmaps as files, etc..., Docker, etc..
 3. Include loaded templates with INFO level and also full json payload logging to broker logs (to help debugging).
 4. Always reload templates on startup (restart to deploy new templates)
-5. Template shoud be standard go-templates and support typical values/variable style replacements.
+5. Template should be standard go-templates and support typical values/variable style replacements.
 6. Users should be able to specify template parameters during service provisioning or update.
 7. Provide a set of common resource yaml/json samples and templates.
 8. Allow reading apikeys and group/org ids from the "CredHub" multi-apikey support
@@ -503,7 +502,32 @@ TODO: MARK WHICH FIELDS ARE READ-ONLY? ie. users need to understand what can be 
 
 
 # VMWare Tanzu Application Service
-:construction:
+
+## Test Status
+
+![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Prepare%20CF.%20Base%20scenario./badge.svg)
+
+## Product Snapshot
+
+The following badges provide version and version-support information about Atlas-OSB for VMware Tanzu.
+
+![Last Released Version](https://img.shields.io/github/v/release/jasonmimick/atlas-osb)
+![Realease version](https://img.shields.io/github/release-date/jasonmimick/atlas-osb)
+
+![Compatible TAS versions](https://img.shields.io/badge/tested%20on%20TAS-2.9.0-important)
+![Credhubversion](https://img.shields.io/badge/CredHub%20version-1.4.7-important)
+![IaaS support](https://img.shields.io/badge/IaaS%20Support-AWS,%20Asure,%20GCP-important)
+
+## Notes
+
+* Deploying Atlas-OSB to CF. There are [several ways](http://cli.cloudfoundry.org/en-US/v7/push.html) to deploy atlas-osb to cloud foundry:
+    * with docker image
+    ```bash 
+    cf push APP_NAME --docker-image [REGISTRY_HOST:PORT/]IMAGE[:TAG] [--docker-username USERNAME] [-c COMMAND] [-f MANIFEST_PATH | --no-manifest] [--no-start] [--no-wait] [-i NUM_INSTANCES]
+    ```
+    * with manifest (to specify a manifest use `-f` with the path to a manifest)
+    
+* Please note that Atlas-OSB does not support the free tier of cluster creation: M0 (Atlas API doesn't have such support)
 
 ## License
 
