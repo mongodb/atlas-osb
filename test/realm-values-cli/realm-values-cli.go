@@ -54,7 +54,11 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 	}
 
-	atlasclient, err := mongodbrealm.New(context.Background(), nil, nil, mongodbrealm.SetAPIAuth(*publicAPIKey, *privateAPIKey))
+	atlasclient, err := mongodbrealm.New(
+		context.Background(),
+		nil,
+		mongodbrealm.SetAPIAuth(context.Background(), *publicAPIKey, *privateAPIKey),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

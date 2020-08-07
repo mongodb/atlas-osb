@@ -20,10 +20,13 @@ import (
 )
 
 const (
-	defaultBaseURL = "https://realm.mongodb.com/api/admin/v3.0/"
-	userAgent      = "go-mongodbrealm"
-	jsonMediaType  = "application/json"
-	gzipMediaType  = "application/gzip"
+	userAgent           = "go-mongodbrealm"
+	jsonMediaType       = "application/json"
+	gzipMediaType       = "application/gzip"
+	realmAppsPath       = "groups/%s/apps"
+	realmDefaultBaseURL = "https://realm.mongodb.com/api/admin/v3.0/"
+	realmLoginPath      = "auth/providers/mongodb-cloud/login"
+	realmSessionPath    = "auth/session"
 )
 
 type Doer interface {
@@ -56,9 +59,7 @@ type Client struct {
 	RealmApps   RealmAppsService
 	RealmValues RealmValuesService
 
-	publicKey  string
-	privateKey string
-	auth       *RealmAuth
+	auth *RealmAuth
 
 	onRequestCompleted RequestCompletionCallback
 }
@@ -142,7 +143,7 @@ func NewClient(httpClient *http.Client) *Client {
 		httpClient = http.DefaultClient
 	}
 
-	baseURL, _ := url.Parse(defaultBaseURL)
+	baseURL, _ := url.Parse(realmDefaultBaseURL)
 
 	c := &Client{client: httpClient,
 		BaseURL:   baseURL,
@@ -164,13 +165,16 @@ func New(ctx context.Context, httpClient *http.Client, opts ...ClientOpt) (*Clie
 	c := NewClient(httpClient)
 
 	for _, opt := range opts {
+		if opt == nil {
+			panic("nil option passed, check your arguments")
+		}
+
 		if err := opt(c); err != nil {
 			return nil, err
 		}
 	}
 
-	err := c.getToken(ctx)
-	return c, errors.Wrap(err, "cannot get auth token")
+	return c, nil
 }
 
 // SetBaseURL is a client option for setting the base URL.
@@ -194,28 +198,40 @@ func SetUserAgent(ua string) ClientOpt {
 	}
 }
 
-func SetAPIAuth(pub, priv string) ClientOpt {
+func SetAPIAuth(ctx context.Context, pub string, priv string) ClientOpt {
 	return func(c *Client) error {
-		c.publicKey = pub
-		c.privateKey = priv
-		return nil
+		return c.obtainToken(ctx, pub, priv)
 	}
 }
 
-func (c *Client) getToken(ctx context.Context) error {
+func (c *Client) refreshToken(ctx context.Context) error {
+	req, err := c.NewRequest(ctx, http.MethodPost, realmSessionPath, nil)
+	if err != nil {
+		return errors.Wrap(err, "cannot create login request")
+	}
+
+	resp, err := c.do(ctx, req, c.auth)
+	if err != nil {
+		return errors.Wrap(err, "cannot do refresh request")
+	}
+
+	return errors.Wrap(CheckResponse(resp.Response), "unexpected response")
+}
+
+func (c *Client) obtainToken(ctx context.Context, publicKey string, privateKey string) error {
 	data := map[string]interface{}{
-		"username": c.publicKey,
-		"apiKey":   c.privateKey,
+		"username": publicKey,
+		"apiKey":   privateKey,
 	}
 
 	loginReq, err := c.NewRequest(ctx, http.MethodPost, realmLoginPath, data)
 	if err != nil {
-		return errors.Wrapf(err, "cannot create login request (public key %q)", c.publicKey)
+		return errors.Wrapf(err, "cannot create login request (public key %q)", publicKey)
 	}
 
-	_, err = c.Do(context.TODO(), loginReq, c.auth)
+	_, err = c.do(ctx, loginReq, c.auth)
 	if err != nil {
-		return errors.Wrapf(err, "cannot do login request (public key %q)", c.publicKey)
+		return errors.Wrapf(err, "cannot do login request (public key %q)", publicKey)
 	}
 
 	return nil
@@ -248,9 +264,7 @@ func (c *Client) NewRequest(ctx context.Context, method, urlStr string, body int
 		req.Header.Set("Content-Type", jsonMediaType)
 	}
 	req.Header.Add("Accept", jsonMediaType)
-	if c.auth.AccessToken != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
-	}
+
 	if c.UserAgent != "" {
 		req.Header.Set("User-Agent", c.UserAgent)
 	}
@@ -293,11 +307,35 @@ func (c *Client) OnRequestCompleted(rc RequestCompletionCallback) {
 	c.onRequestCompleted = rc
 }
 
+func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Response, error) {
+	if c.auth.AccessToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+	}
+
+	resp, err := c.do(ctx, req, v)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		_ = resp.Body.Close()
+
+		err = c.refreshToken(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot refresh auth token")
+		}
+
+		return c.do(ctx, req, v)
+	}
+
+	return resp, nil
+}
+
 // Do sends an API request and returns the API response. The API response is JSON decoded and stored in the value
 // pointed to by v, or returned as an error if an API error has occurred. If v implements the io.Writer interface,
 // the raw response will be written to v, without attempting to decode it.
-func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Response, error) {
-	resp, err := DoRequestWithClient(ctx, c.client, req)
+func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) (*Response, error) {
+	resp, err := c.client.Do(req.WithContext(ctx))
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
@@ -309,6 +347,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 
 		return nil, err
 	}
+
 	if c.onRequestCompleted != nil {
 		c.onRequestCompleted(req, resp)
 	}
@@ -365,15 +404,6 @@ func CheckResponse(r *http.Response) error {
 	}
 
 	return nil
-}
-
-// DoRequestWithClient submits an HTTP request using the specified client.
-func DoRequestWithClient(
-	ctx context.Context,
-	client *http.Client,
-	req *http.Request) (*http.Response, error) {
-	req = req.WithContext(ctx)
-	return client.Do(req)
 }
 
 func setListOptions(s string, opt interface{}) (string, error) {

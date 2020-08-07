@@ -11,12 +11,6 @@ import (
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 )
 
-const (
-	realmAppsPath       = "groups/%s/apps"
-	realmDefaultBaseURL = "https://realm.mongodb.com/api/admin/v3.0/"
-	realmLoginPath      = "auth/providers/mongodb-cloud/login"
-)
-
 func (c *Client) RealmAppInputFromString(value string) (*RealmAppInput, error) {
 	var t RealmAppInput
 	err := json.Unmarshal([]byte(value), &t)

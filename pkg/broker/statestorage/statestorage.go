@@ -42,7 +42,12 @@ type RealmStateStorage struct {
 
 func GetStateStorage(creds *credentials.Credentials, atlasURL string, realmURL string, logger *zap.SugaredLogger, orgID string) (*RealmStateStorage, error) {
 	key := creds.Orgs[orgID]
-	realmClient, err := mongodbrealm.New(context.TODO(), nil, mongodbrealm.SetBaseURL(realmURL), mongodbrealm.SetAPIAuth(key.PublicKey, key.PrivateKey))
+	realmClient, err := mongodbrealm.New(
+		context.TODO(),
+		nil,
+		mongodbrealm.SetBaseURL(realmURL),
+		mongodbrealm.SetAPIAuth(context.TODO(), key.PublicKey, key.PrivateKey),
+	)
 	if err != nil {
 		return nil, err
 	}
