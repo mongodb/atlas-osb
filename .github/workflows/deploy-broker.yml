@@ -35,7 +35,7 @@ jobs:
       
       - name: Create CF org, space, broker, service and push app)
         id: prepare
-        uses: ./.github/actions/prepare-template
+        uses: ./.github/actions/e2e-cf
         with:
           pcf_url: ${{ secrets.PCF_URL }}
           pcf_user: ${{ secrets.PCF_USER }}
