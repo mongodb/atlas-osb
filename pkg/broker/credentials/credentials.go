@@ -119,8 +119,8 @@ func (c *Credentials) GetProjectKey(id string) (mongodbatlas.APIKey, error) {
 	return k, nil
 }
 
-func (c *Credentials) AddProjectKey(k mongodbatlas.APIKey) {
-	c.projects[k.ID] = k
+func (c *Credentials) AddProjectKey(id string, k mongodbatlas.APIKey) {
+	c.projects[id] = k
 }
 
 func (c *Credentials) Client(baseURL string, k mongodbatlas.APIKey) (*mongodbatlas.Client, error) {

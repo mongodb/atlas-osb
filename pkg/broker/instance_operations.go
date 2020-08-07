@@ -132,7 +132,7 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 		}
 	}
 
-	b.credentials.AddProjectKey(b.credentials.Orgs[p.OrgID])
+	b.credentials.AddProjectKey(p.ID, b.credentials.Orgs[p.OrgID])
 	return p, nil
 }
 
