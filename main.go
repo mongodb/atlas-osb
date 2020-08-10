@@ -26,11 +26,21 @@ type Args struct {
 	AtlasURL string `arg:"-a,env:ATLAS_BASE_URL" default:"https://cloud.mongodb.com/api/atlas/v1.0/"`
 	RealmURL string `arg:"-r,env:REALM_BASE_URL" default:"https://realm.mongodb.com/api/admin/v3.0/"`
 
-	Host string `arg:"-h,env:BROKER_HOST" default:"127.0.0.1"`
-	Port uint16 `arg:"-p,env:BROKER_PORT" default:"4000"`
+	BrokerConfig
+}
 
-	CertPath string `arg:"-c,env:BROKER_TLS_CERT_FILE"`
-	KeyPath  string `arg:"-k,env:BROKER_TLS_KEY_FILE"`
+type BrokerConfig struct {
+	Host                string `arg:"-h,env:BROKER_HOST" default:"127.0.0.1"`
+	Port                uint16 `arg:"-p,env:BROKER_PORT" default:"4000"`
+	CertPath            string `arg:"-c,env:BROKER_TLS_CERT_FILE"`
+	KeyPath             string `arg:"-k,env:BROKER_TLS_KEY_FILE"`
+	ServiceName         string `arg:"-k,env:BROKER_OSB_SERVICE_NAME" default:"atlas"`
+	ServiceDisplayName  string `arg:"-k,env:BROKER_OSB_SERVICE_DISPLAY_NAME" default:"Template Services"`
+	ServiceDesc         string `arg:"-k,env:BROKER_OSB_SERVICE_DESC" default:"MonogoDB Atlas Plan Template Deployments"`
+	ImageURL            string `arg:"-k,env:BROKER_OSB_IMAGE_URL" default:"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"`
+	DocumentationURL    string `arg:"-k,env:BROKER_OSB_DOCS_URL" default:"https://support.mongodb.com/welcome"`
+	ProviderDisplayName string `arg:"-k,env:BROKER_OSB_PROVIDER_DISPLAY_NAME" default:"MongoDB"`
+	LongDescription     string `arg:"-k,env:BROKER_OSB_PROVIDER_DISPLAY_NAME" default:"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/jasonmimick/atlas-osb""`
 }
 
 // FIXME: update links
@@ -119,11 +129,12 @@ func createCredsAndDB(logger *zap.SugaredLogger, atlasURL string, realmURL strin
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
+	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL, "whitelist_file", args.WhitelistFile)
+
 	creds, state := createCredsAndDB(logger, args.AtlasURL, args.RealmURL)
 
 	// Administrators can control what providers/plans are available to users
 	if args.WhitelistFile == "" {
-		logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL, "whitelist_file", "NONE")
 		return broker.New(logger, creds, args.AtlasURL, nil, state)
 	}
 
@@ -135,7 +146,6 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 		logger.Fatal("Cannot load providers whitelist: %v", err)
 	}
 
-	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL, "whitelist_file", args.WhitelistFile)
 	return broker.New(logger, creds, args.AtlasURL, whitelist, state)
 }
 
@@ -163,7 +173,7 @@ func startBrokerServer() {
 	tlsEnabled := args.CertPath != ""
 
 	// Replace with NONE if not set
-	logger.Infow("Starting API server", "releaseVersion", releaseVersion, "host", args.Host, "port", args.Port, "tls_enabled", tlsEnabled)
+	logger.Infow("Starting API server", "releaseVersion", releaseVersion, "host", args.Host, "port", args.Port, "tls", tlsEnabled)
 
 	// Start broker HTTP server.
 	address := args.Host + ":" + fmt.Sprint(args.Port)

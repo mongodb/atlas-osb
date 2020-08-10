@@ -78,10 +78,10 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	dp, err := b.getInstancePlan(ctx, instanceID)
 	if err != nil {
-		b.logger.Errorw("Not about to find plan for instance", "err", err)
+		b.logger.Errorw("Not able to find plan for instance", "err", err)
 		return
 	}
-	user, err := userFromParams(bindingID, password, details.RawParameters, &b, dp)
+	user, err := b.userFromParams(bindingID, password, details.RawParameters, dp)
 	if err != nil {
 		b.logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
 		return
@@ -99,6 +99,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
 	if err != nil {
 		b.logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
+		return
 	}
 
 	cs.Path = user.DatabaseName
@@ -195,7 +196,7 @@ func generatePassword() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func userFromParams(bindingID string, password string, rawParams []byte, broker *Broker, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
+func (b *Broker) userFromParams(bindingID string, password string, rawParams []byte, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
 		User *mongodbatlas.DatabaseUser `json:"user"`
@@ -215,7 +216,7 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 	params.User.Username = bindingID
 	params.User.Password = password
 	if len(params.User.DatabaseName) == 0 {
-		broker.logger.Info("Bind --- no `databaseName` in User, setting to `admin` fo Atlas.")
+		b.logger.Warn("No `databaseName` in User, setting to `admin` for Atlas.")
 		params.User.DatabaseName = "admin"
 	}
 
@@ -229,7 +230,7 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 				DatabaseName: overrideDBName,
 				RoleName:     overrideDBRole,
 			}
-			broker.logger.Infow("OVERRIDE BIND DB SETTINGS - (this feature is deprecated)", overrideRole, "overrideRole")
+			b.logger.Warnw("DEPRECATED: Overriding bind DB settings", "overrideRole", overrideRole)
 			params.User.Roles = append(params.User.Roles, overrideRole)
 		}
 	}
@@ -237,7 +238,8 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 	if len(params.User.DatabaseName) == 0 {
 		params.User.DatabaseName = "admin"
 	}
-	broker.logger.Infow("userFromParams", params, "params")
+
+	b.logger.Debugw("userFromParams", "params", params)
 
 	// If no role is specified we default to read/write on any database.
 	// This is the default role when creating a user through the Atlas UI.
