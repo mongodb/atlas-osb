@@ -87,13 +87,13 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 			continue
 		}
 
-		logger.Infof("Parsed plan: %s", raw.String())
-
 		p := dynamicplans.Plan{}
 		if err := yaml.NewDecoder(raw).Decode(&p); err != nil {
 			logger.Errorw("cannot decode yaml template", "name", template.Name(), "error", err)
 			continue
 		}
+
+		logger.Infof("Parsed plan: %s", p.SafeCopy())
 
 		if p.Cluster == nil ||
 			p.Cluster.ProviderSettings == nil {

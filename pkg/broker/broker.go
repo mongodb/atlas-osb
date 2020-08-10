@@ -79,12 +79,12 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 		return
 	}
 
-	logger.Infow("Parsed plan", "plan", raw.String())
-
 	dp = &dynamicplans.Plan{}
 	if err = yaml.NewDecoder(raw).Decode(dp); err != nil {
 		return
 	}
+
+	logger.Infow("Parsed plan", "plan", dp.SafeCopy())
 
 	// Attempt to merge in any other values as plan instance data
 	pb, _ := json.Marshal(ctx)
@@ -93,7 +93,7 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 	if err != nil {
 		logger.Errorw("Error trying to merge in planContext as plan instance", "err", err)
 	} else {
-		logger.Infow("Merged final plan instance:", "dp", dp)
+		logger.Infow("Merged final plan instance:", "plan", dp.SafeCopy())
 	}
 
 	return dp, nil

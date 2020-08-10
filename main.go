@@ -85,7 +85,7 @@ func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.
 	creds, err := credentials.FromEnv(atlasURL)
 	switch {
 	case err == nil && creds == nil:
-		logger.Infow("Rejected Multi-Project (env): not enabled by user")
+		logger.Infow("Rejected Multi-Project (env): no credentials in env")
 	case err == nil:
 		logger.Info("Selected Multi-Project (env)")
 		return creds
