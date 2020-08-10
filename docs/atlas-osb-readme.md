@@ -240,6 +240,24 @@ Configuration is handled with environment variables. Logs are written to
 | BROKER_APIKEYS | | Path to file or JSON string containing credentials.
 | ATLAS_BROKER_TEMPLATEDIR | | Path to folder containing plans e.g. ./samples/plans |
 
+The values for the OSB "Service" for a given atlas-osb instance can be customized with a set of
+additional environement variables. Each of these are optional, and has default content.
+Here are the settings for the `domain.Service` returned for each plan:
+
+### OSB Service Metadata Configuration Reference
+
+domain.Service:
+| Field | Env variable | Default |
+| ----- | ------------- | --------- |
+| `ID` | NONE | `"<id>-template-service"` |
+| `Name` | `BROKER_OSB_SERVICE_NAME` | `"atlas"` |
+| `Description` | `BROKER_OSB_SERVICE_DESC` | `"MonogoDB Atlas Plan Template Deployments"` |
+| `Metadata.DisplayName` | `BROKER_OSB_SERVICE_DISPLAY_NAME` | `"MongoDB Atlas - %s"` with `"Template Services"` |
+| `Metadata.ImageUrl` | `BROKER_OSB_IMAGE_URL` | `"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"` |
+| `DocumentationUrl` | `BROKER_OSB_DOCS_URL` | `"https://support.mongodb.com/welcome"` |
+| `ProviderDisplayName` | `BROKER_OSB_PROVIDER_DISPLAY_NAME` | `"MongoDB"` |
+| `LongDescription` | | `"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/jasonmimick/atlas-osb"` |
+
 ## Multiple API Key Support
 
 These are the requirements for supporting multiple apikeys. Note: Sometimes we use the term "CredHub" to refer to this overall feature to support multiple keys.
