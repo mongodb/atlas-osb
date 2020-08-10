@@ -27,7 +27,9 @@ const (
 // Provision will create a new Atlas cluster with the instance ID as its name.
 // The process is always async.
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
-	b.logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
+	logger := b.funcLogger()
+
+	logger.Infow("Provisioning instance", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
 		"instance_id": instanceID,
@@ -68,7 +70,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	}
 
 	// Construct a cluster definition from the instance ID, service, plan, and params.
-	b.logger.Infow("Creating cluster", "instance_name", planContext["instance_name"])
+	logger.Infow("Creating cluster", "instance_name", planContext["instance_name"])
 	// TODO - add this context info about k8s/namespace or pcf space into labels
 
 	s := domain.GetInstanceDetailsSpec{
@@ -82,10 +84,10 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 
 	v, err := b.state.Put(context.Background(), instanceID, &s)
 	if err != nil {
-		b.logger.Errorw("Error during provision, broker maintenance:", "err", err)
+		logger.Errorw("Error during provision, broker maintenance:", "err", err)
 		panic("Error during provision, broker maintenance: " + err.Error())
 	}
-	b.logger.Infow("Inserted new state value", "v", v)
+	logger.Infow("Inserted new state value", "v", v)
 
 	defer func() {
 		if err != nil {
@@ -97,11 +99,11 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	resultingCluster, _, err := client.Clusters.Create(ctx, dp.Project.ID, dp.Cluster)
 
 	if err != nil {
-		b.logger.Errorw("Failed to create Atlas cluster", "error", err, "cluster", dp.Cluster)
+		logger.Errorw("Failed to create Atlas cluster", "error", err, "cluster", dp.Cluster)
 		return
 	}
 
-	b.logger.Infow("Successfully started Atlas creation process", "instance_id", instanceID, "cluster", resultingCluster)
+	logger.Infow("Successfully started Atlas creation process", "instance_id", instanceID, "cluster", resultingCluster)
 
 	return domain.ProvisionedServiceSpec{
 		IsAsync:       true,
@@ -111,9 +113,11 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 }
 
 func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan) (*mongodbatlas.Project, error) {
+	logger := b.funcLogger()
+
 	p, _, err := client.Projects.Create(ctx, dp.Project)
 	if err != nil {
-		b.logger.Errorw("createResources--> create project error", "err", err)
+		logger.Errorw("Cannot create project", "error", err)
 		return nil, err
 	}
 
@@ -137,7 +141,8 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 
 // Update will change the configuration of an existing Atlas cluster asynchronously.
 func (b Broker) Update(ctx context.Context, instanceID string, details domain.UpdateDetails, asyncAllowed bool) (spec domain.UpdateServiceSpec, err error) {
-	b.logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
+	logger := b.funcLogger()
+	logger.Infow("Updating instance", "instance_id", instanceID, "details", details)
 
 	planContext := dynamicplans.Context{
 		"instance_id": instanceID,
@@ -157,7 +162,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}
 	}
 
-	b.logger.Infow("Update() planContext merged with details.parameters&context", "planContext", planContext)
+	logger.Infow("Update() planContext merged with details.parameters&context", "planContext", planContext)
 	client, oldPlan, err := b.getClient(ctx, instanceID, details.PlanID, planContext)
 	if err != nil {
 		return
@@ -195,7 +200,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 
 	resultingCluster, _, err := client.Clusters.Update(ctx, oldPlan.Project.ID, existingCluster.Name, newPlan.Cluster)
 	if err != nil {
-		b.logger.Errorw("Failed to update Atlas cluster", "error", err, "new_cluster", newPlan.Cluster)
+		logger.Errorw("Failed to update Atlas cluster", "error", err, "new_cluster", newPlan.Cluster)
 		return
 	}
 
@@ -212,19 +217,19 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	// TODO: make this error-out reversible?
 	err = b.state.DeleteOne(ctx, instanceID)
 	if err != nil {
-		b.logger.Errorw("Error delete from state", "err", err, "instanceID", instanceID)
+		logger.Errorw("Error delete from state", "err", err, "instanceID", instanceID)
 		return
 	}
 
 	obj, err := b.state.Put(ctx, instanceID, &s)
 	if err != nil {
-		b.logger.Errorw("Error insert one from state", "err", err, "instanceID", instanceID, "s", s)
+		logger.Errorw("Error insert one from state", "err", err, "instanceID", instanceID, "s", s)
 		return
 	}
 	//
 	//s, err := b.state.UpdateOne(instanceID,
-	b.logger.Infow("Inserted into state", "obj", obj)
-	b.logger.Infow("Successfully started Atlas cluster update process", "instance_id", instanceID, "cluster", resultingCluster)
+	logger.Infow("Inserted into state", "obj", obj)
+	logger.Infow("Successfully started Atlas cluster update process", "instance_id", instanceID, "cluster", resultingCluster)
 
 	return domain.UpdateServiceSpec{
 		IsAsync:       true,
@@ -235,7 +240,8 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 
 // Deprovision will destroy an Atlas cluster asynchronously.
 func (b Broker) Deprovision(ctx context.Context, instanceID string, details domain.DeprovisionDetails, asyncAllowed bool) (spec domain.DeprovisionServiceSpec, err error) {
-	b.logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
+	logger := b.funcLogger()
+	logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
 	p, err := b.getInstancePlan(ctx, instanceID)
 	if err != nil {
@@ -260,18 +266,18 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 
 	_, err = client.Clusters.Delete(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
-		b.logger.Errorw("Failed to delete Atlas cluster", "error", err, "instance_id", instanceID)
+		logger.Errorw("Failed to delete Atlas cluster", "error", err, "instance_id", instanceID)
 		return
 	}
 
 	for _, u := range p.DatabaseUsers {
 		_, err = client.DatabaseUsers.Delete(ctx, u.DatabaseName, p.Project.ID, u.Username)
 		if err != nil {
-			b.logger.Errorw("failed to delete Database user", "error", err, "username", u.Username)
+			logger.Errorw("failed to delete Database user", "error", err, "username", u.Username)
 		}
 	}
 
-	b.logger.Infow("Successfully started Atlas cluster deletion process", "instance_id", instanceID)
+	logger.Infow("Successfully started Atlas cluster deletion process", "instance_id", instanceID)
 
 	return domain.DeprovisionServiceSpec{
 		IsAsync:       true,
@@ -281,11 +287,12 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 
 // GetInstance should fetch the stored instance from state storage
 func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
-	b.logger.Infow("Fetching instance", "instance_id", instanceID)
+	logger := b.funcLogger()
+	logger.Infow("Fetching instance", "instance_id", instanceID)
 
 	spec, err = b.getInstance(ctx, instanceID)
 	if err != nil {
-		b.logger.Errorw("Unable to fetch instance", "instanceID", instanceID, "err", err)
+		logger.Errorw("Unable to fetch instance", "instanceID", instanceID, "err", err)
 		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "get-instance")
 	}
 
@@ -304,7 +311,8 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 // LastOperation should fetch the state of the provision/deprovision
 // of a cluster.
 func (b Broker) LastOperation(ctx context.Context, instanceID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
-	b.logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
+	logger := b.funcLogger()
+	logger.Infow("Fetching state of last operation", "instance_id", instanceID, "details", details)
 
 	resp.State = domain.Failed
 
@@ -335,11 +343,11 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	cluster, r, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil && r.StatusCode != http.StatusNotFound {
 		err = errors.Wrap(err, "cannot get existing cluster")
-		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
+		logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		return
 	}
 
-	b.logger.Infow("Found existing cluster", "cluster", cluster)
+	logger.Infow("Found existing cluster", "cluster", cluster)
 
 	switch details.OperationData {
 	case OperationProvision, OperationUpdate:
@@ -372,7 +380,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 			_, err = client.Projects.Delete(ctx, p.Project.ID)
 			if err != nil {
 				err = errors.Wrap(err, "cannot delete Atlas project")
-				b.logger.Errorw(
+				logger.Errorw(
 					"Cannot delete Atlas Project",
 					"error", err,
 					"projectID", p.Project.ID,
@@ -382,7 +390,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 
 			errDel := b.state.DeleteOne(ctx, instanceID)
 			if errDel != nil {
-				b.logger.Errorw("Failed to clean up instance from maintenance store", "error", errDel)
+				logger.Errorw("Failed to clean up instance from maintenance store", "error", errDel)
 			}
 
 		case cluster.StateName == "DELETING":

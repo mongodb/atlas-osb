@@ -40,7 +40,7 @@ type BrokerConfig struct {
 	ImageURL            string `arg:"-k,env:BROKER_OSB_IMAGE_URL" default:"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"`
 	DocumentationURL    string `arg:"-k,env:BROKER_OSB_DOCS_URL" default:"https://support.mongodb.com/welcome"`
 	ProviderDisplayName string `arg:"-k,env:BROKER_OSB_PROVIDER_DISPLAY_NAME" default:"MongoDB"`
-	LongDescription     string `arg:"-k,env:BROKER_OSB_PROVIDER_DISPLAY_NAME" default:"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/jasonmimick/atlas-osb""`
+	LongDescription     string `arg:"-k,env:BROKER_OSB_PROVIDER_DESC" default:"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/jasonmimick/atlas-osb"`
 }
 
 // FIXME: update links
