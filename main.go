@@ -113,10 +113,6 @@ func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.
 func createCredsAndDB(logger *zap.SugaredLogger, atlasURL string, realmURL string) (creds *credentials.Credentials, state *statestorage.RealmStateStorage) {
 	creds = deduceCredentials(logger, atlasURL)
 
-	if err := creds.FlattenOrgs(atlasURL); err != nil {
-		logger.Fatalw("Cannot parse Org API Keys", "error", err)
-	}
-
 	id, _ := creds.RandomKey()
 	ss, err := statestorage.GetStateStorage(creds, atlasURL, realmURL, logger, id)
 	if err != nil {

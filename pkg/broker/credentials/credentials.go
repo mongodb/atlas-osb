@@ -1,7 +1,6 @@
 package credentials
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,21 +11,31 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Credentials struct {
-	projects map[string]mongodbatlas.APIKey
-	Orgs     map[string]mongodbatlas.APIKey `json:"orgs"`
-	Broker   *BrokerAuth                    `json:"broker"`
-}
-
 type BrokerAuth struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	// DB       string `json:"db"`
 }
 
+type Credentials struct {
+	byAlias,
+	byOrg map[string]Key
+	Broker *BrokerAuth
+}
+
+type credentialsDefinition struct {
+	Keys   map[string]Key `json:"keys"`
+	Broker *BrokerAuth    `json:"broker"`
+}
+
+type Key struct {
+	OrgID      string `json:"orgID,omitempty"`
+	PrivateKey string `json:"privateKey,omitempty"`
+	PublicKey  string `json:"publicKey,omitempty"`
+}
 type credHub struct {
-	BindingName string      `json:"binding_name"`
-	Credentials Credentials `json:"credentials"`
+	BindingName string                `json:"binding_name"`
+	Credentials credentialsDefinition `json:"credentials"`
 }
 
 type services struct {
@@ -46,14 +55,16 @@ func FromCredHub(baseURL string) (*Credentials, error) {
 	}
 
 	result := Credentials{
-		projects: map[string]mongodbatlas.APIKey{},
-		Orgs:     map[string]mongodbatlas.APIKey{},
+		byAlias: map[string]Key{},
+		byOrg:   map[string]Key{},
 	}
 
 	for _, c := range append(services.CredHub, services.UserProvided...) {
-		for k, v := range c.Credentials.Orgs {
-			result.Orgs[k] = v
+		for k, v := range c.Credentials.Keys {
+			result.byAlias[k] = v
+			result.byOrg[v.OrgID] = v
 		}
+
 		if c.Credentials.Broker != nil {
 			result.Broker = c.Credentials.Broker
 		}
@@ -72,10 +83,11 @@ func FromEnv(baseURL string) (*Credentials, error) {
 		return nil, nil
 	}
 
-	creds := Credentials{
-		projects: map[string]mongodbatlas.APIKey{},
-		Orgs:     map[string]mongodbatlas.APIKey{},
+	creds := credentialsDefinition{
+		Keys:   map[string]Key{},
+		Broker: &BrokerAuth{},
 	}
+
 	if err := json.Unmarshal([]byte(env), &creds); err != nil {
 		file, err := os.Open(env)
 		if err != nil {
@@ -92,11 +104,21 @@ func FromEnv(baseURL string) (*Credentials, error) {
 		}
 	}
 
-	if err := creds.validate(); err != nil {
+	result := Credentials{
+		byAlias: map[string]Key{},
+		byOrg:   map[string]Key{},
+	}
+
+	for k, v := range creds.Keys {
+		result.byAlias[k] = v
+		result.byOrg[v.OrgID] = v
+	}
+
+	if err := result.validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate credentials: %v", err)
 	}
 
-	return &creds, nil
+	return &result, nil
 }
 
 func (c *Credentials) validate() error {
@@ -104,26 +126,30 @@ func (c *Credentials) validate() error {
 		return errors.New("no broker credentials specified")
 	}
 
-	if len(c.Orgs) == 0 {
+	if len(c.byOrg) == 0 {
 		return errors.New("no Org credentials specified")
 	}
 
 	return nil
 }
 
-func (c *Credentials) GetProjectKey(id string) (mongodbatlas.APIKey, error) {
-	k, ok := c.projects[id]
+func (c *Credentials) Alias(id string) (Key, error) {
+	k, ok := c.byOrg[id]
 	if !ok {
 		return k, fmt.Errorf("no API key for project %s", id)
 	}
 	return k, nil
 }
 
-func (c *Credentials) AddProjectKey(id string, k mongodbatlas.APIKey) {
-	c.projects[id] = k
+func (c *Credentials) Org(id string) (Key, error) {
+	k, ok := c.byOrg[id]
+	if !ok {
+		return k, fmt.Errorf("no API key for project %s", id)
+	}
+	return k, nil
 }
 
-func (c *Credentials) Client(baseURL string, k mongodbatlas.APIKey) (*mongodbatlas.Client, error) {
+func (c *Credentials) Client(baseURL string, k Key) (*mongodbatlas.Client, error) {
 	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create Digest client")
@@ -133,33 +159,10 @@ func (c *Credentials) Client(baseURL string, k mongodbatlas.APIKey) (*mongodbatl
 }
 
 // TODO: should be removed on proper release?
-func (c *Credentials) RandomKey() (orgID string, key mongodbatlas.APIKey) {
-	for k, v := range c.Orgs {
+func (c *Credentials) RandomKey() (orgID string, key Key) {
+	for k, v := range c.byOrg {
 		return k, v
 	}
 
 	return
-}
-
-func (c *Credentials) FlattenOrgs(baseURL string) error {
-	for k, v := range c.Orgs {
-		client, err := c.Client(baseURL, v)
-		if err != nil {
-			return errors.Wrap(err, "cannot create Atlas client")
-		}
-
-		p, _, err := client.Projects.GetAllProjects(context.Background(), nil)
-		if err != nil {
-			return err
-		}
-
-		for _, pp := range p.Results {
-			if pp.OrgID != k {
-				continue
-			}
-			c.projects[pp.ID] = v
-		}
-	}
-
-	return nil
 }

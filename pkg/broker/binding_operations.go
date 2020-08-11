@@ -40,7 +40,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return
 	}
 
-	k, err := b.credentials.GetProjectKey(p.Project.ID)
+	k, err := b.credentials.Org(p.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -139,7 +139,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 		return
 	}
 
-	k, err := b.credentials.GetProjectKey(p.Project.ID)
+	k, err := b.credentials.Org(p.Project.OrgID)
 	if err != nil {
 		return
 	}

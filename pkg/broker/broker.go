@@ -152,26 +152,15 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	if dp.Project.ID != "" {
-		var k mongodbatlas.APIKey
-		k, err = b.credentials.GetProjectKey(dp.Project.ID)
+	if dp.Project.OrgID != "" {
+		oid := dp.Project.OrgID
+		var k credentials.Key
+		k, err = b.credentials.Org(oid)
 		if err != nil {
 			return
 		}
 
 		client, err = b.credentials.Client(b.baseURL, k)
-		return
-	}
-
-	if dp.Project.OrgID != "" {
-		oid := dp.Project.OrgID
-		c, ok := b.credentials.Orgs[oid]
-		if !ok {
-			err = fmt.Errorf("credentials for org ID %q not found", oid)
-			return
-		}
-
-		client, err = b.credentials.Client(b.baseURL, c)
 		if err != nil {
 			return
 		}

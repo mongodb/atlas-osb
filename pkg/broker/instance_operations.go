@@ -135,7 +135,6 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 		}
 	}
 
-	b.credentials.AddProjectKey(p.ID, b.credentials.Orgs[p.OrgID])
 	return p, nil
 }
 
@@ -248,7 +247,7 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 		return
 	}
 
-	k, err := b.credentials.GetProjectKey(p.Project.ID)
+	k, err := b.credentials.Org(p.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -330,7 +329,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		return
 	}
 
-	k, err := b.credentials.GetProjectKey(p.Project.ID)
+	k, err := b.credentials.Org(p.Project.OrgID)
 	if err != nil {
 		return
 	}
