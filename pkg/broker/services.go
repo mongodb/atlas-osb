@@ -25,11 +25,13 @@ var (
 
 // Services generates the service catalog which will be presented to consumers of the API.
 func (b *Broker) Services(ctx context.Context) ([]domain.Service, error) {
-	b.logger.Info("Retrieving service catalog")
+	logger := b.funcLogger()
+	logger.Info("Retrieving service catalog")
 	return b.catalog.services, nil
 }
 
 func (b *Broker) buildCatalog() {
+	logger := b.funcLogger()
 	b.catalog = newCatalog()
 
 	svc := b.buildServiceTemplate()
@@ -40,7 +42,7 @@ func (b *Broker) buildCatalog() {
 
 	b.catalog.providers[svc.ID] = atlasprivate.Provider{Name: "template"}
 	b.catalog.services = append(b.catalog.services, svc)
-	b.logger.Infow("Built service", "provider", "template")
+	logger.Infow("Built service", "provider", "template")
 }
 
 func (b *Broker) buildServiceTemplate() (service domain.Service) {
@@ -64,11 +66,12 @@ func (b *Broker) buildServiceTemplate() (service domain.Service) {
 }
 
 func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
+	logger := b.funcLogger()
 	var plans []domain.ServicePlan
 
 	templates, err := dynamicplans.FromEnv()
 	if err != nil {
-		b.logger.Fatalw("could not read dynamic plans from environment", "error", err)
+		logger.Fatalw("could not read dynamic plans from environment", "error", err)
 	}
 
 	planContext := dynamicplans.Context{
@@ -80,22 +83,22 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 
 		err := template.Execute(raw, planContext)
 		if err != nil {
-			b.logger.Errorf("cannot execute template %q: %v", template.Name(), err)
+			logger.Errorf("cannot execute template %q: %v", template.Name(), err)
 			continue
 		}
-
-		b.logger.Infof("Parsed plan: %s", raw.String())
 
 		p := dynamicplans.Plan{}
 		if err := yaml.NewDecoder(raw).Decode(&p); err != nil {
-			b.logger.Errorw("cannot decode yaml template", "name", template.Name(), "error", err)
+			logger.Errorw("cannot decode yaml template", "name", template.Name(), "error", err)
 			continue
 		}
+
+		logger.Infof("Parsed plan: %s", p.SafeCopy())
 
 		if p.Cluster == nil ||
 			p.Cluster.ProviderSettings == nil {
 			if p.Cluster.ProviderSettings.ProviderName == "" {
-				b.logger.Errorw(
+				logger.Errorw(
 					"invalid yaml template",
 					"name", template.Name(),
 					"error", ".cluster.providerSettings.providerName must not be empty",
@@ -103,7 +106,7 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 				continue
 			}
 			if p.Cluster.ProviderSettings.InstanceSizeName == "" {
-				b.logger.Errorw(
+				logger.Errorw(
 					"invalid yaml template",
 					"name", template.Name(),
 					"error", ".cluster.providerSettings.instanceSizeName must not be empty",

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"runtime"
+	"strings"
 
 	"github.com/goccy/go-yaml"
 	"github.com/gorilla/mux"
@@ -48,7 +50,17 @@ func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseUR
 	return b
 }
 
+func (b *Broker) funcLogger() *zap.SugaredLogger {
+	pc := []uintptr{0}
+	runtime.Callers(2, pc)
+	frames := runtime.CallersFrames(pc)
+	f, _ := frames.Next()
+	split := strings.Split(f.Function, ".")
+	return b.logger.With("func", split[len(split)-1])
+}
+
 func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamicplans.Plan, err error) {
+	logger := b.funcLogger()
 	sp, ok := b.catalog.plans[planID]
 	if !ok {
 		err = fmt.Errorf("plan ID %q not found in catalog", planID)
@@ -67,28 +79,28 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 		return
 	}
 
-	b.logger.Infow("Parsed plan", "plan", raw.String())
-
 	dp = &dynamicplans.Plan{}
 	if err = yaml.NewDecoder(raw).Decode(dp); err != nil {
 		return
 	}
 
+	logger.Infow("Parsed plan", "plan", dp.SafeCopy())
+
 	// Attempt to merge in any other values as plan instance data
 	pb, _ := json.Marshal(ctx)
-	b.logger.Infow("Found plan instance data to merge", "pb", pb)
+	logger.Infow("Found plan instance data to merge", "pb", pb)
 	err = json.Unmarshal(pb, &dp)
 	if err != nil {
-		b.logger.Errorw("Error trying to merge in planContext as plan instance", "err", err)
+		logger.Errorw("Error trying to merge in planContext as plan instance", "err", err)
 	} else {
-		b.logger.Infow("Merged final plan instance:", "dp", dp)
+		logger.Infow("Merged final plan instance:", "plan", dp.SafeCopy())
 	}
 
 	return dp, nil
 }
 
 func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynamicplans.Plan, error) {
-	i, err := b.GetInstance(ctx, instanceID)
+	i, err := b.getInstance(ctx, instanceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot fetch instance")
 	}

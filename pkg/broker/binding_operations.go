@@ -32,7 +32,8 @@ type ConnectionDetails struct {
 // Bind will create a new database user with a username matching the binding ID
 // and a randomly generated password. The user credentials will be returned back.
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details domain.BindDetails, asyncAllowed bool) (spec domain.Binding, err error) {
-	b.logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
+	logger := b.funcLogger()
+	logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
 	p, err := b.getInstancePlan(ctx, instanceID)
 	if err != nil {
@@ -64,41 +65,42 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	// Fetch the cluster from Atlas to ensure it exists.
 	cluster, _, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
-		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
+		logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		return
 	}
 
 	// Generate a cryptographically secure random password.
 	password, err := generatePassword()
 	if err != nil {
-		b.logger.Errorw("Failed to generate password", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+		logger.Errorw("Failed to generate password", "error", err, "instance_id", instanceID, "binding_id", bindingID)
 		err = errors.New("failed to generate binding password")
 		return
 	}
 
 	dp, err := b.getInstancePlan(ctx, instanceID)
 	if err != nil {
-		b.logger.Errorw("Not about to find plan for instance", "err", err)
+		logger.Errorw("Not able to find plan for instance", "err", err)
 		return
 	}
-	user, err := userFromParams(bindingID, password, details.RawParameters, &b, dp)
+	user, err := b.userFromParams(bindingID, password, details.RawParameters, dp)
 	if err != nil {
-		b.logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
+		logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
 		return
 	}
 
 	// Create a new Atlas database user from the generated definition.
 	_, _, err = client.DatabaseUsers.Create(ctx, p.Project.ID, user)
 	if err != nil {
-		b.logger.Errorw("Failed to create Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+		logger.Errorw("Failed to create Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
 		return
 	}
 
-	b.logger.Infow("Successfully created Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
+	logger.Infow("Successfully created Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
 
 	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
 	if err != nil {
-		b.logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
+		logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
+		return
 	}
 
 	cs.Path = user.DatabaseName
@@ -110,10 +112,10 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	if len(user.Roles) > 0 {
 		cs.Path = user.Roles[0].DatabaseName
-		b.logger.Infow("Detected roles, override the name of the db to connect", "connectionString", cs)
+		logger.Infow("Detected roles, override the name of the db to connect", "connectionString", cs)
 	}
 
-	b.logger.Infow("New User ConnectionString", "connectionString", cs)
+	logger.Infow("New User ConnectionString", "connectionString", cs)
 
 	cs.User = url.UserPassword(user.Username, user.Password)
 	connDetails.ConnectionString = cs.String()
@@ -129,7 +131,8 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 // Unbind will delete the database user for a specific binding. The database
 // user should have the binding ID as its username.
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details domain.UnbindDetails, asyncAllowed bool) (spec domain.UnbindSpec, err error) {
-	b.logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
+	logger := b.funcLogger()
+	logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
 	p, err := b.getInstancePlan(ctx, instanceID)
 	if err != nil {
@@ -149,18 +152,18 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	// Fetch the cluster from Atlas to ensure it exists.
 	_, _, err = client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
-		b.logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
+		logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
 		return
 	}
 
 	// Delete database user which has the binding ID as its username.
 	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
 	if err != nil {
-		b.logger.Errorw("Failed to delete Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+		logger.Errorw("Failed to delete Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
 		return
 	}
 
-	b.logger.Infow("Successfully deleted Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
+	logger.Infow("Successfully deleted Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
 
 	spec = domain.UnbindSpec{}
 	return
@@ -169,7 +172,8 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 // GetBinding is currently not supported as specified by the
 // BindingsRetrievable setting in the service catalog.
 func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec domain.GetBindingSpec, err error) {
-	b.logger.Infow("Retrieving binding", "instance_id", instanceID, "binding_id", bindingID)
+	logger := b.funcLogger()
+	logger.Infow("Retrieving binding", "instance_id", instanceID, "binding_id", bindingID)
 
 	err = apiresponses.NewFailureResponse(fmt.Errorf("unknown binding ID %s", bindingID), 404, "get-binding")
 	return
@@ -195,7 +199,8 @@ func generatePassword() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func userFromParams(bindingID string, password string, rawParams []byte, broker *Broker, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
+func (b *Broker) userFromParams(bindingID string, password string, rawParams []byte, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
+	logger := b.funcLogger()
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
 		User *mongodbatlas.DatabaseUser `json:"user"`
@@ -215,7 +220,7 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 	params.User.Username = bindingID
 	params.User.Password = password
 	if len(params.User.DatabaseName) == 0 {
-		broker.logger.Info("Bind --- no `databaseName` in User, setting to `admin` fo Atlas.")
+		logger.Warn(`No "databaseName" in User, setting to "admin" for Atlas.`)
 		params.User.DatabaseName = "admin"
 	}
 
@@ -229,7 +234,7 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 				DatabaseName: overrideDBName,
 				RoleName:     overrideDBRole,
 			}
-			broker.logger.Infow("OVERRIDE BIND DB SETTINGS - (this feature is deprecated)", overrideRole, "overrideRole")
+			logger.Warnw("DEPRECATED: Overriding bind DB settings", "overrideRole", overrideRole)
 			params.User.Roles = append(params.User.Roles, overrideRole)
 		}
 	}
@@ -237,7 +242,8 @@ func userFromParams(bindingID string, password string, rawParams []byte, broker 
 	if len(params.User.DatabaseName) == 0 {
 		params.User.DatabaseName = "admin"
 	}
-	broker.logger.Infow("userFromParams", params, "params")
+
+	logger.Debugw("userFromParams", "params", params)
 
 	// If no role is specified we default to read/write on any database.
 	// This is the default role when creating a user through the Atlas UI.

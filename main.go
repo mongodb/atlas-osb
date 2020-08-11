@@ -1,12 +1,11 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net/http"
-	"os"
-	"strconv"
+	"time"
 
+	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
@@ -17,61 +16,66 @@ import (
 )
 
 // releaseVersion should be set by the linker at compile time.
-var releaseVersion = "development-build"
+var releaseVersion = "0.0.0+devbuild." + time.Now().UTC().Format("20060102T150405")
 
-// Default values for the configuration variables.
-const (
-	DefaultLogLevel = "INFO"
+// command-line arguments and env variables with default values
+type Args struct {
+	LogLevel      zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
+	WhitelistFile string        `arg:"-w,env:PROVIDERS_WHITELIST_FILE"`
 
-	DefaultAtlasBaseURL = "https://cloud.mongodb.com/api/atlas/v1.0/"
-	DefaultRealmBaseURL = "https://realm.mongodb.com/api/admin/v3.0/"
+	AtlasURL string `arg:"-a,env:ATLAS_BASE_URL" default:"https://cloud.mongodb.com/api/atlas/v1.0/"`
+	RealmURL string `arg:"-r,env:REALM_BASE_URL" default:"https://realm.mongodb.com/api/admin/v3.0/"`
 
-	DefaultServerHost = "127.0.0.1"
-	DefaultServerPort = 4000
-)
-
-func main() {
-	// Add --help and -h flag.
-	helpDescription := "Print information about the MongoDB Atlas Service Broker and helpful links."
-	helpFlag := flag.Bool("help", false, helpDescription)
-	flag.BoolVar(helpFlag, "h", false, helpDescription)
-
-	// Add --version and -v flag.
-	versionDescription := "Print current version of MongoDB Atlas Service Broker."
-	versionFlag := flag.Bool("version", false, versionDescription)
-	flag.BoolVar(versionFlag, "v", false, versionDescription)
-
-	flag.Parse()
-
-	// Output help message if help flag was specified.
-	if *helpFlag {
-		fmt.Println(getHelpMessage())
-		return
-	}
-
-	// Output current version if version flag was specified.
-	if *versionFlag {
-		fmt.Println(releaseVersion)
-		return
-	}
-
-	startBrokerServer()
+	BrokerConfig
 }
 
-func getHelpMessage() string {
-	const helpMessage = `MongoDB Atlas Service Broker %s
+type BrokerConfig struct {
+	Host                string `arg:"-h,env:BROKER_HOST" default:"127.0.0.1"`
+	Port                uint16 `arg:"-p,env:BROKER_PORT" default:"4000"`
+	CertPath            string `arg:"-c,env:BROKER_TLS_CERT_FILE"`
+	KeyPath             string `arg:"-k,env:BROKER_TLS_KEY_FILE"`
+	ServiceName         string `arg:"env:BROKER_OSB_SERVICE_NAME" default:"atlas"`
+	ServiceDisplayName  string `arg:"env:BROKER_OSB_SERVICE_DISPLAY_NAME" default:"Template Services"`
+	ServiceDesc         string `arg:"env:BROKER_OSB_SERVICE_DESC" default:"MonogoDB Atlas Plan Template Deployments"`
+	ImageURL            string `arg:"env:BROKER_OSB_IMAGE_URL" default:"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"`
+	DocumentationURL    string `arg:"env:BROKER_OSB_DOCS_URL" default:"https://support.mongodb.com/welcome"`
+	ProviderDisplayName string `arg:"env:BROKER_OSB_PROVIDER_DISPLAY_NAME" default:"MongoDB"`
+	LongDescription     string `arg:"env:BROKER_OSB_PROVIDER_DESC" default:"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/jasonmimick/atlas-osb"`
+}
 
-This is a Service Broker which provides access to MongoDB deployments running
+// FIXME: update links
+func (*Args) Description() string {
+	const helpMessage = `This is a Service Broker which provides access to MongoDB deployments running
 in MongoDB Atlas. It conforms to the Open Service Broker specification and can
 be used with any compatible platform, for example the Kubernetes Service Catalog.
 
 For instructions on how to install and use the Service Broker please refer to
-the documentation: https://docs.mongodb.com/atlas-open-service-broker
+the documentation: https://TBD
 
-Github: https://github.com/mongodb/mongodb-atlas-service-broker
-Docker Image: quay.io/mongodb/mongodb-atlas-service-broker`
+Github: https://TBD
+Docker Image: https://TBD
+`
 
-	return fmt.Sprintf(helpMessage, releaseVersion)
+	return helpMessage
+}
+
+func (*Args) Version() string {
+	return fmt.Sprintf("MongoDB Atlas Service Broker v%s", releaseVersion)
+}
+
+var args Args
+
+func main() {
+	p := arg.MustParse(&args)
+
+	hasCertPath := args.CertPath != ""
+	hasKeyPath := args.KeyPath != ""
+	// Bail if only one of the cert and key has been provided.
+	if hasCertPath != hasKeyPath {
+		p.Fail("Both a certificate and private key are necessary to enable TLS")
+	}
+
+	startBrokerServer()
 }
 
 func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.Credentials {
@@ -81,7 +85,7 @@ func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.
 	creds, err := credentials.FromEnv(atlasURL)
 	switch {
 	case err == nil && creds == nil:
-		logger.Infow("Rejected Multi-Project (env): not enabled by user")
+		logger.Infow("Rejected Multi-Project (env): no credentials in env")
 	case err == nil:
 		logger.Info("Selected Multi-Project (env)")
 		return creds
@@ -125,33 +129,28 @@ func createCredsAndDB(logger *zap.SugaredLogger, atlasURL string, realmURL strin
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
-	atlasURL := getEnvOrDefault("ATLAS_BASE_URL", DefaultAtlasBaseURL)
-	realmURL := getEnvOrDefault("REALM_BASE_URL", DefaultRealmBaseURL)
+	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL, "whitelist_file", args.WhitelistFile)
 
-	creds, state := createCredsAndDB(logger, atlasURL, realmURL)
+	creds, state := createCredsAndDB(logger, args.AtlasURL, args.RealmURL)
 
 	// Administrators can control what providers/plans are available to users
-	pathToWhitelistFile, hasWhitelist := os.LookupEnv("PROVIDERS_WHITELIST_FILE")
-	if !hasWhitelist {
-		logger.Infow("Creating broker", "atlas_base_url", atlasURL, "whitelist_file", "NONE")
-		return broker.New(logger, creds, atlasURL, nil, state)
+	if args.WhitelistFile == "" {
+		return broker.New(logger, creds, args.AtlasURL, nil, state)
 	}
 
 	// TODO
 	logger.Fatal("Whitelist is not implemented yet")
 
-	whitelist, err := broker.ReadWhitelistFile(pathToWhitelistFile)
+	whitelist, err := broker.ReadWhitelistFile(args.WhitelistFile)
 	if err != nil {
 		logger.Fatal("Cannot load providers whitelist: %v", err)
 	}
 
-	logger.Infow("Creating broker", "atlas_base_url", atlasURL, "whitelist_file", pathToWhitelistFile)
-	return broker.New(logger, creds, atlasURL, whitelist, state)
+	return broker.New(logger, creds, args.AtlasURL, whitelist, state)
 }
 
 func startBrokerServer() {
-	logLevel := getEnvOrDefault("BROKER_LOG_LEVEL", DefaultLogLevel)
-	logger, err := createLogger(logLevel)
+	logger, err := createLogger()
 	if err != nil {
 		panic(err)
 	}
@@ -171,21 +170,17 @@ func startBrokerServer() {
 	// client.
 	router.Use(b.AuthMiddleware())
 
-	// Configure TLS from environment variables.
-	tlsEnabled, tlsCertPath, tlsKeyPath := getTLSConfig(logger)
-
-	host := getEnvOrDefault("BROKER_HOST", DefaultServerHost)
-	port := getIntEnvOrDefault("BROKER_PORT", getIntEnvOrDefault("PORT", DefaultServerPort))
+	tlsEnabled := args.CertPath != ""
 
 	// Replace with NONE if not set
-	logger.Infow("Starting API server", "releaseVersion", releaseVersion, "host", host, "port", port, "tls_enabled", tlsEnabled)
+	logger.Infow("Starting API server", "releaseVersion", releaseVersion, "host", args.Host, "port", args.Port, "tls", tlsEnabled)
 
 	// Start broker HTTP server.
-	address := host + ":" + strconv.Itoa(port)
+	address := args.Host + ":" + fmt.Sprint(args.Port)
 
 	var serverErr error
 	if tlsEnabled {
-		serverErr = http.ListenAndServeTLS(address, tlsCertPath, tlsKeyPath, router)
+		serverErr = http.ListenAndServeTLS(address, args.CertPath, args.KeyPath, router)
 	} else {
 		logger.Warn("TLS is disabled")
 		serverErr = http.ListenAndServe(address, router)
@@ -196,65 +191,10 @@ func startBrokerServer() {
 	}
 }
 
-func getTLSConfig(logger *zap.SugaredLogger) (bool, string, string) {
-	certPath := getEnvOrDefault("BROKER_TLS_CERT_FILE", "")
-	keyPath := getEnvOrDefault("BROKER_TLS_KEY_FILE", "")
-
-	hasCertPath := certPath != ""
-	hasKeyPath := keyPath != ""
-
-	// Bail if only one of the cert and key has been provided.
-	if (hasCertPath && !hasKeyPath) || (!hasCertPath && hasKeyPath) {
-		logger.Fatal("Both a certificate and private key are necessary to enable TLS")
-	}
-
-	return hasCertPath && hasKeyPath, certPath, keyPath
-}
-
-// getEnvOrDefault will try getting an environment variable and return a default
-// value in case it doesn't exist.
-func getEnvOrDefault(name string, def string) string {
-	value, exists := os.LookupEnv(name)
-	if !exists {
-		return def
-	}
-
-	return value
-}
-
-// getIntEnvOrDefault will try getting an environment variable and parse it as
-// an integer. In case the variable is not set it will return the default value.
-func getIntEnvOrDefault(name string, def int) int {
-	value, exists := os.LookupEnv(name)
-	if !exists {
-		return def
-	}
-
-	intValue, err := strconv.Atoi(value)
-	if err != nil {
-		panic(fmt.Sprintf(`Environment variable "%s" is not an integer`, name))
-	}
-
-	return intValue
-}
-
 // createLogger will create a zap sugared logger with the specified log level.
-func createLogger(levelName string) (*zap.SugaredLogger, error) {
-	levelByName := map[string]zapcore.Level{
-		"DEBUG": zapcore.DebugLevel,
-		"INFO":  zapcore.InfoLevel,
-		"WARN":  zapcore.WarnLevel,
-		"ERROR": zapcore.ErrorLevel,
-	}
-
-	// Convert log level string to a zap level.
-	level, ok := levelByName[levelName]
-	if !ok {
-		return nil, fmt.Errorf(`invalid log level "%s"`, levelName)
-	}
-
+func createLogger() (*zap.SugaredLogger, error) {
 	config := zap.NewProductionConfig()
-	config.Level = zap.NewAtomicLevelAt(level)
+	config.Level.SetLevel(args.LogLevel)
 	// https://github.com/uber-go/zap/issues/584
 	config.OutputPaths = []string{"stdout"}
 

@@ -6,6 +6,7 @@ require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/Sectorbob/mlab-ns2 v0.0.0-20171030222938-d3aa0c295a8a
+	github.com/alexflint/go-arg v1.3.1-0.20200806235247-96c756c382ed
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drewolson/testflight v1.0.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
@@ -14,6 +15,7 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/mux v1.7.3
 	github.com/huandu/xstrings v1.3.2 // indirect
+	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/kubernetes-incubator/service-catalog v0.2.1
 	github.com/kubernetes-sigs/service-catalog v0.2.1
 	github.com/mitchellh/mapstructure v1.3.3
