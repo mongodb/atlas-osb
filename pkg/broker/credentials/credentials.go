@@ -147,6 +147,10 @@ func (c *Credentials) Org(id string) (Key, error) {
 	return k, nil
 }
 
+func (c *Credentials) Keys() map[string]Key {
+	return c.byOrg
+}
+
 // TODO: should be removed on proper release?
 func (c *Credentials) RandomKey() (orgID string, key Key) {
 	for k, v := range c.byOrg {

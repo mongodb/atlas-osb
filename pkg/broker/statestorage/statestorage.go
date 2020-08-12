@@ -47,7 +47,7 @@ func client(baseURL string, k credentials.Key) (*mongodbatlas.Client, error) {
 	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
 }
 
-func GetStateStorage(key credentials.Key, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
+func Get(key credentials.Key, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
 		context.TODO(),
 		nil,

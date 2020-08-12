@@ -32,19 +32,19 @@ type Broker struct {
 	logger      *zap.SugaredLogger
 	whitelist   Whitelist
 	credentials *credentials.Credentials
-	baseURL     string
+	atlasURL    string
+	realmURL    string
 	catalog     *catalog
-	state       *statestorage.RealmStateStorage
 }
 
 // New creates a new Broker with a logger.
-func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, state *statestorage.RealmStateStorage) *Broker {
+func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, atlasURL string, realmURL string, whitelist Whitelist) *Broker {
 	b := &Broker{
 		logger:      logger,
 		credentials: credentials,
-		baseURL:     baseURL,
+		atlasURL:    atlasURL,
+		realmURL:    realmURL,
 		whitelist:   whitelist,
-		state:       state,
 	}
 
 	b.buildCatalog()
@@ -183,7 +183,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
+	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.atlasURL))
 	if err != nil {
 		err = errors.Wrap(err, "cannot create Atlas client")
 		return
@@ -201,16 +201,25 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 	return
 }
 
+func (b *Broker) getState(orgID string) (*statestorage.RealmStateStorage, error) {
+	key, err := b.credentials.Org(orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	return statestorage.Get(key, b.atlasURL, b.realmURL, b.logger)
+}
+
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
 	if b.credentials != nil {
 		return authMiddleware(*b.credentials.Broker)
 	}
 
-	return simpleAuthMiddleware(b.baseURL)
+	return simpleAuthMiddleware(b.atlasURL)
 }
 
 func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
-	apiURL, err := url.Parse(b.baseURL)
+	apiURL, err := url.Parse(b.atlasURL)
 	if err != nil {
 		return err.Error()
 	}
