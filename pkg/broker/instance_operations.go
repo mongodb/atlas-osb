@@ -242,17 +242,7 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	logger := b.funcLogger()
 	logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	p, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	k, err := b.credentials.Org(p.Project.OrgID)
-	if err != nil {
-		return
-	}
-
-	client, err := b.credentials.Client(b.baseURL, k)
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}
@@ -324,17 +314,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		}
 	}()
 
-	p, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	k, err := b.credentials.Org(p.Project.OrgID)
-	if err != nil {
-		return
-	}
-
-	client, err := b.credentials.Client(b.baseURL, k)
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}

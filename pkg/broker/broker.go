@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/goccy/go-yaml"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
@@ -132,6 +133,12 @@ func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, 
 		return
 	}
 
+	// planCtx == nil means the instance should exist
+	if planCtx == nil {
+		err = errors.Wrapf(err, "cannot find plan for instance %q", instanceID)
+		return
+	}
+
 	// new instance: get from plan
 	dp, err = b.parsePlan(planCtx, planID)
 	if err != nil {
@@ -152,32 +159,45 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	if dp.Project.OrgID != "" {
-		oid := dp.Project.OrgID
-		var k credentials.Key
-		k, err = b.credentials.Org(oid)
+	key := credentials.Key{}
+
+	switch {
+	case dp.APIKey != nil:
+		key = *dp.APIKey
+		dp.Project.OrgID = dp.APIKey.OrgID
+
+	case dp.Project.OrgID != "":
+		key, err = b.credentials.Org(dp.Project.OrgID)
 		if err != nil {
 			return
 		}
 
-		client, err = b.credentials.Client(b.baseURL, k)
-		if err != nil {
-			return
-		}
-
-		// try to merge existing project into plan, don't error out if not found
-		var existing *mongodbatlas.Project
-		existing, _, err = client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
-		if err == nil {
-			dp.Project = existing
-			return
-		}
-
-		err = nil
+	default:
+		err = fmt.Errorf("project info must contain either ID or OrgID & project name, got %+v", dp.Project)
 		return
 	}
 
-	err = fmt.Errorf("project info must contain either ID or OrgID & project name, got %+v", dp.Project)
+	hc, err := digest.NewTransport(key.PublicKey, key.PrivateKey).Client()
+	if err != nil {
+		err = errors.Wrap(err, "cannot create Digest client")
+		return
+	}
+
+	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.baseURL))
+	if err != nil {
+		err = errors.Wrap(err, "cannot create Atlas client")
+		return
+	}
+
+	// try to merge existing project into plan, don't error out if not found
+	var existing *mongodbatlas.Project
+	existing, _, err = client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
+	if err == nil {
+		dp.Project = existing
+		return
+	}
+
+	err = nil
 	return
 }
 

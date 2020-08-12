@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pkg/errors"
 )
 
@@ -147,15 +145,6 @@ func (c *Credentials) Org(id string) (Key, error) {
 		return k, fmt.Errorf("no API key for project %s", id)
 	}
 	return k, nil
-}
-
-func (c *Credentials) Client(baseURL string, k Key) (*mongodbatlas.Client, error) {
-	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot create Digest client")
-	}
-
-	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
 }
 
 // TODO: should be removed on proper release?

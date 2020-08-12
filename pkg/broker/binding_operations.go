@@ -35,17 +35,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	logger := b.funcLogger()
 	logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	p, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	k, err := b.credentials.Org(p.Project.OrgID)
-	if err != nil {
-		return
-	}
-
-	client, err := b.credentials.Client(b.baseURL, k)
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}
@@ -77,12 +67,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return
 	}
 
-	dp, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		logger.Errorw("Not able to find plan for instance", "err", err)
-		return
-	}
-	user, err := b.userFromParams(bindingID, password, details.RawParameters, dp)
+	user, err := b.userFromParams(bindingID, password, details.RawParameters, p)
 	if err != nil {
 		logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
 		return
@@ -134,17 +119,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	logger := b.funcLogger()
 	logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	p, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	k, err := b.credentials.Org(p.Project.OrgID)
-	if err != nil {
-		return
-	}
-
-	client, err := b.credentials.Client(b.baseURL, k)
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}

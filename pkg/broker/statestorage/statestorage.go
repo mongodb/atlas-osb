@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/mongodbrealm"
@@ -37,12 +38,16 @@ type RealmStateStorage struct {
 	Logger       *zap.SugaredLogger
 }
 
-func GetStateStorage(creds *credentials.Credentials, atlasURL string, realmURL string, logger *zap.SugaredLogger, orgID string) (*RealmStateStorage, error) {
-	key, err := creds.Org(orgID)
+func client(baseURL string, k credentials.Key) (*mongodbatlas.Client, error) {
+	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create Digest client")
 	}
 
+	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
+}
+
+func GetStateStorage(key credentials.Key, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
 		context.TODO(),
 		nil,
@@ -57,12 +62,12 @@ func GetStateStorage(creds *credentials.Credentials, atlasURL string, realmURL s
 	// Each Organization using the broker will have 1 special
 	// Atlas Group - called "Atlas Service Broker"
 	//
-	client, err := creds.Client(atlasURL, key)
+	client, err := client(atlasURL, key)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create Atlas client")
 	}
 
-	mainPrj, err := getOrCreateBrokerMaintentaceGroup(orgID, client, logger)
+	mainPrj, err := getOrCreateBrokerMaintentaceGroup(key.OrgID, client, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +80,7 @@ func GetStateStorage(creds *credentials.Credentials, atlasURL string, realmURL s
 	}
 
 	rss := &RealmStateStorage{
-		OrgID:        orgID,
+		OrgID:        key.OrgID,
 		RealmClient:  realmClient,
 		RealmApp:     realmApp,
 		RealmProject: mainPrj,
