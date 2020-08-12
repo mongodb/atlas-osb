@@ -9,9 +9,7 @@ require (
 	github.com/alexflint/go-arg v1.3.1-0.20200806235247-96c756c382ed
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drewolson/testflight v1.0.0 // indirect
-	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/goccy/go-yaml v1.7.18
-	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/mux v1.7.3
 	github.com/huandu/xstrings v1.3.2 // indirect
@@ -22,12 +20,10 @@ require (
 	github.com/mongodb/go-client-mongodb-atlas v0.3.0
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pivotal-cf/brokerapi v5.1.0+incompatible
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.5.1
-	github.com/tidwall/pretty v1.0.0 // indirect
-	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect
-	go.mongodb.org/mongo-driver v1.0.4
+	go.mongodb.org/mongo-driver v1.4.0
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0
