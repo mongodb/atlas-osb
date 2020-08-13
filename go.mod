@@ -11,7 +11,7 @@ require (
 	github.com/drewolson/testflight v1.0.0 // indirect
 	github.com/goccy/go-yaml v1.8.0
 	github.com/google/go-querystring v1.0.0
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.7.4
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/kubernetes-incubator/service-catalog v0.2.1
