@@ -21,7 +21,7 @@ require (
 	github.com/mongodb/go-client-mongodb-atlas v0.3.0
 	github.com/pivotal-cf/brokerapi v5.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/mongo-driver v1.4.0
 	go.uber.org/zap v1.15.0
