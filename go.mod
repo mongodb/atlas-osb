@@ -16,7 +16,7 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/kubernetes-incubator/service-catalog v0.2.1
-	github.com/kubernetes-sigs/service-catalog v0.3.0
+	github.com/kubernetes-sigs/service-catalog v0.3.0 // indirect
 	github.com/mitchellh/mapstructure v1.3.3
 	github.com/mongodb/go-client-mongodb-atlas v0.3.0
 	github.com/pivotal-cf/brokerapi v5.1.0+incompatible
