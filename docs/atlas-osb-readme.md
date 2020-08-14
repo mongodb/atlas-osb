@@ -1,6 +1,6 @@
 # <img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" /> atlas-osb <span align="right">![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/jasonmimick/atlas-osb?include_prereleases&style=for-the-badge)</span>
 
-![MongoDB Atlas Go Client](https://img.shields.io/badge/Powered%20by%20-go--client--mongodb--atlas-%2313AA52?link=https://github.com/mongodb/go-client-mongodb-atlas&style=for-the-badge)
+[![MongoDB Atlas Go Client](https://img.shields.io/badge/Powered%20by%20-go--client--mongodb--atlas-%2313AA52?style=for-the-badge)](https://github.com/mongodb/go-client-mongodb-atlas)
 
 :construction: https://cluster.dev/ or similar support
 
