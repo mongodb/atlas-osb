@@ -1,8 +1,23 @@
+// Copyright 2020 MongoDB Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
 	"fmt"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/alexflint/go-arg"
@@ -13,6 +28,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+const toolName = "atlas-aosb"
 
 // releaseVersion should be set by the linker at compile time.
 var releaseVersion = "0.0.0+devbuild." + time.Now().UTC().Format("20060102T150405")
@@ -113,10 +130,11 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL, "whitelist_file", args.WhitelistFile)
 
 	creds := deduceCredentials(logger, args.AtlasURL)
+	userAgent := fmt.Sprintf("%s/%s (%s;%s)", toolName, releaseVersion, runtime.GOOS, runtime.GOARCH)
 
 	// Administrators can control what providers/plans are available to users
 	if args.WhitelistFile == "" {
-		return broker.New(logger, creds, args.AtlasURL, args.RealmURL, nil)
+		return broker.New(logger, creds, args.AtlasURL, args.RealmURL, nil, userAgent)
 	}
 
 	// TODO
@@ -127,7 +145,7 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 		logger.Fatal("Cannot load providers whitelist: %v", err)
 	}
 
-	return broker.New(logger, creds, args.AtlasURL, args.RealmURL, whitelist)
+	return broker.New(logger, creds, args.AtlasURL, args.RealmURL, whitelist, userAgent)
 }
 
 func startBrokerServer() {
