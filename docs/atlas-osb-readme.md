@@ -7,7 +7,7 @@
 ![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Clean%20CF/badge.svg)
 [![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
 
-atlas-osb - Extensible Enterprise Production Deployments for MongoDB Atlas
+Extensible Enterprise Production Deployments for MongoDB Atlas
 
 Table of Contents
 =====
