@@ -93,7 +93,6 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	connDetails := ConnectionDetails{
 		Username: bindingID,
 		Password: password,
-		URI:      cluster.SrvAddress,
 	}
 
 	if len(user.Roles) > 0 {
@@ -106,6 +105,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	cs.User = url.UserPassword(user.Username, user.Password)
 	connDetails.ConnectionString = cs.String()
 	connDetails.Database = cs.Path
+	connDetails.URI = cs.String()
 
 	spec = domain.Binding{
 		Credentials: connDetails,
