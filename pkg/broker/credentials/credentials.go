@@ -119,6 +119,7 @@ func FromEnv(baseURL string) (*Credentials, error) {
 	result := Credentials{
 		byAlias: map[string]Key{},
 		byOrg:   map[string]Key{},
+		Broker:  creds.Broker,
 	}
 
 	for k, v := range creds.Keys {
