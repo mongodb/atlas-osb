@@ -1,3 +1,5 @@
+# OBSOLETE
+
 # Introduction 
 
 Atlas Service Broker (broker) Custom Plans with Resource Templates (CPT's) allow cluster administrators to manage real-world production scenarios on the MongoDB Atlas Platform. CPT plan's are templates of Atlas resources.
