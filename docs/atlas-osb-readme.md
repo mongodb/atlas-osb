@@ -1,7 +1,6 @@
-<img align="left" width="100" height="100" 
-src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg">
+<img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" />
+
 atlas-osb
-</img>
 
 [![Generic badge](https://img.shields.io/badge/WORKING-PREBETA-YELLOW.svg)](https://shields.io/)
 
