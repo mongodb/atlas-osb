@@ -1,3 +1,17 @@
+// Copyright 2020 MongoDB Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package broker
 
 import (
@@ -34,16 +48,18 @@ type Broker struct {
 	baseURL     string
 	catalog     *catalog
 	state       *statestorage.RealmStateStorage
+	userAgent   string
 }
 
 // New creates a new Broker with a logger.
-func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, state *statestorage.RealmStateStorage) *Broker {
+func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, state *statestorage.RealmStateStorage, userAgent string) *Broker {
 	b := &Broker{
 		logger:      logger,
 		credentials: credentials,
 		baseURL:     baseURL,
 		whitelist:   whitelist,
 		state:       state,
+		userAgent:   userAgent,
 	}
 
 	b.buildCatalog()
@@ -160,6 +176,8 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		}
 
 		client, err = b.credentials.Client(b.baseURL, k)
+		client.UserAgent = b.userAgent
+
 		return
 	}
 
@@ -175,6 +193,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		if err != nil {
 			return
 		}
+		client.UserAgent = b.userAgent
 
 		// try to merge existing project into plan, don't error out if not found
 		var existing *mongodbatlas.Project
