@@ -227,12 +227,3 @@ func (ss *RealmStateStorage) Get(ctx context.Context, key string) (*mongodbrealm
 	v, _, err := ss.RealmClient.RealmValues.Get(ctx, ss.RealmProject.ID, ss.RealmApp.ID, key)
 	return v, err
 }
-
-var defaultUser = &mongodbatlas.DatabaseUser{
-	Username: "admin",
-	Password: "admin",
-	Roles: []mongodbatlas.Role{{
-		DatabaseName: "statestorage",
-		RoleName:     "readWrite",
-	}},
-}
