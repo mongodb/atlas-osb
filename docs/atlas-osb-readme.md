@@ -1,12 +1,17 @@
-<img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" />
+# <img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" /> atlas-osb
 
-atlas-osb
-
-[![Generic badge](https://img.shields.io/badge/WORKING-PREBETA-YELLOW.svg)](https://shields.io/)
+![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/jasonmimick/atlas-osb?include_prereleases&style=for-the-badge)
 
 ![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Clean%20CF/badge.svg)
 
+
+![MongoDB Atlas Go Client](https://img.shields.io/badge/Powered%20by%20-go--client--mongodb--atlas-%2313AA52?link=https://github.com/mongodb/go-client-mongodb-atlas&style=for-the-badge)
+
+:construction: https://cluster.dev/ or similar support
+
 [![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
+
+
 
 Table of Contents
 =====
