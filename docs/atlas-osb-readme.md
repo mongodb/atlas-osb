@@ -1,17 +1,13 @@
-# <img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" /> atlas-osb
-
-![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/jasonmimick/atlas-osb?include_prereleases&style=for-the-badge)
-
-![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Clean%20CF/badge.svg)
-
+# <img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" /> atlas-osb <span align="right">![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/jasonmimick/atlas-osb?include_prereleases&style=for-the-badge)</span>
 
 ![MongoDB Atlas Go Client](https://img.shields.io/badge/Powered%20by%20-go--client--mongodb--atlas-%2313AA52?link=https://github.com/mongodb/go-client-mongodb-atlas&style=for-the-badge)
 
 :construction: https://cluster.dev/ or similar support
 
+![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Clean%20CF/badge.svg)
 [![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
 
-
+atlas-osb - Extensible Enterprise Production Deployments for MongoDB Atlas
 
 Table of Contents
 =====
@@ -27,22 +23,21 @@ Table of Contents
   * [License](#license)
   * [Development](#development)
 
-
 This project is a new version of the original [MongoDB Atlas Serivce Broker](https://github.com/mongodb/mongodb-atlas-service-broker) called "atlas-osb"
 
 Atlas-osb adds the ability to define your own plans from Atlas resource templates. This new and powerful feature brings the broker to a new level of production-readiness. One simple `create-service` command is all you need to provision a complete Atlas deployment including a Project, Cluster, Database user, firewall access, and more.
-
-The atlas-osb also adds a new level of security and configurability with the ability to deploy the broker with multiple Atlas apikeys and also integrate these keys into CredHub and Secrets.
 
 Use the Atlas Service Broker to connect to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) from any platform which supports the [Open Service Broker API](https://www.openservicebrokerapi.org/), such as [Kubernetes](https://kubernetes.io/) and [Pivotal Cloud Foundry](https://pivotal.io/open-service-broker).
 
 - Provision managed MongoDB clusters on Atlas directly from your platform of choice. Includes support for all cluster configuration settings and cloud providers available on Atlas.
 - Manage and scale clusters without leaving your platform.
 - Create bindings to allow your applications access to clusters.
+- Securely configure and deploy the broker with multiple Atlas apikeys integrated with systems such as Pivotal CredHub and Kubernetes Secrets.
 
 atlas-osb custom plans allow cluster administrators to manage real-world production scenarios for the MongoDB Atlas Platform within any OSB-compliant environment. Custom plan's are templates of [Atlas API](https://docs.atlas.mongodb.com/reference/api) resources.
 
 Custom plans use the Atlas API resources and allow users to define reusable packages of related Atlas resources. These are known as "plan's". Cluster administrators can deploy these plans into Open Service Broker API marketplaces. The plans are then available through standard service broker [catalog](https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md#catalog-management) integration. This is available in Cloud Foundry, Kubernetes via [Service Catalog](https://github.com/kubernetes-sigs/service-catalog), and other modern containerized computing environments.
+
 
 # Getting Started
 
