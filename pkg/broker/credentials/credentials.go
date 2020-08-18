@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pkg/errors"
 )
 
@@ -41,9 +42,8 @@ type credentialsDefinition struct {
 }
 
 type Key struct {
-	OrgID      string `json:"orgID,omitempty"`
-	PrivateKey string `json:"privateKey,omitempty"`
-	PublicKey  string `json:"publicKey,omitempty"`
+	OrgID string `json:"orgID,omitempty"`
+	mongodbatlas.APIKey
 }
 type credHub struct {
 	BindingName string                `json:"binding_name"`
