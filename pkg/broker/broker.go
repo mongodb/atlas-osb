@@ -196,7 +196,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		}
 
 	default:
-		err = fmt.Errorf("project info must contain either ID or OrgID & project name, got %+v", dp.Project)
+		err = errors.New("template must contain either APIKey or Project.OrgID")
 		return
 	}
 

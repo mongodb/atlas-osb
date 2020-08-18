@@ -78,7 +78,6 @@ func (s *RealmValuesServiceOp) List(ctx context.Context, groupID string, appID s
 		return nil, nil, err
 	}
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
@@ -104,8 +103,6 @@ func (s *RealmValuesServiceOp) Get(ctx context.Context, groupID string, appID st
 	escapedEntry := url.PathEscape(valueID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
-
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
@@ -128,8 +125,6 @@ func (s *RealmValuesServiceOp) Create(ctx context.Context, groupID string, appID
 	}
 
 	path := fmt.Sprintf(realmValuesPath, groupID, appID)
-
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
 
 	req, err := s.Client.NewRequest(ctx, http.MethodPost, path, createRequest)
 	if err != nil {
@@ -156,8 +151,6 @@ func (s *RealmValuesServiceOp) Update(ctx context.Context, groupID string, appID
 	escapedEntry := url.PathEscape(keyID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
-
 	req, err := s.Client.NewRequest(ctx, http.MethodPatch, path, updateRequest)
 	if err != nil {
 		return nil, nil, err
@@ -182,8 +175,6 @@ func (s *RealmValuesServiceOp) Delete(ctx context.Context, groupID, appID string
 	basePath := fmt.Sprintf(realmValuesPath, groupID, appID)
 	escapedEntry := url.PathEscape(keyID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
-
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
 
 	req, err := s.Client.NewRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
