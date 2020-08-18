@@ -40,17 +40,13 @@ Copy this template and update with your own apikey information.
    "broker": {
       "username": "admin",
       "password": "admin",
-      "db": "mongodb+srv://jason:jason@statestorage-mytsp.mongodb.net/admin?retryWrites=true&w=majority"
    },
-   "orgs": {
-      "<ORG-ID>": {
+   "keys": {
+      "my-test-key": {
         "publicKey": "<PUBLIC-KEY>",
         "privateKey": "<PRIVATE-KEY>",
-        "id": "my-test-key",
+        "orgID": "<ORG-ID>",
         "desc": "My first key for the atlas-osb.",
-        "roles": [
-            { "orgId" : "<ORG-ID>" }
-        ]
       }
    }
 }

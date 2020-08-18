@@ -27,9 +27,8 @@ make_multikey_config() {
 	"broker": {
 		"username": "admin",
 		"password": "admin",
-		"db": "${INPUT_BROKER_DB_CONNECTION_STRING}"
 	},
-	"orgs": {
+	"keys": {
 		"testKey": {
 			"orgID" : "${INPUT_ATLAS_ORG_ID}",
 			"publicKey": "${INPUT_ATLAS_PUBLIC_KEY}",
