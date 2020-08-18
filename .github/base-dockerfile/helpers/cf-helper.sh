@@ -141,6 +141,7 @@ check_app_started() {
     app=$(cf app "$app_name" | tail -1 | awk '{print $2}')
     if [[ $try -lt 0 ]]; then
       echo "ERROR: startup is getting too long"
+      cf logs "$app_name" --recent | tail -25
       exit 1
     fi
     let "try--"
