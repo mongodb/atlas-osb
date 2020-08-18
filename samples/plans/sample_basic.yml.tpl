@@ -1,7 +1,7 @@
 name: basic-plan
 description: This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection.
 free: true
-apiKey: {{ keyByAlias "testKey" }}
+apiKey: {{ keyByAlias .credentials "testKey" }}
 project:
   name: {{ .instance_name }}
   desc: Created from a template
