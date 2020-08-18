@@ -26,7 +26,7 @@ make_multikey_config() {
 {
 	"broker": {
 		"username": "admin",
-		"password": "admin",
+		"password": "admin"
 	},
 	"keys": {
 		"testKey": {

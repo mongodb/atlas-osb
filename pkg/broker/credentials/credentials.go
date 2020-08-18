@@ -140,7 +140,7 @@ func (c *Credentials) validate() error {
 	}
 
 	if len(c.byOrg) == 0 {
-		return errors.New("no Org credentials specified")
+		return errors.New("no API keys specified")
 	}
 
 	return nil
@@ -154,7 +154,7 @@ func (c *Credentials) ByAlias(alias string) (Key, error) {
 
 	k, ok := c.byOrg[id]
 	if !ok {
-		return k, fmt.Errorf("no API key for project %s", id)
+		return k, fmt.Errorf("no API key for organization %s", id)
 	}
 	return k, nil
 }
@@ -162,7 +162,7 @@ func (c *Credentials) ByAlias(alias string) (Key, error) {
 func (c *Credentials) ByOrg(id string) (Key, error) {
 	k, ok := c.byOrg[id]
 	if !ok {
-		return k, fmt.Errorf("no API key for project %s", id)
+		return k, fmt.Errorf("no API key for organization %s", id)
 	}
 	return k, nil
 }
