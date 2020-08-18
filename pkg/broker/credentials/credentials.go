@@ -31,12 +31,12 @@ type BrokerAuth struct {
 }
 
 type Credentials struct {
-	byAlias,
-	byOrg map[string]Key
-	Broker *BrokerAuth
+	aliases map[string]string
+	byOrg   map[string]Key
+	Broker  *BrokerAuth
 }
 
-type credentialsDefinition struct {
+type keyList struct {
 	Keys   map[string]Key `json:"keys"`
 	Broker *BrokerAuth    `json:"broker"`
 }
@@ -46,8 +46,8 @@ type Key struct {
 	mongodbatlas.APIKey
 }
 type credHub struct {
-	BindingName string                `json:"binding_name"`
-	Credentials credentialsDefinition `json:"credentials"`
+	BindingName string  `json:"binding_name"`
+	KeyList     keyList `json:"credentials"`
 }
 
 type services struct {
@@ -67,18 +67,18 @@ func FromCredHub(baseURL string) (*Credentials, error) {
 	}
 
 	result := Credentials{
-		byAlias: map[string]Key{},
+		aliases: map[string]string{},
 		byOrg:   map[string]Key{},
 	}
 
 	for _, c := range append(services.CredHub, services.UserProvided...) {
-		for k, v := range c.Credentials.Keys {
-			result.byAlias[k] = v
+		for k, v := range c.KeyList.Keys {
+			result.aliases[k] = v.OrgID
 			result.byOrg[v.OrgID] = v
 		}
 
-		if c.Credentials.Broker != nil {
-			result.Broker = c.Credentials.Broker
+		if c.KeyList.Broker != nil {
+			result.Broker = c.KeyList.Broker
 		}
 	}
 
@@ -95,12 +95,12 @@ func FromEnv(baseURL string) (*Credentials, error) {
 		return nil, nil
 	}
 
-	creds := credentialsDefinition{
+	keys := keyList{
 		Keys:   map[string]Key{},
 		Broker: &BrokerAuth{},
 	}
 
-	if err := json.Unmarshal([]byte(env), &creds); err != nil {
+	if err := json.Unmarshal([]byte(env), &keys); err != nil {
 		file, err := os.Open(env)
 		if err != nil {
 			return nil, fmt.Errorf("cannot find BROKER_APIKEYS: %v", err)
@@ -111,19 +111,19 @@ func FromEnv(baseURL string) (*Credentials, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot read BROKER_APIKEYS: %v", err)
 		}
-		if err := json.Unmarshal(fileData, &creds); err != nil {
+		if err := json.Unmarshal(fileData, &keys); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
 		}
 	}
 
 	result := Credentials{
-		byAlias: map[string]Key{},
+		aliases: map[string]string{},
 		byOrg:   map[string]Key{},
-		Broker:  creds.Broker,
+		Broker:  keys.Broker,
 	}
 
-	for k, v := range creds.Keys {
-		result.byAlias[k] = v
+	for k, v := range keys.Keys {
+		result.aliases[k] = v.OrgID
 		result.byOrg[v.OrgID] = v
 	}
 
@@ -146,7 +146,12 @@ func (c *Credentials) validate() error {
 	return nil
 }
 
-func (c *Credentials) Alias(id string) (Key, error) {
+func (c *Credentials) ByAlias(alias string) (Key, error) {
+	id, ok := c.aliases[alias]
+	if !ok {
+		return Key{}, fmt.Errorf("no organization ID for alias %q", alias)
+	}
+
 	k, ok := c.byOrg[id]
 	if !ok {
 		return k, fmt.Errorf("no API key for project %s", id)
@@ -154,7 +159,7 @@ func (c *Credentials) Alias(id string) (Key, error) {
 	return k, nil
 }
 
-func (c *Credentials) Org(id string) (Key, error) {
+func (c *Credentials) ByOrg(id string) (Key, error) {
 	k, ok := c.byOrg[id]
 	if !ok {
 		return k, fmt.Errorf("no API key for project %s", id)
@@ -164,13 +169,4 @@ func (c *Credentials) Org(id string) (Key, error) {
 
 func (c *Credentials) Keys() map[string]Key {
 	return c.byOrg
-}
-
-// TODO: should be removed on proper release?
-func (c *Credentials) RandomKey() (orgID string, key Key) {
-	for k, v := range c.byOrg {
-		return k, v
-	}
-
-	return
 }

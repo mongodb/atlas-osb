@@ -76,9 +76,6 @@ Copy this template and update with your own apikey information.
       "password": "admin",
       "db": "mongodb+srv://jason:jason@statestorage-mytsp.mongodb.net/admin?retryWrites=true&w=majority"
    },
-   "projects": {
-
-   },
    "orgs": {
       "<ORG-ID>": {
         "publicKey": "<PUBLIC-KEY>",

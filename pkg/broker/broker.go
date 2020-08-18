@@ -190,7 +190,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		dp.Project.OrgID = dp.APIKey.OrgID
 
 	case dp.Project.OrgID != "":
-		key, err = b.credentials.Org(dp.Project.OrgID)
+		key, err = b.credentials.ByOrg(dp.Project.OrgID)
 		if err != nil {
 			return
 		}
@@ -225,7 +225,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 }
 
 func (b *Broker) getState(orgID string) (*statestorage.RealmStateStorage, error) {
-	key, err := b.credentials.Org(orgID)
+	key, err := b.credentials.ByOrg(orgID)
 	if err != nil {
 		return nil, err
 	}
