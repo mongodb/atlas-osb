@@ -33,7 +33,7 @@ make_multikey_config() {
 		"testKey": {
 			"orgID" : "${INPUT_ATLAS_ORG_ID}",
 			"publicKey": "${INPUT_ATLAS_PUBLIC_KEY}",
-			"privateKey": "${INPUT_ATLAS_PRIVATE_KEY}",
+			"privateKey": "${INPUT_ATLAS_PRIVATE_KEY}"
 		}
 	}
 }
