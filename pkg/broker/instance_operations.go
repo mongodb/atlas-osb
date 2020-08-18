@@ -325,8 +325,11 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 		}
 
 		instance, err := state.FindOne(ctx, instanceID)
-		if err != nil && err != statestorage.ErrInstanceNotFound {
-			logger.Errorw("Cannot find instance in maintenance DB", "error", err)
+		if err != nil {
+			if err != statestorage.ErrInstanceNotFound {
+				logger.Errorw("Cannot find instance in maintenance DB", "error", err)
+			}
+			return domain.GetInstanceDetailsSpec{}, err
 		}
 		return *instance, nil
 	}
