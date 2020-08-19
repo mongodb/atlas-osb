@@ -52,7 +52,7 @@ type RealmStateStorage struct {
 	Logger       *zap.SugaredLogger
 }
 
-func client(baseURL string, k credentials.Key) (*mongodbatlas.Client, error) {
+func client(baseURL string, k credentials.APIKey) (*mongodbatlas.Client, error) {
 	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create Digest client")
@@ -61,7 +61,7 @@ func client(baseURL string, k credentials.Key) (*mongodbatlas.Client, error) {
 	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
 }
 
-func Get(key credentials.Key, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
+func Get(key credentials.APIKey, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
 		context.TODO(),
 		nil,

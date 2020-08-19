@@ -28,7 +28,7 @@ type Plan struct {
 	Name                string                             `json:"name,omitempty"`
 	Description         string                             `json:"description,omitempty"`
 	Free                *bool                              `json:"free,omitempty"`
-	APIKey              *credentials.Key                   `json:"apiKey,omitempty"`
+	APIKey              *credentials.APIKey                `json:"apiKey,omitempty"`
 	Project             *mongodbatlas.Project              `json:"project,omitempty"`
 	Cluster             *mongodbatlas.Cluster              `json:"cluster,omitempty"`
 	DatabaseUsers       []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`

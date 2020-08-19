@@ -182,7 +182,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	key := credentials.Key{}
+	key := credentials.APIKey{}
 
 	switch {
 	case dp.APIKey != nil:

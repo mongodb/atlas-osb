@@ -32,19 +32,34 @@ type BrokerAuth struct {
 
 type Credentials struct {
 	aliases map[string]string
-	byOrg   map[string]Key
+	byOrg   map[string]APIKey
 	Broker  *BrokerAuth
 }
 
 type keyList struct {
-	Keys   map[string]Key `json:"keys"`
-	Broker *BrokerAuth    `json:"broker"`
+	Keys   map[string]APIKey `json:"keys"`
+	Broker *BrokerAuth       `json:"broker"`
 }
 
-type Key struct {
-	OrgID               string `json:"orgID,omitempty"`
-	mongodbatlas.APIKey `yaml:",inline"`
+type APIKey struct {
+	ID         string                   `json:"id,omitempty"`
+	Desc       string                   `json:"desc,omitempty"`
+	Roles      []mongodbatlas.AtlasRole `json:"roles,omitempty"`
+	PrivateKey string                   `json:"privateKey,omitempty"`
+	PublicKey  string                   `json:"publicKey,omitempty"`
+	OrgID      string                   `json:"orgID,omitempty"`
 }
+
+func (k APIKey) MongoKey() mongodbatlas.APIKey {
+	return mongodbatlas.APIKey{
+		ID:         k.ID,
+		Desc:       k.Desc,
+		Roles:      k.Roles,
+		PrivateKey: k.PrivateKey,
+		PublicKey:  k.PublicKey,
+	}
+}
+
 type credHub struct {
 	BindingName string  `json:"binding_name"`
 	KeyList     keyList `json:"credentials"`
@@ -68,7 +83,7 @@ func FromCredHub(baseURL string) (*Credentials, error) {
 
 	result := Credentials{
 		aliases: map[string]string{},
-		byOrg:   map[string]Key{},
+		byOrg:   map[string]APIKey{},
 	}
 
 	for _, c := range append(services.CredHub, services.UserProvided...) {
@@ -96,7 +111,7 @@ func FromEnv(baseURL string) (*Credentials, error) {
 	}
 
 	keys := keyList{
-		Keys:   map[string]Key{},
+		Keys:   map[string]APIKey{},
 		Broker: &BrokerAuth{},
 	}
 
@@ -118,7 +133,7 @@ func FromEnv(baseURL string) (*Credentials, error) {
 
 	result := Credentials{
 		aliases: map[string]string{},
-		byOrg:   map[string]Key{},
+		byOrg:   map[string]APIKey{},
 		Broker:  keys.Broker,
 	}
 
@@ -146,10 +161,10 @@ func (c *Credentials) validate() error {
 	return nil
 }
 
-func (c *Credentials) ByAlias(alias string) (Key, error) {
+func (c *Credentials) ByAlias(alias string) (APIKey, error) {
 	id, ok := c.aliases[alias]
 	if !ok {
-		return Key{}, fmt.Errorf("no organization ID for alias %q", alias)
+		return APIKey{}, fmt.Errorf("no organization ID for alias %q", alias)
 	}
 
 	k, ok := c.byOrg[id]
@@ -159,7 +174,7 @@ func (c *Credentials) ByAlias(alias string) (Key, error) {
 	return k, nil
 }
 
-func (c *Credentials) ByOrg(id string) (Key, error) {
+func (c *Credentials) ByOrg(id string) (APIKey, error) {
 	k, ok := c.byOrg[id]
 	if !ok {
 		return k, fmt.Errorf("no API key for organization %s", id)
@@ -167,6 +182,6 @@ func (c *Credentials) ByOrg(id string) (Key, error) {
 	return k, nil
 }
 
-func (c *Credentials) Keys() map[string]Key {
+func (c *Credentials) Keys() map[string]APIKey {
 	return c.byOrg
 }
