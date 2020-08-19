@@ -1,3 +1,17 @@
+// Copyright 2020 MongoDB Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package mongodbrealm
 
 import (
@@ -64,7 +78,6 @@ func (s *RealmValuesServiceOp) List(ctx context.Context, groupID string, appID s
 		return nil, nil, err
 	}
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
@@ -90,8 +103,6 @@ func (s *RealmValuesServiceOp) Get(ctx context.Context, groupID string, appID st
 	escapedEntry := url.PathEscape(valueID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
-
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, nil, err
@@ -114,8 +125,6 @@ func (s *RealmValuesServiceOp) Create(ctx context.Context, groupID string, appID
 	}
 
 	path := fmt.Sprintf(realmValuesPath, groupID, appID)
-
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
 
 	req, err := s.Client.NewRequest(ctx, http.MethodPost, path, createRequest)
 	if err != nil {
@@ -142,8 +151,6 @@ func (s *RealmValuesServiceOp) Update(ctx context.Context, groupID string, appID
 	escapedEntry := url.PathEscape(keyID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
-
 	req, err := s.Client.NewRequest(ctx, http.MethodPatch, path, updateRequest)
 	if err != nil {
 		return nil, nil, err
@@ -168,8 +175,6 @@ func (s *RealmValuesServiceOp) Delete(ctx context.Context, groupID, appID string
 	basePath := fmt.Sprintf(realmValuesPath, groupID, appID)
 	escapedEntry := url.PathEscape(keyID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
-
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
 
 	req, err := s.Client.NewRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {

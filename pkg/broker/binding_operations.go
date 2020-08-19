@@ -1,3 +1,17 @@
+// Copyright 2020 MongoDB Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package broker
 
 import (
@@ -35,17 +49,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	logger := b.funcLogger()
 	logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	p, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	k, err := b.credentials.GetProjectKey(p.Project.ID)
-	if err != nil {
-		return
-	}
-
-	client, err := b.credentials.Client(b.baseURL, k)
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}
@@ -77,12 +81,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return
 	}
 
-	dp, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		logger.Errorw("Not able to find plan for instance", "err", err)
-		return
-	}
-	user, err := b.userFromParams(bindingID, password, details.RawParameters, dp)
+	user, err := b.userFromParams(bindingID, password, details.RawParameters, p)
 	if err != nil {
 		logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
 		return
@@ -134,17 +133,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	logger := b.funcLogger()
 	logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
 
-	p, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	k, err := b.credentials.GetProjectKey(p.Project.ID)
-	if err != nil {
-		return
-	}
-
-	client, err := b.credentials.Client(b.baseURL, k)
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}

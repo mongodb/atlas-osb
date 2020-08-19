@@ -1,6 +1,21 @@
+// Copyright 2020 MongoDB Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dynamicplans
 
 import (
+	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -10,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 )
 
 func FromEnv() ([]*template.Template, error) {
@@ -48,7 +64,10 @@ func FromEnv() ([]*template.Template, error) {
 			New(basename).
 			Funcs(sprig.TxtFuncMap()).
 			Funcs(template.FuncMap{
-				"default": dfault,
+				"default":      dfault,
+				"keyByOrg":     keyByOrg,
+				"keyByAlias":   keyByAlias,
+				"orgIDByAlias": orgIDByAlias,
 			}).
 			Parse(string(text))
 
@@ -100,4 +119,41 @@ func empty(given interface{}) bool {
 	case reflect.Struct:
 		return false
 	}
+}
+
+func keyByOrg(c *credentials.Credentials, orgID string) (string, error) {
+	key, err := c.ByOrg(orgID)
+	if err != nil {
+		return "", err
+	}
+
+	out, err := json.Marshal(key)
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}
+
+func keyByAlias(c *credentials.Credentials, alias string) (string, error) {
+	key, err := c.ByAlias(alias)
+	if err != nil {
+		return "", err
+	}
+
+	out, err := json.Marshal(key)
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}
+
+func orgIDByAlias(c *credentials.Credentials, alias string) (string, error) {
+	key, err := c.ByAlias(alias)
+	if err != nil {
+		return "", err
+	}
+
+	return key.OrgID, nil
 }

@@ -1,8 +1,6 @@
 #Atlas-osb. PAS sample
 
 on: [push]
-    #  release:
-    #types: [created]
 
 name: Prepare CF. Base scenario.
 
@@ -19,21 +17,26 @@ jobs:
           version: v1.28
 
           # Optional: working directory, useful for monorepos
-          # working-directory: 
-
+          # working-directory:
           # Optional: golangci-lint command line arguments.
           # args: -issues-exit-code=0
-
           # Optional: show only new issues if it's a pull request. The default value is `false`.
           # only-new-issues: true
-          
+
   basic-plan-cloudfoundry:
-    name: basic-plan-cloudfoundry 
+    name: basic-plan-cloudfoundry
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.3.1
-      
-      - name: Create CF org, space, broker, service and push app)
+
+      - name: Wait for other CI to finish
+        uses: softprops/turnstyle@v1
+        with:
+          poll-interval-seconds: 10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create CF org, space, broker, service and push app
         id: prepare
         uses: ./.github/actions/e2e-cf
         with:

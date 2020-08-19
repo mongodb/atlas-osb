@@ -3,12 +3,12 @@ cf_login() {
   local org=$1
   local sys=$2
 
-  if [[ -z $org ]]; then 
+  if [[ -z $org ]]; then
     org="system"
   fi
   if [[ -z $sys ]]; then
-    sys="system"    
-  fi  
+    sys="system"
+  fi
 
   local cf_app_url="api.$(pcf cf-info | grep system_domain | cut -d' ' -f 3)"
   local cf_app_user="$(pcf cf-info | grep admin_username | cut -d' ' -f 3)"
@@ -23,12 +23,12 @@ wait_service_status_change() {
   local status=$2
   local time=0
   echo "checking " $instance_name $status
-  local verify_status=$(cf services | awk  '/'"$instance_name"'[ ].*'"$status"'/{print "'"$status"'"}')
+  local verify_status=$(cf services | awk '/'"$instance_name"'[ ].*'"$status"'/{print "'"$status"'"}')
   while [[ $verify_status == $status ]] && [[ $time -lt $INSTALL_TIMEOUT ]]; do
     echo "...${verify_status}"
     sleep 3m
     let "time=$time+3"
-    verify_status=$(cf services | awk  '/'"$instance_name"'[ ].*'"$status"'/{print "'"$status"'"}')
+    verify_status=$(cf services | awk '/'"$instance_name"'[ ].*'"$status"'/{print "'"$status"'"}')
   done
 }
 
@@ -46,8 +46,8 @@ delete_bind() {
   echo "check if $app_name binding exist"
   local binding=$(cf services | grep $instance_name | awk '/'"$app_name"'/{print "exist"}')
   if [[ $binding == "exist" ]]; then
-      cf unbind-service $app_name $instance_name
-      check_app_unbinding $instance_name $app_name
+    cf unbind-service $app_name $instance_name
+    check_app_unbinding $instance_name $app_name
   fi
 }
 
@@ -58,7 +58,7 @@ delete_service() {
   if [[ $service == "exist" ]]; then
     cf delete-service $instance_name -f
     wait_service_status_change $instance_name "delete in progress"
-    service_status=$(cf services | awk  '/'"$instance_name"'[ $].*failed/{print "failed"}')
+    service_status=$(cf services | awk '/'"$instance_name"'[ $].*failed/{print "failed"}')
     if [[ $service_status == "failed" ]]; then
       cf purge-service-instance $instance_name -f
     fi
@@ -75,15 +75,15 @@ delete_application() {
 }
 
 create_atlas_service_broker_from_repo() {
-    local broker_name=$1
-    local app_name=$2 #atlas-osb-app
-    cf push $app_name --no-start
-    cf set-env $app_name BROKER_HOST 0.0.0.0
-    cf set-env $app_name BROKER_PORT 8080
-    cf start $app_name
-    check_app_started $app_name
-    app_url=$(cf app $app_name | awk '/routes:/{print $2}')
-    cf create-service-broker $broker_name $INPUT_ATLAS_PUBLIC_KEY@$INPUT_ATLAS_PROJECT_ID "$INPUT_ATLAS_PRIVATE_KEY" http://$app_url --space-scoped
+  local broker_name=$1
+  local app_name=$2 #atlas-osb-app
+  cf push $app_name --no-start
+  cf set-env $app_name BROKER_HOST 0.0.0.0
+  cf set-env $app_name BROKER_PORT 8080
+  cf start $app_name
+  check_app_started $app_name
+  app_url=$(cf app $app_name | awk '/routes:/{print $2}')
+  cf create-service-broker $broker_name $INPUT_ATLAS_PUBLIC_KEY@$INPUT_ATLAS_PROJECT_ID "$INPUT_ATLAS_PRIVATE_KEY" http://$app_url --space-scoped
 }
 
 create_atlas_service_broker_from_ECS() { #TODO
@@ -96,9 +96,9 @@ create_service() {
   local instance_name=$1 #aws-atlas-test-instance-$INPUT_BRANCH_NAME
   local plan=$2
   #local config=$2
-  cf create-service mongodb-atlas-aws $plan  $instance_name -c '{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
+  cf create-service mongodb-atlas-aws $plan $instance_name -c '{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
   wait_service_status_change $instance_name "create in progress"
-  service_status=$(cf services | awk  '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
+  service_status=$(cf services | awk '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
   if [[ $service_status != "succeeded" ]]; then
     echo "FAILED! wrong status: $(cf service $instance_name)"
     cf logout
@@ -109,7 +109,7 @@ create_service() {
 check_service_creation() {
   local instance_name=$1
   wait_service_status_change $instance_name "create in progress"
-  service_status=$(cf services | awk  '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
+  service_status=$(cf services | awk '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
   if [[ $service_status != "succeeded" ]]; then
     echo "FAILED! wrong status: $(cf service $instance_name)"
     cf logout
@@ -135,16 +135,17 @@ check_app_unbinding() {
 
 check_app_started() {
   local app_name=$1
-  local app=$(cf apps | grep "$app_name " | awk  '/started/{print "started"}')
+  local app=$(cf app "$app_name" | tail -1 | awk '{print $2}')
   local try=10
-  until [[ $app == "started" ]]; do
-    app=$(cf apps | grep "$app_name " | awk  '/started/{print "started"}')
+  until [[ $app == "running" ]]; do
+    app=$(cf app "$app_name" | tail -1 | awk '{print $2}')
     if [[ $try -lt 0 ]]; then
-      echo "ERROR: unbinding is getting too long"
+      echo "ERROR: startup is getting too long"
+      cf logs "$app_name" --recent | tail -25
       exit 1
     fi
     let "try--"
-    echo "checking application status ($try)"
+    echo "checking application status: $app ($try)"
   done
   echo "Application started"
 }

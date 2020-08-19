@@ -1,22 +1,28 @@
+// Copyright 2020 MongoDB Inc
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package credentials
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 
-	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pkg/errors"
 )
-
-type Credentials struct {
-	projects map[string]mongodbatlas.APIKey
-	Orgs     map[string]mongodbatlas.APIKey `json:"orgs"`
-	Broker   *BrokerAuth                    `json:"broker"`
-}
 
 type BrokerAuth struct {
 	Username string `json:"username"`
@@ -24,9 +30,39 @@ type BrokerAuth struct {
 	// DB       string `json:"db"`
 }
 
+type Credentials struct {
+	aliases map[string]string
+	byOrg   map[string]APIKey
+	Broker  *BrokerAuth
+}
+
+type keyList struct {
+	Keys   map[string]APIKey `json:"keys"`
+	Broker *BrokerAuth       `json:"broker"`
+}
+
+type APIKey struct {
+	ID         string                   `json:"id,omitempty"`
+	Desc       string                   `json:"desc,omitempty"`
+	Roles      []mongodbatlas.AtlasRole `json:"roles,omitempty"`
+	PrivateKey string                   `json:"privateKey,omitempty"`
+	PublicKey  string                   `json:"publicKey,omitempty"`
+	OrgID      string                   `json:"orgID,omitempty"`
+}
+
+func (k APIKey) MongoKey() mongodbatlas.APIKey {
+	return mongodbatlas.APIKey{
+		ID:         k.ID,
+		Desc:       k.Desc,
+		Roles:      k.Roles,
+		PrivateKey: k.PrivateKey,
+		PublicKey:  k.PublicKey,
+	}
+}
+
 type credHub struct {
-	BindingName string      `json:"binding_name"`
-	Credentials Credentials `json:"credentials"`
+	BindingName string  `json:"binding_name"`
+	KeyList     keyList `json:"credentials"`
 }
 
 type services struct {
@@ -46,16 +82,18 @@ func FromCredHub(baseURL string) (*Credentials, error) {
 	}
 
 	result := Credentials{
-		projects: map[string]mongodbatlas.APIKey{},
-		Orgs:     map[string]mongodbatlas.APIKey{},
+		aliases: map[string]string{},
+		byOrg:   map[string]APIKey{},
 	}
 
 	for _, c := range append(services.CredHub, services.UserProvided...) {
-		for k, v := range c.Credentials.Orgs {
-			result.Orgs[k] = v
+		for k, v := range c.KeyList.Keys {
+			result.aliases[k] = v.OrgID
+			result.byOrg[v.OrgID] = v
 		}
-		if c.Credentials.Broker != nil {
-			result.Broker = c.Credentials.Broker
+
+		if c.KeyList.Broker != nil {
+			result.Broker = c.KeyList.Broker
 		}
 	}
 
@@ -72,11 +110,12 @@ func FromEnv(baseURL string) (*Credentials, error) {
 		return nil, nil
 	}
 
-	creds := Credentials{
-		projects: map[string]mongodbatlas.APIKey{},
-		Orgs:     map[string]mongodbatlas.APIKey{},
+	keys := keyList{
+		Keys:   map[string]APIKey{},
+		Broker: &BrokerAuth{},
 	}
-	if err := json.Unmarshal([]byte(env), &creds); err != nil {
+
+	if err := json.Unmarshal([]byte(env), &keys); err != nil {
 		file, err := os.Open(env)
 		if err != nil {
 			return nil, fmt.Errorf("cannot find BROKER_APIKEYS: %v", err)
@@ -87,16 +126,27 @@ func FromEnv(baseURL string) (*Credentials, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot read BROKER_APIKEYS: %v", err)
 		}
-		if err := json.Unmarshal(fileData, &creds); err != nil {
+		if err := json.Unmarshal(fileData, &keys); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
 		}
 	}
 
-	if err := creds.validate(); err != nil {
+	result := Credentials{
+		aliases: map[string]string{},
+		byOrg:   map[string]APIKey{},
+		Broker:  keys.Broker,
+	}
+
+	for k, v := range keys.Keys {
+		result.aliases[k] = v.OrgID
+		result.byOrg[v.OrgID] = v
+	}
+
+	if err := result.validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate credentials: %v", err)
 	}
 
-	return &creds, nil
+	return &result, nil
 }
 
 func (c *Credentials) validate() error {
@@ -104,62 +154,34 @@ func (c *Credentials) validate() error {
 		return errors.New("no broker credentials specified")
 	}
 
-	if len(c.Orgs) == 0 {
-		return errors.New("no Org credentials specified")
+	if len(c.byOrg) == 0 {
+		return errors.New("no API keys specified")
 	}
 
 	return nil
 }
 
-func (c *Credentials) GetProjectKey(id string) (mongodbatlas.APIKey, error) {
-	k, ok := c.projects[id]
+func (c *Credentials) ByAlias(alias string) (APIKey, error) {
+	id, ok := c.aliases[alias]
 	if !ok {
-		return k, fmt.Errorf("no API key for project %s", id)
+		return APIKey{}, fmt.Errorf("no organization ID for alias %q", alias)
+	}
+
+	k, ok := c.byOrg[id]
+	if !ok {
+		return k, fmt.Errorf("no API key for organization %s", id)
 	}
 	return k, nil
 }
 
-func (c *Credentials) AddProjectKey(id string, k mongodbatlas.APIKey) {
-	c.projects[id] = k
+func (c *Credentials) ByOrg(id string) (APIKey, error) {
+	k, ok := c.byOrg[id]
+	if !ok {
+		return k, fmt.Errorf("no API key for organization %s", id)
+	}
+	return k, nil
 }
 
-func (c *Credentials) Client(baseURL string, k mongodbatlas.APIKey) (*mongodbatlas.Client, error) {
-	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot create Digest client")
-	}
-
-	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
-}
-
-// TODO: should be removed on proper release?
-func (c *Credentials) RandomKey() (orgID string, key mongodbatlas.APIKey) {
-	for k, v := range c.Orgs {
-		return k, v
-	}
-
-	return
-}
-
-func (c *Credentials) FlattenOrgs(baseURL string) error {
-	for k, v := range c.Orgs {
-		client, err := c.Client(baseURL, v)
-		if err != nil {
-			return errors.Wrap(err, "cannot create Atlas client")
-		}
-
-		p, _, err := client.Projects.GetAllProjects(context.Background(), nil)
-		if err != nil {
-			return err
-		}
-
-		for _, pp := range p.Results {
-			if pp.OrgID != k {
-				continue
-			}
-			c.projects[pp.ID] = v
-		}
-	}
-
-	return nil
+func (c *Credentials) Keys() map[string]APIKey {
+	return c.byOrg
 }
