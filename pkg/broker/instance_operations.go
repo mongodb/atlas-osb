@@ -22,6 +22,7 @@ import (
 
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 	"github.com/pkg/errors"
@@ -96,16 +97,21 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		},
 	}
 
-	v, err := b.state.Put(context.Background(), instanceID, &s)
+	state, err := b.getState(dp.Project.OrgID)
+	if err != nil {
+		return
+	}
+
+	v, err := state.Put(context.Background(), instanceID, &s)
 	if err != nil {
 		logger.Errorw("Error during provision, broker maintenance:", "err", err)
-		panic("Error during provision, broker maintenance: " + err.Error())
+		return
 	}
 	logger.Infow("Inserted new state value", "v", v)
 
 	defer func() {
 		if err != nil {
-			_ = b.state.DeleteOne(ctx, instanceID)
+			_ = state.DeleteOne(ctx, instanceID)
 		}
 	}()
 
@@ -131,7 +137,7 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 
 	p, _, err := client.Projects.Create(ctx, dp.Project)
 	if err != nil {
-		logger.Errorw("Cannot create project", "error", err)
+		logger.Errorw("Cannot create project", "error", err, "project", dp.Project)
 		return nil, err
 	}
 
@@ -149,7 +155,6 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 		}
 	}
 
-	b.credentials.AddProjectKey(p.ID, b.credentials.Orgs[p.OrgID])
 	return p, nil
 }
 
@@ -227,15 +232,19 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 			"plan": *oldPlan,
 		},
 	}
+	state, err := b.getState(oldPlan.Project.OrgID)
+	if err != nil {
+		return
+	}
 
 	// TODO: make this error-out reversible?
-	err = b.state.DeleteOne(ctx, instanceID)
+	err = state.DeleteOne(ctx, instanceID)
 	if err != nil {
 		logger.Errorw("Error delete from state", "err", err, "instanceID", instanceID)
 		return
 	}
 
-	obj, err := b.state.Put(ctx, instanceID, &s)
+	obj, err := state.Put(ctx, instanceID, &s)
 	if err != nil {
 		logger.Errorw("Error insert one from state", "err", err, "instanceID", instanceID, "s", s)
 		return
@@ -257,17 +266,7 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	logger := b.funcLogger()
 	logger.Infow("Deprovisioning instance", "instance_id", instanceID, "details", details)
 
-	p, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	k, err := b.credentials.GetProjectKey(p.Project.ID)
-	if err != nil {
-		return
-	}
-
-	client, err := b.credentials.Client(b.baseURL, k)
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}
@@ -301,12 +300,12 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 
 // GetInstance should fetch the stored instance from state storage
 func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
-	logger := b.funcLogger()
-	logger.Infow("Fetching instance", "instance_id", instanceID)
+	logger := b.funcLogger().With("instanceID", instanceID)
+	logger.Info("Fetching instance")
 
 	spec, err = b.getInstance(ctx, instanceID)
 	if err != nil {
-		logger.Errorw("Unable to fetch instance", "instanceID", instanceID, "err", err)
+		logger.Errorw("Unable to fetch instance", "err", err)
 		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "get-instance")
 	}
 
@@ -314,12 +313,28 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 }
 
 func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
-	instance, err := b.state.FindOne(ctx, instanceID)
-	if err != nil {
-		return spec, errors.Wrap(err, "cannot find instance in maintenance DB")
+	logger := b.funcLogger().With("instanceID", instanceID)
+
+	for k, v := range b.credentials.Keys() {
+		logger = logger.With("orgID", k)
+
+		state, err := statestorage.Get(v, b.atlasURL, b.realmURL, b.logger)
+		if err != nil {
+			logger.Errorw("Cannot get state storage for org", "error", err)
+			continue
+		}
+
+		instance, err := state.FindOne(ctx, instanceID)
+		if err != nil {
+			if err != statestorage.ErrInstanceNotFound {
+				logger.Errorw("Cannot find instance in maintenance DB", "error", err)
+			}
+			continue
+		}
+		return *instance, nil
 	}
 
-	return *instance, nil
+	return domain.GetInstanceDetailsSpec{}, errors.New("cannot find instance in maintenance DB(s): no instances found")
 }
 
 // LastOperation should fetch the state of the provision/deprovision
@@ -339,17 +354,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		}
 	}()
 
-	p, err := b.getInstancePlan(ctx, instanceID)
-	if err != nil {
-		return
-	}
-
-	k, err := b.credentials.GetProjectKey(p.Project.ID)
-	if err != nil {
-		return
-	}
-
-	client, err := b.credentials.Client(b.baseURL, k)
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
 	}
@@ -402,9 +407,16 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				)
 			}
 
-			errDel := b.state.DeleteOne(ctx, instanceID)
+			state, errDel := b.getState(p.Project.OrgID)
+			if errDel != nil {
+				logger.Errorw("Failed to get state storage", "error", errDel)
+				break
+			}
+
+			errDel = state.DeleteOne(ctx, instanceID)
 			if errDel != nil {
 				logger.Errorw("Failed to clean up instance from maintenance store", "error", errDel)
+				break
 			}
 
 		case cluster.StateName == "DELETING":

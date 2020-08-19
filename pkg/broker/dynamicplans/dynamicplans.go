@@ -15,6 +15,7 @@
 package dynamicplans
 
 import (
+	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 )
 
 func FromEnv() ([]*template.Template, error) {
@@ -62,7 +64,10 @@ func FromEnv() ([]*template.Template, error) {
 			New(basename).
 			Funcs(sprig.TxtFuncMap()).
 			Funcs(template.FuncMap{
-				"default": dfault,
+				"default":      dfault,
+				"keyByOrg":     keyByOrg,
+				"keyByAlias":   keyByAlias,
+				"orgIDByAlias": orgIDByAlias,
 			}).
 			Parse(string(text))
 
@@ -114,4 +119,41 @@ func empty(given interface{}) bool {
 	case reflect.Struct:
 		return false
 	}
+}
+
+func keyByOrg(c *credentials.Credentials, orgID string) (string, error) {
+	key, err := c.ByOrg(orgID)
+	if err != nil {
+		return "", err
+	}
+
+	out, err := json.Marshal(key)
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}
+
+func keyByAlias(c *credentials.Credentials, alias string) (string, error) {
+	key, err := c.ByAlias(alias)
+	if err != nil {
+		return "", err
+	}
+
+	out, err := json.Marshal(key)
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}
+
+func orgIDByAlias(c *credentials.Credentials, alias string) (string, error) {
+	key, err := c.ByAlias(alias)
+	if err != nil {
+		return "", err
+	}
+
+	return key.OrgID, nil
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 )
 
 // Plan represents a set of MongoDB Atlas resources
@@ -27,7 +28,7 @@ type Plan struct {
 	Name                string                             `json:"name,omitempty"`
 	Description         string                             `json:"description,omitempty"`
 	Free                *bool                              `json:"free,omitempty"`
-	APIKey              *mongodbatlas.APIKey               `json:"apiKey,omitempty"`
+	APIKey              *credentials.APIKey                `json:"apiKey,omitempty"`
 	Project             *mongodbatlas.Project              `json:"project,omitempty"`
 	Cluster             *mongodbatlas.Cluster              `json:"cluster,omitempty"`
 	DatabaseUsers       []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`

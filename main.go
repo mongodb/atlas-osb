@@ -24,7 +24,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
 	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -127,33 +126,15 @@ func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.
 	return nil
 }
 
-func createCredsAndDB(logger *zap.SugaredLogger, atlasURL string, realmURL string) (creds *credentials.Credentials, state *statestorage.RealmStateStorage) {
-	creds = deduceCredentials(logger, atlasURL)
-
-	if err := creds.FlattenOrgs(atlasURL); err != nil {
-		logger.Fatalw("Cannot parse Org API Keys", "error", err)
-	}
-
-	id, _ := creds.RandomKey()
-	ss, err := statestorage.GetStateStorage(creds, atlasURL, realmURL, logger, id)
-	if err != nil {
-		logger.Fatalw("Failed to get statestorage", "error", err)
-	}
-
-	logger.Debugw("GetOrgStateStorage", "ss.RealmApp", ss.RealmApp)
-
-	return creds, ss
-}
-
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL, "whitelist_file", args.WhitelistFile)
 
+	creds := deduceCredentials(logger, args.AtlasURL)
 	userAgent := fmt.Sprintf("%s/%s (%s;%s)", toolName, releaseVersion, runtime.GOOS, runtime.GOARCH)
-	creds, state := createCredsAndDB(logger, args.AtlasURL, args.RealmURL)
 
 	// Administrators can control what providers/plans are available to users
 	if args.WhitelistFile == "" {
-		return broker.New(logger, creds, args.AtlasURL, nil, state, userAgent)
+		return broker.New(logger, creds, args.AtlasURL, args.RealmURL, nil, userAgent)
 	}
 
 	// TODO
@@ -164,7 +145,7 @@ func createBroker(logger *zap.SugaredLogger) *broker.Broker {
 		logger.Fatal("Cannot load providers whitelist: %v", err)
 	}
 
-	return broker.New(logger, creds, args.AtlasURL, whitelist, state, userAgent)
+	return broker.New(logger, creds, args.AtlasURL, args.RealmURL, whitelist, userAgent)
 }
 
 func startBrokerServer() {

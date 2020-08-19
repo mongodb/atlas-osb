@@ -135,16 +135,17 @@ check_app_unbinding() {
 
 check_app_started() {
   local app_name=$1
-  local app=$(cf apps | grep "$app_name " | awk '/started/{print "started"}')
+  local app=$(cf app "$app_name" | tail -1 | awk '{print $2}')
   local try=10
-  until [[ $app == "started" ]]; do
-    app=$(cf apps | grep "$app_name " | awk '/started/{print "started"}')
+  until [[ $app == "running" ]]; do
+    app=$(cf app "$app_name" | tail -1 | awk '{print $2}')
     if [[ $try -lt 0 ]]; then
       echo "ERROR: startup is getting too long"
+      cf logs "$app_name" --recent | tail -25
       exit 1
     fi
     let "try--"
-    echo "checking application status ($try)"
+    echo "checking application status: $app ($try)"
   done
   echo "Application started"
 }

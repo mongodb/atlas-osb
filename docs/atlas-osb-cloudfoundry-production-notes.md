@@ -1,18 +1,31 @@
-# Getting started with the atlas-osb on Cloud Foundry
-
-The atlas-osb installs into Cloud Foundry with a usual `cf push` command. It does not require a tile to be installed into PCF Ops Manager. These instuctions show a basic installation, configuration, and use of the broker. These have been tested on PCF 2.9. 
-
+# atlas-osb Cloud Foundry Production Notes
 ### PLEASE NOTE 
 These instuctions only apply to **this** the new template-based atlas-osb and **_not_** the legacy [MongoDB Atlas Service Broker](https://github.com/mongodb/mongodb-atlas-service-broker).
 
 This software is in active development. 
 
-## Prereq's
+
+## Background
+
+The atlas-osb installs into Cloud Foundry with a usual `cf push` command. It does not require a tile to be installed into PCF Ops Manager. These instuctions show a basic installation, configuration, and use of the broker. These have been tested on PCF 2.9. 
+
+If you are new to Cloud Foundry, and are confused. Don't worry, these notes will help.
+
+"Cloud Foundry" in this note refers to the general open source project: [Cloud Foundry](https://www.cloudfoundry.org/). There are many aspects to this project, atlas-osb however is really only concered with one area - the place where cf users run their apps, the [Application Runtime](https://www.cloudfoundry.org/application-runtime/).
+When we say, *"connect to cloud foundry"*, we mean "configure a `cf` cli tool to connect to a specific instance of the cf app runtime.
+
+Pivotal PCF, now called VMware Tanzu has it's own implementation of a cf app runtime, this was called "Pivotal Application Service" (PAS) and now is called [VMware Tanzu Application Service](https://tanzu.vmware.com/application-service). The atlas-osb is a "service provider" for the associated [marketplace](https://tanzu.vmware.com/services-marketplace) because it implements the [Open Service Broker](https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md) API. 
+
+MongoDB customers need atlas-osb to easily create, use, and manage secure connections to databases for the apps running in the cf runtime.
+
+## Getting started with the atlas-osb on Cloud Foundry
+
+### Prereq's
 
 Typical cli/bash commands are used for this procedure along with the following tools:
 
 * `cf` Cloud Foundry cli
-* `hammer` cli (recommended)
+* `[hammer](https://github.com/pivotal/hammer))` helper cli to connect to a cf app runtime.
 * text editor
 * MongoDB Atlas account - you need an Org apikey
 
@@ -20,15 +33,7 @@ Once you have your workstation ready, head over to http://cloud.mongodb.com and 
 
 ## Installation & Configuration
 
-1. Pull down the latest release of the atlas-osb (recommended).
-
-```bash
-curl -OL https://github.com/jasonmimick/atlas-osb/releases/download/v0.1-alpha/atlas-osb-v0.1-alpha.tar.gz
-tar xvf atlas-osb-latest.tar.gz
-cd atlas-osb
-```
-
-or, you can clone this repo.
+1. Clone this repo.
 
 2. Setup apikeys. 
 This flow uses a simple User Provided Service to store the apikey for the broker. The broker also supports CredHub integration [TODO: add section].
@@ -40,20 +45,13 @@ Copy this template and update with your own apikey information.
    "broker": {
       "username": "admin",
       "password": "admin",
-      "db": "mongodb+srv://jason:jason@statestorage-mytsp.mongodb.net/admin?retryWrites=true&w=majority"
    },
-   "projects": {
-
-   },
-   "orgs": {
-      "<ORG-ID>": {
+   "keys": {
+      "my-test-key": {
         "publicKey": "<PUBLIC-KEY>",
         "privateKey": "<PRIVATE-KEY>",
-        "id": "my-test-key",
+        "orgID": "<ORG-ID>",
         "desc": "My first key for the atlas-osb.",
-        "roles": [
-            { "orgId" : "<ORG-ID>" }
-        ]
       }
    }
 }
@@ -123,7 +121,9 @@ cf apps
 For this flow, we'll create an instance of the "basic-plan" called "hello-atlas-osb".
 See [/samples/plans/sample_basic.yml.tpl](/samples/plans/sample_basic.yml.tpl).
 
-Use your own <YOUR-ORG-ID> in the following command.
+Use your own apikey keyid in the following command.
+
+TODO-- UPDATE for new creds
 
 ```bash
 cf create-service mongodb-atlas-template basic-plan hello-atlas-osb -c '{"org_id":"<YOUR-ORG-ID>"}'

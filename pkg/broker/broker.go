@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/goccy/go-yaml"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
@@ -45,20 +46,27 @@ type Broker struct {
 	logger      *zap.SugaredLogger
 	whitelist   Whitelist
 	credentials *credentials.Credentials
-	baseURL     string
+	atlasURL    string
+	realmURL    string
 	catalog     *catalog
-	state       *statestorage.RealmStateStorage
 	userAgent   string
 }
 
 // New creates a new Broker with a logger.
-func New(logger *zap.SugaredLogger, credentials *credentials.Credentials, baseURL string, whitelist Whitelist, state *statestorage.RealmStateStorage, userAgent string) *Broker {
+func New(
+	logger *zap.SugaredLogger,
+	credentials *credentials.Credentials,
+	atlasURL string,
+	realmURL string,
+	whitelist Whitelist,
+	userAgent string,
+) *Broker {
 	b := &Broker{
 		logger:      logger,
 		credentials: credentials,
-		baseURL:     baseURL,
+		atlasURL:    atlasURL,
+		realmURL:    realmURL,
 		whitelist:   whitelist,
-		state:       state,
 		userAgent:   userAgent,
 	}
 
@@ -148,6 +156,12 @@ func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, 
 		return
 	}
 
+	// planCtx == nil means the instance should exist
+	if planCtx == nil {
+		err = errors.Wrapf(err, "cannot find plan for instance %q", instanceID)
+		return
+	}
+
 	// new instance: get from plan
 	dp, err = b.parsePlan(planCtx, planID)
 	if err != nil {
@@ -168,47 +182,55 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	if dp.Project.ID != "" {
-		var k mongodbatlas.APIKey
-		k, err = b.credentials.GetProjectKey(dp.Project.ID)
+	key := credentials.APIKey{}
+
+	switch {
+	case dp.APIKey != nil:
+		key = *dp.APIKey
+		dp.Project.OrgID = dp.APIKey.OrgID
+
+	case dp.Project.OrgID != "":
+		key, err = b.credentials.ByOrg(dp.Project.OrgID)
 		if err != nil {
 			return
 		}
 
-		client, err = b.credentials.Client(b.baseURL, k)
-		client.UserAgent = b.userAgent
-
+	default:
+		err = errors.New("template must contain either APIKey or Project.OrgID")
 		return
 	}
 
-	if dp.Project.OrgID != "" {
-		oid := dp.Project.OrgID
-		c, ok := b.credentials.Orgs[oid]
-		if !ok {
-			err = fmt.Errorf("credentials for org ID %q not found", oid)
-			return
-		}
-
-		client, err = b.credentials.Client(b.baseURL, c)
-		if err != nil {
-			return
-		}
-		client.UserAgent = b.userAgent
-
-		// try to merge existing project into plan, don't error out if not found
-		var existing *mongodbatlas.Project
-		existing, _, err = client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
-		if err == nil {
-			dp.Project = existing
-			return
-		}
-
-		err = nil
+	hc, err := digest.NewTransport(key.PublicKey, key.PrivateKey).Client()
+	if err != nil {
+		err = errors.Wrap(err, "cannot create Digest client")
 		return
 	}
 
-	err = fmt.Errorf("project info must contain either ID or OrgID & project name, got %+v", dp.Project)
+	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.atlasURL))
+	if err != nil {
+		err = errors.Wrap(err, "cannot create Atlas client")
+		return
+	}
+
+	// try to merge existing project into plan, don't error out if not found
+	var existing *mongodbatlas.Project
+	existing, _, err = client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
+	if err == nil {
+		dp.Project = existing
+		return
+	}
+
+	err = nil
 	return
+}
+
+func (b *Broker) getState(orgID string) (*statestorage.RealmStateStorage, error) {
+	key, err := b.credentials.ByOrg(orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	return statestorage.Get(key, b.atlasURL, b.realmURL, b.logger)
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
@@ -216,11 +238,11 @@ func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
 		return authMiddleware(*b.credentials.Broker)
 	}
 
-	return simpleAuthMiddleware(b.baseURL)
+	return simpleAuthMiddleware(b.atlasURL)
 }
 
 func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
-	apiURL, err := url.Parse(b.baseURL)
+	apiURL, err := url.Parse(b.atlasURL)
 	if err != nil {
 		return err.Error()
 	}

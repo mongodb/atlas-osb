@@ -17,8 +17,6 @@ package statestorage
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
@@ -54,8 +52,16 @@ type RealmStateStorage struct {
 	Logger       *zap.SugaredLogger
 }
 
-func GetStateStorage(creds *credentials.Credentials, atlasURL string, realmURL string, logger *zap.SugaredLogger, orgID string) (*RealmStateStorage, error) {
-	key := creds.Orgs[orgID]
+func client(baseURL string, k credentials.APIKey) (*mongodbatlas.Client, error) {
+	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create Digest client")
+	}
+
+	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
+}
+
+func Get(key credentials.APIKey, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
 		context.TODO(),
 		nil,
@@ -70,12 +76,12 @@ func GetStateStorage(creds *credentials.Credentials, atlasURL string, realmURL s
 	// Each Organization using the broker will have 1 special
 	// Atlas Group - called "Atlas Service Broker"
 	//
-	client, err := creds.Client(atlasURL, key)
+	client, err := client(atlasURL, key)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create Atlas client")
 	}
 
-	mainPrj, err := getOrCreateBrokerMaintentaceGroup(orgID, client, logger)
+	mainPrj, err := getOrCreateBrokerMaintentaceGroup(key.OrgID, client, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +94,7 @@ func GetStateStorage(creds *credentials.Credentials, atlasURL string, realmURL s
 	}
 
 	rss := &RealmStateStorage{
-		OrgID:        orgID,
+		OrgID:        key.OrgID,
 		RealmClient:  realmClient,
 		RealmApp:     realmApp,
 		RealmProject: mainPrj,
@@ -220,97 +226,4 @@ func (ss *RealmStateStorage) Put(ctx context.Context, key string, value *domain.
 func (ss *RealmStateStorage) Get(ctx context.Context, key string) (*mongodbrealm.RealmValue, error) {
 	v, _, err := ss.RealmClient.RealmValues.Get(ctx, ss.RealmProject.ID, ss.RealmApp.ID, key)
 	return v, err
-}
-
-var defaultUser = &mongodbatlas.DatabaseUser{
-	Username: "admin",
-	Password: "admin",
-	Roles: []mongodbatlas.Role{{
-		DatabaseName: "statestorage",
-		RoleName:     "readWrite",
-	}},
-}
-
-func GetOrgStateStorage(creds *credentials.Credentials, baseURL string, logger *zap.SugaredLogger) (*mongodbatlas.Cluster, string, error) {
-	okeys := make([]string, 0, len(creds.Orgs))
-	for k := range creds.Orgs {
-		okeys = append(okeys, k)
-	}
-	okey := okeys[0]
-	hc, err := digest.NewTransport(creds.Orgs[okey].PublicKey, creds.Orgs[okey].PrivateKey).Client()
-	if err != nil {
-		return nil, "", err
-	}
-
-	client, err := mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
-	if err != nil {
-		return nil, "", err
-	}
-
-	// algorithm
-	// try to get the "special atlas-osb" project for this org.
-	// this project will have a known fixed-format name.
-	// such as, "atlas-osb"
-	projectName := "atlas-osb"
-	logger.Infof("atlas-osb-%s", okey)
-	project, r, err := client.Projects.GetOneProjectByName(context.Background(), projectName)
-	if err != nil && (r.StatusCode == http.StatusNotFound || r.StatusCode == http.StatusUnauthorized) {
-		logger.Infow("statestorage project not found, attempt create", "error", err, "projectName", projectName)
-		project = &mongodbatlas.Project{}
-		project.Name = projectName
-		project.OrgID = creds.Orgs[okey].Roles[0].OrgID
-		project, _, err = client.Projects.Create(context.Background(), project)
-		logger.Infow("statestorage project created", "project", project)
-	}
-	if err != nil {
-		return nil, "", err
-	}
-
-	clusterName := "statestorage"
-	cluster, _, err := client.Clusters.Get(context.Background(), project.ID, clusterName)
-	if err != nil && r.StatusCode == http.StatusNotFound {
-		logger.Errorw("Failed to get statestorage cluster", "error", err, "clusterName", clusterName)
-		// We can add broker config to allow override for these settings.
-		cluster = &mongodbatlas.Cluster{
-			ClusterType: "REPLICASET",
-			Name:        clusterName,
-			ProviderSettings: &mongodbatlas.ProviderSettings{
-				ProviderName:     "AWS",
-				InstanceSizeName: "M10",
-				RegionName:       "US_EAST_1",
-			},
-		}
-		cluster, _, err = client.Clusters.Create(context.Background(), project.ID, cluster)
-		if err != nil {
-			return nil, "", err
-		}
-		err = nil
-		logger.Infow("statestorage cluster created", "cluster", cluster)
-
-		defaultUser.GroupID = project.ID
-		user, _, err := client.DatabaseUsers.Create(context.Background(), project.ID, defaultUser)
-		if err != nil {
-			return nil, "", err
-		}
-		logger.Infow("statestorage cluster created: default", "user", user)
-	}
-
-	if err != nil {
-		return nil, "", err
-	}
-
-	logger.Infow("Found existing cluster", "cluster", cluster)
-	conn, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
-	if err != nil {
-		logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
-	}
-
-	conn.Path = "statestorage"
-
-	logger.Infow("New User ConnectionString", "conn", conn)
-
-	conn.User = url.UserPassword(defaultUser.Username, defaultUser.Password)
-
-	connstr := conn.String()
-	return cluster, connstr, nil
 }
