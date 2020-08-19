@@ -25,7 +25,7 @@ Table of Contents
 
 This project is a new version of the original [MongoDB Atlas Serivce Broker](https://github.com/mongodb/mongodb-atlas-service-broker) called "atlas-osb"
 
-Atlas-osb adds the ability to define your own plans from Atlas resource templates. This new and powerful feature brings the broker to a new level of production-readiness. One simple `create-service` command is all you need to provision a complete Atlas deployment including a Project, Cluster, Database user, firewall access, and more.
+Atlas-osb adds the ability to define your own plans from Atlas resource templates. This new and powerful feature brings the broker to a new level of production-readiness. One simple *"create service"* command is all you need to provision a complete Atlas deployment including a Project, Cluster, Database user, firewall access, and more.
 
 Use the Atlas Service Broker to connect to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) from any platform which supports the [Open Service Broker API](https://www.openservicebrokerapi.org/), such as [Kubernetes](https://kubernetes.io/) and [Pivotal Cloud Foundry](https://pivotal.io/open-service-broker).
 
