@@ -2,10 +2,7 @@
 
 [![MongoDB Atlas Go Client](https://img.shields.io/badge/Powered%20by%20-go--client--mongodb--atlas-%2313AA52?style=for-the-badge)](https://github.com/mongodb/go-client-mongodb-atlas)
 
-:construction: https://cluster.dev/ or similar support
-
-![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Clean%20CF/badge.svg)
-[![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/gomods/athens.svg)](https://github.com/gomods/athens)
+![e2e VMware TAS](https://github.com/jasonmimick/atlas-osb/workflows/e2e%20VMware%20TAS/badge.svg)
 
 Extensible Enterprise Production Deployments for MongoDB Atlas
 
