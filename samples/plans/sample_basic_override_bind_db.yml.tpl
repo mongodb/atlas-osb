@@ -8,7 +8,6 @@ settings:
 project:
   name: {{ .instance_name }}
   desc: Created from a template
-  orgId: {{ .org_id }}
 cluster:
   name: {{ .instance_name }}
   providerBackupEnabled: {{ default "true" .backups }}

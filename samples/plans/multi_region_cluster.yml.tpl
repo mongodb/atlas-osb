@@ -5,7 +5,6 @@ apiKey: {{ keyByAlias .credentials "testKey" }}
 project:
   name: {{ .instance_name }}
   desc: Created from a template
-  orgId: {{ .org_id }}
 cluster:
   name: {{ .instance_name }}
   clusterType: "REPLICASET"

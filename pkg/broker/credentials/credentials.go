@@ -42,8 +42,8 @@ type keyList struct {
 }
 
 type Key struct {
-	OrgID string `json:"orgID,omitempty"`
-	mongodbatlas.APIKey
+	OrgID               string `json:"orgID,omitempty"`
+	mongodbatlas.APIKey `yaml:",inline"`
 }
 type credHub struct {
 	BindingName string  `json:"binding_name"`

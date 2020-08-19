@@ -137,7 +137,7 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 
 	p, _, err := client.Projects.Create(ctx, dp.Project)
 	if err != nil {
-		logger.Errorw("Cannot create project", "error", err)
+		logger.Errorw("Cannot create project", "error", err, "project", dp.Project)
 		return nil, err
 	}
 
