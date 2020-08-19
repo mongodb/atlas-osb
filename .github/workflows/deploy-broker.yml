@@ -1,8 +1,10 @@
-#Atlas-osb. PAS sample
+# atlas-osb
+# e2e VMware TAS
+# An end-to-end deployment of atlas-osb to a Pivotal pie environment.
 
 on: [push]
 
-name: Prepare CF. Base scenario.
+name: e2e VMware TAS
 
 jobs:
   golangci:
