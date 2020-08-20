@@ -27,13 +27,13 @@ jobs:
           # only-new-issues: true
 
   shellcheck:
-    name: Shellcheck
+    name: shellcheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
+        uses: bewuethr/shellcheck-action@v2
 
   basic-plan-cloudfoundry:
     name: basic-plan-cloudfoundry
