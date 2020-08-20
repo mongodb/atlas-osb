@@ -1,4 +1,5 @@
 #!/usr/local/bin/dumb-init /bin/bash
+#shellcheck shell=bash
 
 make_pcf_metadata() {
 	local PCF_URL=$1
@@ -19,10 +20,10 @@ EOF
 
 make_multikey_config() {
 	local file=$1
-	if [ -f $file ]; then
-		rm $file
+	if [ -f "$file" ]; then
+		rm "$file"
 	fi
-	cat >$file <<EOF
+	cat >"$file" <<EOF
 {
 	"broker": {
 		"username": "admin",
@@ -42,11 +43,11 @@ EOF
 
 make_sample_credhub_config() {
 	local file=$1
-	if [ -f $file ]; then
-		rm $file
+	if [ -f "$file" ]; then
+		rm "$file"
 	fi
 
-	cat >$file <<EOF
+	cat >"$file" <<EOF
 {
 	"broker": {
 		"username": "admin",

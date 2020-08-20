@@ -6,35 +6,35 @@ source ".github/base-dockerfile/helpers/params.sh"
 
 echo "init"
 INSTALL_TIMEOUT=40 #service deploy timeout
-branch_name=$(echo $GITHUB_REF | awk -F'/' '{print $3}')
-make_pcf_metadata $INPUT_PCF_URL $INPUT_PCF_USER $INPUT_PCF_PASSWORD
+branch_name=$(echo "$GITHUB_REF" | awk -F'/' '{print $3}')
+make_pcf_metadata "$INPUT_PCF_URL" "$INPUT_PCF_USER" "$INPUT_PCF_PASSWORD"
 make_multikey_config samples/apikeys-config.json
 
 echo "Login. Create ORG and SPACE depended on the branch name"
-cf_login
-cf create-org $ORG_NAME && cf target -o $ORG_NAME
-cf create-space $SPACE_NAME && cf target -s $SPACE_NAME
+cf_login "$ORG_NAME" "$SPACE_NAME"
+cf create-org "$ORG_NAME" && cf target -o "$ORG_NAME"
+cf create-space "$SPACE_NAME" && cf target -s "$SPACE_NAME"
 
 echo "Create service-broker"
-cf push $BROKER_APP
-check_app_started $BROKER_APP
-app_url=$(cf app $BROKER_APP | awk '/routes:/{print $2}')
+cf push "$BROKER_APP"
+check_app_started "$BROKER_APP"
+app_url=$(cf app "$BROKER_APP" | awk '/routes:/{print $2}')
 
-cf create-service-broker $BROKER "admin" "admin" http://$app_url --space-scoped #TODO form
+cf create-service-broker "$BROKER" "admin" "admin" http://"$app_url" --space-scoped #TODO form
 
 cf marketplace
 BROKER_OSB_SERVICE_NAME=$(echo ${BROKER_OSB_SERVICE_NAME} | tr "." "-")
-cf create-service $BROKER_OSB_SERVICE_NAME "override-bind-db-plan"  $SERVICE_ATLAS -c '{"org_id":"'"${INPUT_ATLAS_ORG_ID}"'"}'  #'{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
-check_service_creation $SERVICE_ATLAS
+cf create-service "$BROKER_OSB_SERVICE_NAME" "override-bind-db-plan" "$SERVICE_ATLAS" -c '{"org_id":"'"${INPUT_ATLAS_ORG_ID}"'"}' #'{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
+check_service_creation "$SERVICE_ATLAS"
 
 echo "Simple app"
 git clone https://github.com/leo-ri/simple-ruby.git
-cd simple-ruby
-cf push $TEST_SIMPLE_APP --no-start
-cf bind-service $TEST_SIMPLE_APP $SERVICE_ATLAS
-cf restart $TEST_SIMPLE_APP
-check_app_started $TEST_SIMPLE_APP
-app_url=$(cf app $TEST_SIMPLE_APP | awk '$1 ~ /routes:/{print $2}')
+cd simple-ruby || exit 1
+cf push "$TEST_SIMPLE_APP" --no-start
+cf bind-service "$TEST_SIMPLE_APP" "$SERVICE_ATLAS"
+cf restart "$TEST_SIMPLE_APP"
+check_app_started "$TEST_SIMPLE_APP"
+app_url=$(cf app "$TEST_SIMPLE_APP" | awk '$1 ~ /routes:/{print $2}')
 echo "::set-output name=app_url::$app_url"
 
 # echo "Spring-Music app"

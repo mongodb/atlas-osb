@@ -1,4 +1,5 @@
-#ATLAS API documentation https://docs.atlas.mongodb.com/reference/api/projects/ 
+#ATLAS API documentation https://docs.atlas.mongodb.com/reference/api/projects/
+#shellcheck shell=bash
 
 BASE_URL="https://cloud.mongodb.com/api/atlas/v1.0"
 
@@ -26,7 +27,7 @@ get_cluster_info() {
     projectID=$1
     name=$2
     curl -s -u "${INPUT_PUBLIC_KEY}:${INPUT_PRIVATE_KEY}" --digest \
-     --header "Content-Type: application/json" \
-     --include \
-     --request GET "${BASE_URL}/groups/${projectID}/clusters/${name}?pretty=true"
+        --header "Content-Type: application/json" \
+        --include \
+        --request GET "${BASE_URL}/groups/${projectID}/clusters/${name}?pretty=true"
 }

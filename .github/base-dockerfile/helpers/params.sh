@@ -1,4 +1,6 @@
-branch_name=$(echo $GITHUB_REF | awk -F'/' '{print $3}')
+#shellcheck shell=bash disable=SC2034
+
+branch_name=$(echo "$GITHUB_REF" | awk -F'/' '{print $3}')
 branch_name=${branch_name:0:30} #service name max length is 50 symbols minus prefixes
 commit_id=$(git rev-parse --short HEAD)
 postfix=$branch_name-$commit_id
