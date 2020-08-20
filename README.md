@@ -338,7 +338,7 @@ ipWhitelists:
 - ipAddress: "0.0.0.0/1"
   comment: "everything"
 ```
-### Requirements
+## Requirements
 
 1. P0 Support loading Plan templates from json or yaml files mounted into the broker runtime at deployment-time.
 2. The broker should support reading plan templates directly from Linux environment variables. 
@@ -357,7 +357,7 @@ ipWhitelists:
 9.   Allow reading apikey from a yaml/json file with a resource definition.
 10. :construction: Support a `--dry-run` flag whenever processing a provision, update, or delete operation on a custom plan. Default is `false`. Include pre & post template processing in logging output. (Not supported yet.)
 
-### Plan Functional Design
+## Plan Functional Design
 
 Each Plan instance is managed through the OSB provision, bind, unbind, and deprovision operations. 
 In this section we describe the relationship between a Plan's OSB operations and how the broker translates them to Atlas Client API calls.
@@ -366,7 +366,7 @@ Each plan will have at least one apikey associated with it.
 
 :construction:
 
-#### Provisioning & Deprovisioning
+## Provisioning & Deprovisioning
 
 When the broker gets a call to provision a plan, it will iterate through the various Atlas resources in the plan can call the corresponding service `Create` method. Similarily, when deprovisioning, the broker will delegate calls to the Atlas Go-client corresponding service `Delete` function.
 
@@ -380,7 +380,7 @@ Plans are loaded at startup and first validated before being made available in t
 4. on provision, do a parse with full context - this is the final plan spec
    * :construction: Allow for dry-run at this step too. 
 
-#### Managing State
+## Managing State
 
 This section describes how the state of plan definitions and service instance metadata will be stored. 
 
@@ -395,7 +395,7 @@ The atlas-osb will create special project called "Atlas Service Broker Maintenan
 
 See [Realm Values & Secrets](https://docs.mongodb.com/realm/values-and-secrets/)
 
-### Bind & Unbind
+## Bind & Unbind
 
 The OSB bind function is used to provision a new database user credential and connection information for an application using MongoDB. This usually happens when an app is deployed into a new environment. To support this, the broker will create new Atlas resources for the binding and return the connection information appropriately. 
 
@@ -417,13 +417,13 @@ The format for the JSON available for binding in `VCAP_SERVICES` is:
 
 Please see the [test/hello-atlas-cf](test/hello-atlas-cf) sample app to see details on the binding information available to apps.
 
-#### Overriding the database for all bindings
+### Overriding the database for all bindings
 
 Certain customers may wish to control the exact name of the database to which apps using Atlas services can use. This is controlled by inserting the database name into the connection string (as the last forward-slash piece before the query string) which is constructed during a call to the brokers Bind function.
 
 In general, we do not recommend using this feature. However it will be released as "Deprecated" in the Beta release for the broker. Customers are encouraged to refactor their dependencies on fixing this database name.
 
-###### Default Bind Roles
+### Default Bind Roles
 For example, to set the default role for any database users created via the bind() OSB operation, add these to the `settings` for your plan.
 
 ```yaml
@@ -442,7 +442,7 @@ project:
 
 This sets gives `readWrite` on the `products` database for each new user created via bind().
 
-### Plans and Atlas Resource Types 
+## Plans and Atlas Resource Types 
 
 The following types are supported for loading from multiple or a single yaml or json objects.
 
@@ -464,7 +464,7 @@ The officially supported Atlas Resources are:
 * [DatabaseUser](#databaseuser)
 * [ProjectIPWhitelist](#projectipwhitelist)
 
-#### Plan
+### Plan
 
 This represents an Open Service Broker [plan](https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md#service-plan-object) (NOTE:  https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md#service-offering-object)
 
@@ -537,10 +537,17 @@ The following badges provide version and version-support information about Atlas
     
 * Please note that Atlas-OSB does not support the free tier of cluster creation: M0 (Atlas API doesn't have such support)
 
-## License
+# License
 
 See [LICENSE](LICENSE). Licenses for all third-party dependencies are included in [notices](notices).
 
-## Development
+# Support, Bugs, Feature Requests
 
-Information regarding development, testing, and releasing can be found in the [development documentation](dev).
+_CURRENT BETA_ --> We expect to launch our beta on or before August 25, 2020 and follow up with general availability shortly thereafter.
+
+Support for the MongoDB Atlas-OSB is provided under MongoDB Atlas support plans. Please submit support questions within the Atlas UI. Support questions submitted under the Issues section of this repo will be handled on a "best effort" basis.
+
+Bugs should be filed under the Issues section of this repo.
+
+:construction: Feature requests can be submitted at https://feedback.mongodb.com/<COMING-SOON> - just select "atlas-osb" as the category or vote for an already suggested feature.
+
