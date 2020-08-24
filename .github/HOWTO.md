@@ -7,13 +7,11 @@ We deploy Atlas Broker to Cloud Foundry using [GitHub Actions](https://docs.gith
 The folder consists of implemented GitHub actions which are used in "workflows".
 Actions available right now:
 - cleanup-cf - clean CF from the previous deployment
-- prepare-cf - deploy atlas broker with "default" scenario: pass APIKeys along with `create-service-broker` command
-- prepare-credhub - deploy atlas broker with credhub multikeys scenario
-Planned actions:
-- prepare-template - deploy atlas broker with provided templates
+- e2e-cf - deploy atlas broker with provided templates
+- reaper - delete clusters/project from Atlas 
 !NOTE! Only Dynamic Plans are currently supported (right?)
 
-"prepare-##" actions have commented parts in case we need spring-music as a test application 
+"e2e-cf" action have commented parts in case we need spring-music as a test application 
 
 ## base-dockerfile
 The Dockerfile included here is used for actions and also contains helper functions for actions
@@ -23,8 +21,10 @@ All disabled/cancelled/saved for future use workflows are placed in here. For ex
 
 ## workflows
 Active workflows for operating. 
-- `clean-cf.yml` clean and prepare cloud foundry
-- `deploy-broker.yaml` deploy broker to CF
+- `clean-cf.yml` clean and prepare Cloud Foundry
+- `deploy-broker.yml` deploy broker to CF
+- `reaper.yml` delete clusters from Atlas
+- `create-release-package.yml` create a release
 
 # Using GitHub Actions locally
 Tools for successfully running pipeline locally:
@@ -37,15 +37,11 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 ```
 -s ATLAS_BROKER_URL=<url to already deployed broker, used for Deploy to Amazon ECS>
 -s ATLAS_PRIVATE_KEY=<private key>
--s ATLAS_PROJECT_ID=<first project id>
--s ATLAS_PROJECT_ID_BAY=<second project id>
 -s ATLAS_PUBLIC_KEY=<public key>
+-s ATLAS_ORG_ID=<org_id for the templates>
 -s PCF_PASSWORD=<password>
 -s PCF_URL=https://pcf.something.com
 -s PCF_USER=<user>
--s CREDHUB_FILE=<file sample>
--s ATLAS_ORG_ID=<org_id for the templates>
--s BROKER_DB_CONNECTION_STRING=<connection string for the brockers DB>
 ```
 
 Now simply call:

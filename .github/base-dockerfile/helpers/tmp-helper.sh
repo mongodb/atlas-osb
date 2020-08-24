@@ -1,5 +1,5 @@
 #!/usr/local/bin/dumb-init /bin/bash
-#shellcheck shell=bash
+# shellcheck shell=bash
 
 make_pcf_metadata() {
 	local PCF_URL=$1
