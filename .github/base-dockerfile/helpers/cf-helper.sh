@@ -1,5 +1,5 @@
-# shellcheck shell=bash disable=SC2155 
 #!/usr/local/bin/dumb-init /bin/bash
+# shellcheck shell=bash disable=SC2155 
 
 cf_login() {
   local org=$1
