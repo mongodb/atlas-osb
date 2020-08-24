@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#shellcheck shell=bash disable=SC2155
 
 export BROKER_LOG_LEVEL=DEBUG
 export BROKER_HOST=0.0.0.0
@@ -9,4 +10,3 @@ tree "${ATLAS_BROKER_TEMPLATEDIR}"
 env | grep BROKER
 
 ./mongodb-atlas-service-broker
-

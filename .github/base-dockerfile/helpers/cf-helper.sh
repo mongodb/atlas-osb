@@ -1,5 +1,5 @@
+# shellcheck shell=bash disable=SC2155 
 #!/usr/local/bin/dumb-init /bin/bash
-#shellcheck shell=bash
 
 cf_login() {
   local org=$1
@@ -12,10 +12,9 @@ cf_login() {
     sys="system"
   fi
 
-  local cf_app_url, cf_app_user, cf_app_password
-  cf_app_url="api.$(pcf cf-info | grep system_domain | cut -d' ' -f 3)"
-  cf_app_user="$(pcf cf-info | grep admin_username | cut -d' ' -f 3)"
-  cf_app_password="$(pcf cf-info | grep admin_password | cut -d' ' -f 3)"
+  local cf_app_url="api.$(pcf cf-info | grep system_domain | cut -d' ' -f 3)"
+  local cf_app_user="$(pcf cf-info | grep admin_username | cut -d' ' -f 3)"
+  local cf_app_password="$(pcf cf-info | grep admin_password | cut -d' ' -f 3)"
 
   cf login -a "$cf_app_url" -u "$cf_app_user" -p "$cf_app_password" --skip-ssl-validation -o ${org} -s ${sys}
 }

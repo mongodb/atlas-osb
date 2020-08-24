@@ -1,11 +1,10 @@
 #!/bin/bash
-
+# shellcheck disable=SC1091
 source ".github/base-dockerfile/helpers/tmp-helper.sh"
 source ".github/base-dockerfile/helpers/cf-helper.sh"
 source ".github/base-dockerfile/helpers/params.sh"
 
 echo "CleanUP: delete service broker, service, unbind app"
-INSTALL_TIMEOUT=30 #service deploy timeout
 
 make_pcf_metadata "$INPUT_PCF_URL" "$INPUT_PCF_USER" "$INPUT_PCF_PASSWORD"
 
