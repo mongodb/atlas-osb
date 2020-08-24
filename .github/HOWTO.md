@@ -37,15 +37,11 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 ```
 -s ATLAS_BROKER_URL=<url to already deployed broker, used for Deploy to Amazon ECS>
 -s ATLAS_PRIVATE_KEY=<private key>
--s ATLAS_PROJECT_ID=<first project id>
--s ATLAS_PROJECT_ID_BAY=<second project id>
 -s ATLAS_PUBLIC_KEY=<public key>
+-s ATLAS_ORG_ID=<org_id for the templates>
 -s PCF_PASSWORD=<password>
 -s PCF_URL=https://pcf.something.com
 -s PCF_USER=<user>
--s CREDHUB_FILE=<file sample>
--s ATLAS_ORG_ID=<org_id for the templates>
--s BROKER_DB_CONNECTION_STRING=<connection string for the brockers DB>
 ```
 
 Now simply call:
