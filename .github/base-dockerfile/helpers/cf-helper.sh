@@ -1,5 +1,5 @@
 #!/usr/local/bin/dumb-init /bin/bash
-# shellcheck shell=bash disable=SC2155 
+# shellcheck shell=bash disable=SC2155
 
 cf_login() {
   local org=$1
@@ -102,6 +102,10 @@ create_service() {
   local instance_name=$1 #aws-atlas-test-instance-$INPUT_BRANCH_NAME
   local plan=$2
   #local config=$2
+  # instance_name is used for Atlas project & cluster name, but cluster names need to follow
+  # The name can only contain ASCII letters, numbers, and hyphens.
+  # Here we only catch '.'dot's for release builds.
+  instance_name=$(echo "${instance_name}" | tr "." "-")
   cf create-service mongodb-atlas-aws "$plan" "$instance_name" -c '{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
   wait_service_status_change "$instance_name" "create in progress"
   service_status=$(cf services | awk '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
