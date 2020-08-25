@@ -1,8 +1,8 @@
-# <img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" /> atlas-osb <span align="right">![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/jasonmimick/atlas-osb?include_prereleases&style=for-the-badge)</span>
+# <img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" /> atlas-osb <span align="right">![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/mongodb/atlas-osb?include_prereleases&style=for-the-badge)</span>
 
 [![MongoDB Atlas Go Client](https://img.shields.io/badge/Powered%20by%20-go--client--mongodb--atlas-%2313AA52?style=for-the-badge)](https://github.com/mongodb/go-client-mongodb-atlas)
 
-![e2e VMware TAS](https://github.com/jasonmimick/atlas-osb/workflows/e2e%20VMware%20TAS/badge.svg)
+![e2e VMware TAS](https://github.com/mongodb/atlas-osb/workflows/e2e%20VMware%20TAS/badge.svg)
 
 Extensible Enterprise Production Deployments for MongoDB Atlas
 
@@ -54,7 +54,7 @@ Once you have your workstation ready, head over to http://cloud.mongodb.com and 
 1. Pull down the latest release of the atlas-osb (recommended).
 
 ```bash
-curl -OL https://github.com/jasonmimick/atlas-osb/releases/download/v0.1-alpha/atlas-osb-v0.1-alpha.tar.gz
+curl -OL https://github.com/mongodb/atlas-osb/releases/download/v0.1-alpha/atlas-osb-v0.1-alpha.tar.gz
 tar xvf atlas-osb-latest.tar.gz
 cd atlas-osb
 ```
@@ -246,7 +246,7 @@ domain.Service:
 | `Metadata.ImageUrl` | `BROKER_OSB_IMAGE_URL` | `"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"` |
 | `DocumentationUrl` | `BROKER_OSB_DOCS_URL` | `"https://support.mongodb.com/welcome"` |
 | `ProviderDisplayName` | `BROKER_OSB_PROVIDER_DISPLAY_NAME` | `"MongoDB"` |
-| `LongDescription` | | `"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/jasonmimick/atlas-osb"` |
+| `LongDescription` | | `"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/mongodb/atlas-osb"` |
 
 ## Multiple API Key Support
 
@@ -403,7 +403,7 @@ The OSB bind function is used to provision a new database user credential and co
 
 When the broker creates a binding, it will translate the Connection Details for the given cluster into the OSB Binding structure. 
 
-[Connection Details](https://github.com/jasonmimick/atlas-osb/blob/a503c88b66c9df15f8620c7f072826ba13ca3dd3/pkg/broker/binding_operations.go#L16) types.
+[Connection Details](https://github.com/mongodb/atlas-osb/blob/f18b88143ae5bf3382425d0524589f40120ea4bc/pkg/broker/binding_operations.go#L38) types.
     
 The format for the JSON available for binding in `VCAP_SERVICES` is:
 
@@ -513,14 +513,14 @@ TODO: MARK WHICH FIELDS ARE READ-ONLY? ie. users need to understand what can be 
 
 ## Test Status
 
-![Tanzu Application Service](https://github.com/jasonmimick/atlas-osb/workflows/Prepare%20CF.%20Base%20scenario./badge.svg)
+![Tanzu Application Service](https://github.com/mongodb/atlas-osb/workflows/Prepare%20CF.%20Base%20scenario./badge.svg)
 
 ## Product Snapshot
 
 The following badges provide version and version-support information about Atlas-OSB for VMware Tanzu.
 
-![Last Released Version](https://img.shields.io/github/v/release/jasonmimick/atlas-osb)
-![Realease version](https://img.shields.io/github/release-date/jasonmimick/atlas-osb)
+![Last Released Version](https://img.shields.io/github/v/release/mongodb/atlas-osb)
+![Realease version](https://img.shields.io/github/release-date/mongodb/atlas-osb)
 
 ![Compatible TAS versions](https://img.shields.io/badge/tested%20on%20TAS-2.9.0-important)
 ![Credhubversion](https://img.shields.io/badge/CredHub%20version-1.4.7-important)

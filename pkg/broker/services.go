@@ -72,7 +72,7 @@ func (b *Broker) buildServiceTemplate() (service domain.Service) {
 			ImageUrl:            getEnvOrDefault("BROKER_OSB_IMAGE_URL", "https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"),
 			DocumentationUrl:    getEnvOrDefault("BROKER_OSB_DOCS_URL", "https://support.mongodb.com/welcome"),
 			ProviderDisplayName: getEnvOrDefault("BROKER_OSB_PROVIDER_DISPLAY_NAME", "MongoDB"),
-			LongDescription:     "Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/jasonmimick/atlas-osb",
+			LongDescription:     "Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/mongodb/atlas-osb",
 		},
 		PlanUpdatable: true,
 		Plans:         b.buildPlansForProviderDynamic(),
