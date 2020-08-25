@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
+	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
