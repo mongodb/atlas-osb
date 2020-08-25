@@ -1,4 +1,4 @@
-module github.com/mongodb/mongodb-atlas-service-broker
+module github.com/mongodb/atlas-osb
 
 go 1.11
 

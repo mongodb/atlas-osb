@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	atlasprivate "github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
+	atlasprivate "github.com/mongodb/atlas-osb/pkg/atlas"
+	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 

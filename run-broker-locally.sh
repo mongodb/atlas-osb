@@ -9,4 +9,4 @@ export ATLAS_BROKER_TEMPLATEDIR=$(pwd)/samples/plans
 tree "${ATLAS_BROKER_TEMPLATEDIR}"
 env | grep BROKER
 
-./mongodb-atlas-service-broker
+./atlas-aosb

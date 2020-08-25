@@ -19,7 +19,7 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
+	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 )
 
 // Plan represents a set of MongoDB Atlas resources

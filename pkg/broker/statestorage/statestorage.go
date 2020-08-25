@@ -21,8 +21,8 @@ import (
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/mongodbrealm"
+	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
+	"github.com/mongodb/atlas-osb/pkg/mongodbrealm"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"

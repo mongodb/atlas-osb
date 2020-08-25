@@ -23,7 +23,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/mongodbrealm"
+	"github.com/mongodb/atlas-osb/pkg/mongodbrealm"
 )
 
 const (

@@ -22,8 +22,8 @@ import (
 
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
+	"github.com/mongodb/atlas-osb/pkg/broker"
+	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"github.com/pivotal-cf/brokerapi"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

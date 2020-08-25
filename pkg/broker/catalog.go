@@ -15,7 +15,7 @@
 package broker
 
 import (
-	atlasprivate "github.com/mongodb/mongodb-atlas-service-broker/pkg/atlas"
+	atlasprivate "github.com/mongodb/atlas-osb/pkg/atlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 

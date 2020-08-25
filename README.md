@@ -20,7 +20,7 @@ Table of Contents
   * [License](#license)
   * [Development](#development)
 
-This project is a new version of the original [MongoDB Atlas Serivce Broker](https://github.com/mongodb/mongodb-atlas-service-broker) called "atlas-osb"
+This project is a new version of the original [MongoDB Atlas Serivce Broker](https://github.com/mongodb/atlas-osb) called "atlas-osb"
 
 Atlas-osb adds the ability to define your own plans from Atlas resource templates. This new and powerful feature brings the broker to a new level of production-readiness. One simple *"create service"* command is all you need to provision a complete Atlas deployment including a Project, Cluster, Database user, firewall access, and more.
 
