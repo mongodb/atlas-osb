@@ -63,40 +63,7 @@ jobs:
           broker_db_connection_string: ${{ secrets.BROKER_DB_CONNECTION_STRING }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
 
-      - name: Check application.
-        id: check
-        env:
-          APP_URL: ${{ steps.prepare.outputs.app_url }}
-        run: |
-          echo "working with "$APP_URL
-
-          # curl -H "Content-Type: application/json" -X PUT -d '{"_class":"org.cloudfoundry.samples.music.domain.Album", "artist": "Tenno", "title": "Journey", "releaseYear": "2019", "genre": "chillhop" }' $APP_URL/albums
-          # result=$(curl -X GET $APP_URL/albums -s | awk '/Tenno/{print "true"}')
-          # echo $result
-          # if [[ -z $result ]]; then
-          #   echo "FAILED. Curl check: Text is not found"
-          #   exit 1
-          # fi
-
-          #for simple-app block (prepare-cf/entrypoint.sh)
-          APP_URL=${APP_URL}/service/mongo/test3
-          status=$(curl -s -X PUT -d '{"data":"sometest130"}' ${APP_URL})
-          if [[ $status != "success" ]]; then
-             echo "Error: can't perform PUT request"
-             exit 1
-          fi
-          result=$(echo $(curl -s -X GET ${APP_URL}))
-          if [ "${result}" == '{"data":"sometest130"}' ]; then
-              echo "Application is working"
-              echo "Cleaning data.."
-              curl -X DELETE ${APP_URL}
-          else
-              echo "GET ${APP_URL} finished with result: ${result}"
-              echo "FAILED. Application doesn't work. Can't get data from DB"
-              exit 1
-          fi
-
-      - name: Cleanup ENV for current branch
+     - name: Cleanup ENV for current branch
         uses: ./.github/actions/cleanup-cf
         with:
           pcf_url: ${{ secrets.PCF_URL }}

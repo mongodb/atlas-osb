@@ -49,3 +49,41 @@ echo "::set-output name=app_url::$app_url"
 # cf start $TEST_SPRING_APP
 # app_url=$(cf app $TEST_SPRING_APP | awk '$1 ~ /routes:/{print $2}')
 # echo "::set-output name=app_url::$app_url"
+# curl -H "Content-Type: application/json" -X PUT -d '{"_class":"org.cloudfoundry.samples.music.domain.Album", "artist": "Tenno", "title": "Journey", "releaseYear": "2019", "genre": "chillhop" }' $app_url/albums
+# result=$(curl -X GET $app_url/albums -s | awk '/Tenno/{print "true"}')
+# echo $result
+# if [[ -z $result ]]; then
+#   echo "FAILED. Curl check: Text is not found"
+#   exit 1
+# fi
+
+echo "Checking test app"
+app_url="${app_url}/service/mongo/test3"
+data='{"data":"sometest130"}'
+status=$(curl -s -X PUT -d "${data}" "${app_url}")
+if [[ $status != "success" ]]; then
+    echo "Error: can't perform PUT request"
+    exit 1
+fi
+result=$(curl -s -X GET "${app_url}")
+if [ "${result}" == "${data}" ]; then
+    echo "Application is working"
+else
+    echo "GET ${app_url} has result: ${result}"
+    echo "FAILED. Application doesn't work. Can't get data from DB"
+    exit 1
+fi
+
+echo "Updating service"
+cf update-service "${SERVICE_ATLAS}" -c '{"instance_size":"M20"}'
+
+echo "Check that saved data still exists"
+result=$(curl -s -X GET "${app_url}")
+if [ "${result}" == "${data}" ]; then
+    echo "Data retrieved after update"
+    curl -X DELETE "${app_url}"
+else
+    echo "GET ${app_url} has result: ${result}"
+    echo "FAILED. Can not get data after update"
+    exit 1
+fi

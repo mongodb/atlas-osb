@@ -10,7 +10,7 @@ cluster:
   providerBackupEnabled: {{ default "true" .backups }}
   providerSettings:
     providerName: {{ default "AWS" .provider }}
-    instanceSizeName: {{ default "M20" .instance_size }}
+    instanceSizeName: {{ default "M10" .instance_size }}
     regionName: {{ default "US_EAST_1" .region }}
   labels:
     - key: Infrastructure Tool
