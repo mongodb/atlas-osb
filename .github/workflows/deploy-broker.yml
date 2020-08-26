@@ -63,7 +63,7 @@ jobs:
           broker_db_connection_string: ${{ secrets.BROKER_DB_CONNECTION_STRING }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
 
-     - name: Cleanup ENV for current branch
+      - name: Cleanup ENV for current branch
         uses: ./.github/actions/cleanup-cf
         with:
           pcf_url: ${{ secrets.PCF_URL }}
