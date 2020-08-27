@@ -17,6 +17,7 @@ package statestorage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
@@ -157,7 +158,7 @@ func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client,
 	return realmApp, nil
 }
 
-func (ss *RealmStateStorage) FindOne(ctx context.Context, key string) (*domain.GetInstanceDetailsSpec, error) {
+func (ss *RealmStateStorage) idByName(ctx context.Context, name string) (id string, err error) {
 	// Need to find the one value whose "name" = key
 	values, _, err := ss.RealmClient.RealmValues.List(ctx, ss.RealmProject.ID, ss.RealmApp.ID, nil)
 	if err != nil {
@@ -165,58 +166,61 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, key string) (*domain.G
 		if strings.Contains(err.Error(), "value not found") {
 			err = ErrInstanceNotFound
 		}
-		return nil, err
+		return
 	}
 
-	idForKey := ""
-
 	for _, v := range values {
-		if v.Name == key {
-			idForKey = v.ID
+		if v.Name == name {
+			id = v.ID
+			return
 		}
 	}
 
-	val, err := ss.Get(ctx, idForKey)
+	return "", fmt.Errorf("value with name %q not found", name)
+}
+
+func (ss *RealmStateStorage) FindOne(ctx context.Context, name string) (spec *domain.GetInstanceDetailsSpec, err error) {
+	id, err := ss.idByName(ctx, name)
+	if err != nil {
+		return
+	}
+
+	val, err := ss.Get(ctx, id)
 	if err != nil {
 		// return proper InstanceNotFound, if error is realm
 		if strings.Contains(err.Error(), "value not found") {
 			err = ErrInstanceNotFound
 		}
-		return nil, err
+		return
 	}
+
 	if val.Value == nil {
 		return nil, errors.New("val.Value was nil from realm, should never happen")
 	}
 
-	spec := domain.GetInstanceDetailsSpec{}
+	spec = &domain.GetInstanceDetailsSpec{}
 	err = json.Unmarshal(val.Value, &spec)
-	if err != nil {
-		return nil, err
-	}
-
-	//spec := &domain.GetInstanceDetailsSpec{
-	//    ServiceID: fmt.Sprintf("%s",val.Value["serviceID"]),
-	//    PlanID: val.Value["planID"].(string),
-	//    DashboardURL: val.Value["dashboardURL"].(string),
-	//    Parameters: reflect.ValueOf(val.Value["parameters"]).Interface().(interface{}),
-	//}
-
-	return &spec, nil
+	return
 }
 
-func (ss *RealmStateStorage) DeleteOne(ctx context.Context, key string) error {
-	_, err := ss.RealmClient.RealmValues.Delete(ctx, ss.RealmProject.ID, ss.RealmApp.ID, key)
+func (ss *RealmStateStorage) DeleteOne(ctx context.Context, name string) error {
+	id, err := ss.idByName(ctx, name)
+	if err != nil {
+		return err
+	}
+
+	_, err = ss.RealmClient.RealmValues.Delete(ctx, ss.RealmProject.ID, ss.RealmApp.ID, id)
 	return err
 }
 
-func (ss *RealmStateStorage) Put(ctx context.Context, key string, value *domain.GetInstanceDetailsSpec) (*mongodbrealm.RealmValue, error) {
+func (ss *RealmStateStorage) Put(ctx context.Context, name string, value *domain.GetInstanceDetailsSpec) (*mongodbrealm.RealmValue, error) {
 	vv, err := json.Marshal(value)
 	if err != nil {
 		return nil, err
 	}
 
 	val := &mongodbrealm.RealmValue{
-		Name:  key,
+		Name:  name,
 		Value: vv,
 	}
 	v, _, err := ss.RealmClient.RealmValues.Create(ctx, ss.RealmProject.ID, ss.RealmApp.ID, val)
