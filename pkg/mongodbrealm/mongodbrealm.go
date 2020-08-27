@@ -389,7 +389,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) (*Res
 				return nil, err
 			}
 		} else {
-			decErr := unmarshalExtJSON(resp.Body, true, v)
+			decErr := unmarshalExtJSON(resp.Body, false, v)
 			// decErr := json.NewDecoder(resp.Body).Decode(v)
 			if decErr == io.EOF {
 				decErr = nil // ignore EOF errors caused by empty response body
