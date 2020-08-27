@@ -31,6 +31,9 @@ import (
 	"github.com/google/go-querystring/query"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsoncodec"
+	"go.mongodb.org/mongo-driver/bson/bsonrw"
 )
 
 const (
@@ -386,7 +389,8 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) (*Res
 				return nil, err
 			}
 		} else {
-			decErr := json.NewDecoder(resp.Body).Decode(v)
+			decErr := unmarshalExtJSON(resp.Body, true, v)
+			// decErr := json.NewDecoder(resp.Body).Decode(v)
 			if decErr == io.EOF {
 				decErr = nil // ignore EOF errors caused by empty response body
 			}
@@ -397,6 +401,26 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) (*Res
 	}
 
 	return response, err
+}
+
+func unmarshalExtJSON(r io.Reader, canonical bool, val interface{}) (err error) {
+	ejvr, err := bsonrw.NewExtJSONValueReader(r, canonical)
+	if err != nil {
+		return
+	}
+
+	c := bsoncodec.DecodeContext{Registry: bson.DefaultRegistry}
+
+	dec, err := bson.NewDecoderWithContext(c, ejvr)
+	if err != nil {
+		return
+	}
+	err = dec.Reset(ejvr)
+	if err != nil {
+		return
+	}
+	err = dec.Decode(val)
+	return
 }
 
 func (r *ErrorResponse) Error() string {
