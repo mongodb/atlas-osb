@@ -127,6 +127,17 @@ check_service_creation() {
   fi
 }
 
+check_service_update() {
+  local instance_name=$1
+  wait_service_status_change "$instance_name" "update in progress"
+  service_status=$(cf services | awk '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
+  if [[ $service_status != "succeeded" ]]; then
+    echo "FAILED! wrong status: $(cf service "$instance_name")"
+    cf logout
+    exit 1
+  fi
+}
+
 check_app_unbinding() {
   local instance_name=$1
   local app_name=$2

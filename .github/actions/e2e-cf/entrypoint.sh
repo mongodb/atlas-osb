@@ -76,6 +76,7 @@ fi
 
 echo "Updating service"
 cf update-service "${SERVICE_ATLAS}" -c '{"instance_size":"M20"}'
+check_service_update "$SERVICE_ATLAS"
 
 echo "Check that saved data still exists"
 result=$(curl -s -X GET "${app_url}")
