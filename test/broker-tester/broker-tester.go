@@ -22,6 +22,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 
 	//mongodbatlas "go.mongodb.org/atlas"
+    "github.com/joho/godotenv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -35,43 +36,48 @@ import (
 	osb "sigs.k8s.io/go-open-service-broker-client/v2"
 )
 
-const (
-	publicKeyAPIEnv           = "ATLAS_PUBLIC_KEY"
-	privateKeyAPIEnv          = "ATLAS_PRIVATE_KEY"
-	brokerHTTPAuthUsernameEnv = "ATLAS_BROKER_HTTP_AUTH_USERNAME"
-	brokerHTTPAuthPasswordEnv = "ATLAS_BROKER_HTTP_AUTH_PASSWORD" // nolint
-	//projectIDEnv  = "ATLAS_PROJECT_ID"
-	brokerHostportEnv = "ATLAS_BROKER_HOSTPORT"
-)
-
-var (
-	envPublicAPIKey           = os.Getenv(publicKeyAPIEnv)
-	envPrivateAPIKey          = os.Getenv(privateKeyAPIEnv)
-	envBrokerHTTPAuthUsername = os.Getenv(brokerHTTPAuthUsernameEnv)
-	envBrokerHTTPAuthPassword = os.Getenv(brokerHTTPAuthPasswordEnv)
-	envBrokerHostport         = os.Getenv(brokerHostportEnv)
-)
-
 func GetBroker(url string) (osb.Client, *mongodbatlas.Client, error) {
 	config := osb.DefaultClientConfiguration()
 	config.URL = url
 	config.Insecure = true
 
+    username, ok := os.LookupEnv("BROKER_HTTP_USERNAME")
+    if !ok {
+        username = "admin"
+    }
+    password, ok := os.LookupEnv("BROKER_HTTP_PASSWORD")
+    if !ok {
+        password = "admin"
+    }
 	basicAuthConfig := &osb.BasicAuthConfig{
-		Username: envBrokerHTTPAuthUsername,
-		Password: envBrokerHTTPAuthPassword,
+		Username: username,
+		Password: password,
 	}
 
 	config.AuthConfig = &osb.AuthConfig{
 		BasicAuthConfig: basicAuthConfig,
 	}
 
+    log.Printf("AuthConfig: %+v",config)
 	client, err := osb.NewClient(config)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	t := digest.NewTransport(envPublicAPIKey, envPrivateAPIKey)
+    e := godotenv.Load("/home/jason/local.env")
+    log.Printf("e %+v",e)
+
+    log.Printf("Env: %+v",os.Environ())
+    publicKey, ok := os.LookupEnv("ATLAS_PUBLIC_KEY")
+    if !ok {
+        log.Fatalf("Can't find env ATLAS_PUBLIC_KEY")
+    }
+    privateKey, ok := os.LookupEnv("ATLAS_PRIVATE_KEY")
+    if !ok {
+        log.Fatalf("Can't find env ATLAS_PRIVATE_KEY")
+    }
+
+    t := digest.NewTransport(publicKey, privateKey)
 	tc, err := t.Client()
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -127,12 +133,10 @@ func main() {
 			log.Fatalf("Unmarshal: %v", err)
 		}
 		log.Println("parameters:", parameters)
-	} else {
-		log.Println("where is my automobile?")
-	}
+	} 
 
-	url := envBrokerHostport
-	if len(url) == 0 {
+    url, ok := os.LookupEnv("BROKER_HOSTPORT")
+	if !ok {
 		url = "http://localhost:4000"
 	}
 	log.Println("url", url)
@@ -140,6 +144,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
+
 	if operation == "catalog" {
 
 		catalog, err2 := broker.GetCatalog()
