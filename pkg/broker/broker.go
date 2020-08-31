@@ -17,6 +17,7 @@ package broker
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -26,11 +27,10 @@ import (
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/goccy/go-yaml"
 	"github.com/gorilla/mux"
-	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
+	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
+	"github.com/mongodb/atlas-osb/pkg/broker/statestorage"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/dynamicplans"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -129,35 +129,23 @@ func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynam
 		return nil, errors.Wrap(err, "cannot fetch instance")
 	}
 
-	params, ok := i.Parameters.(map[string]interface{})
+	params, ok := i.Parameters.(string)
 	if !ok {
 		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
 	}
 
-	p, found := params["plan"]
-	if !found {
-		return nil, fmt.Errorf("plan not found in instance metadata")
-	}
-
-	d, ok := p.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("instance metadata plan has the wrong type %T", p)
-	}
-
-	plan := dynamicplans.Plan{}
-	err = mapstructure.Decode(d, &plan)
+	plan, err := decodePlan(params)
 	return &plan, err
 }
 
 func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (dp *dynamicplans.Plan, err error) {
-	// existing instance: try to get from state store
-	dp, err = b.getInstancePlan(ctx, instanceID)
-	if err == nil {
-		return
-	}
-
 	// planCtx == nil means the instance should exist
 	if planCtx == nil {
+		dp, err = b.getInstancePlan(ctx, instanceID)
+		if err == nil {
+			return
+		}
+
 		err = errors.Wrapf(err, "cannot find plan for instance %q", instanceID)
 		return
 	}
@@ -248,4 +236,23 @@ func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
 	}
 	apiURL.Path = fmt.Sprintf("/v2/%s", groupID)
 	return apiURL.String() + fmt.Sprintf("#clusters/detail/%s", clusterName)
+}
+
+func encodePlan(v dynamicplans.Plan) (string, error) {
+	b := new(bytes.Buffer)
+	b64 := base64.NewEncoder(base64.StdEncoding, b)
+	err := json.NewEncoder(b64).Encode(v)
+	if err != nil {
+		return "", err
+	}
+
+	err = b64.Close()
+	return b.String(), err
+}
+
+func decodePlan(enc string) (dynamicplans.Plan, error) {
+	b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(enc))
+	dp := dynamicplans.Plan{}
+	err := json.NewDecoder(b64).Decode(&dp)
+	return dp, err
 }

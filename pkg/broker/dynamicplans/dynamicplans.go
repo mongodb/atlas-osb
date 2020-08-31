@@ -25,7 +25,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
+	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 )
 
 func FromEnv() ([]*template.Template, error) {

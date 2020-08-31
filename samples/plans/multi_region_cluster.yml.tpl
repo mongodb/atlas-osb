@@ -10,7 +10,7 @@ cluster:
   clusterType: "REPLICASET"
   providerSettings:
     providerName: {{ default "AZURE" .provider }}
-    instanceSizeName: {{ default "M30" .instance_size }}
+    instanceSizeName: {{ default "M10" .instance_size }}
   replicationSpecs:
   - numShards: 1
     zoneName: "US Zone"

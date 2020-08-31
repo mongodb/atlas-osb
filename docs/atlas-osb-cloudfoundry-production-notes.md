@@ -1,6 +1,6 @@
 # atlas-osb Cloud Foundry Production Notes
 ### PLEASE NOTE 
-These instuctions only apply to **this** the new template-based atlas-osb and **_not_** the legacy [MongoDB Atlas Service Broker](https://github.com/mongodb/mongodb-atlas-service-broker).
+These instuctions only apply to **this** the new template-based atlas-osb and **_not_** the legacy [MongoDB Atlas Service Broker](https://github.com/mongodb/atlas-osb).
 
 This software is in active development. 
 
