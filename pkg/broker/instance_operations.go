@@ -88,13 +88,16 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	logger.Infow("Creating cluster", "instance_name", planContext["instance_name"])
 	// TODO - add this context info about k8s/namespace or pcf space into labels
 
+	planEnc, err := encodePlan(*dp)
+	if err != nil {
+		return
+	}
+
 	s := domain.GetInstanceDetailsSpec{
 		PlanID:       details.PlanID,
 		ServiceID:    details.ServiceID,
 		DashboardURL: b.GetDashboardURL(dp.Project.ID, dp.Cluster.Name),
-		Parameters: map[string]interface{}{
-			"plan": *dp,
-		},
+		Parameters:   planEnc,
 	}
 
 	state, err := b.getState(dp.Project.OrgID)
@@ -223,15 +226,19 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
+	planEnc, err := encodePlan(*oldPlan)
+	if err != nil {
+		return
+	}
+
 	oldPlan.Cluster = resultingCluster
 	s := domain.GetInstanceDetailsSpec{
 		PlanID:       details.PlanID,
 		ServiceID:    details.ServiceID,
 		DashboardURL: b.GetDashboardURL(oldPlan.Project.ID, oldPlan.Cluster.Name),
-		Parameters: map[string]interface{}{
-			"plan": *oldPlan,
-		},
+		Parameters:   planEnc,
 	}
+
 	state, err := b.getState(oldPlan.Project.OrgID)
 	if err != nil {
 		return
