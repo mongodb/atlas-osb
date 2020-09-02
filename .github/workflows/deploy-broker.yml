@@ -52,20 +52,19 @@ jobs:
         id: prepare
         uses: ./.github/actions/e2e-cf
         with:
-          pcf_url: ${{ secrets.PCF_URL }}
-          pcf_user: ${{ secrets.PCF_USER }}
-          pcf_password: ${{ secrets.PCF_PASSWORD }}
+          cf_api: ${{ secrets.CF_API }}
+          cf_user: ${{ secrets.CF_USER }}
+          cf_password: ${{ secrets.CF_PASSWORD }}
           atlas_project_id: ${{ secrets.ATLAS_PROJECT_ID }}
           atlas_project_id_bay: ${{ secrets.ATLAS_PROJECT_ID_BAY }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
           credhub_file: ${{ secrets.CREDHUB_FILE }}
-          broker_db_connection_string: ${{ secrets.BROKER_DB_CONNECTION_STRING }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
 
       - name: Cleanup ENV for current branch
         uses: ./.github/actions/cleanup-cf
         with:
-          pcf_url: ${{ secrets.PCF_URL }}
-          pcf_user: ${{ secrets.PCF_USER }}
-          pcf_password: ${{ secrets.PCF_PASSWORD }}
+          cf_api: ${{ secrets.CF_API }}
+          cf_user: ${{ secrets.CF_USER }}
+          cf_password: ${{ secrets.CF_PASSWORD }}

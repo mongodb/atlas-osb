@@ -2,6 +2,9 @@
 
 branch_name=$(echo "$GITHUB_REF" | awk -F'/' '{print $3}')
 branch_name=${branch_name:0:30} #service name max length is 50 symbols minus prefixes
+# instance_name is used for Atlas project & cluster name, but cluster names need to follow
+# The name can only contain ASCII letters, numbers, and hyphens.
+# Here we only catch '.'dot's for release builds.
 branch_name=$(echo "${branch_name}" | tr "." "-")
 commit_id=$(git rev-parse --short HEAD)
 postfix=$branch_name-$commit_id

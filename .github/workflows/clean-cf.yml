@@ -16,6 +16,6 @@ jobs:
       - name: Cleanup ENV for current branch
         uses: ./.github/actions/cleanup-cf
         with:
-          pcf_url: ${{ secrets.PCF_URL }}
-          pcf_user: ${{ secrets.PCF_USER }}
-          pcf_password: ${{ secrets.PCF_PASSWORD }}
+          cf_api: ${{ secrets.CF_API }}
+          cf_user: ${{ secrets.CF_USER }}
+          cf_password: ${{ secrets.CF_PASSWORD }}

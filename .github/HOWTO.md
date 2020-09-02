@@ -9,9 +9,8 @@ Actions available right now:
 - cleanup-cf - clean CF from the previous deployment
 - e2e-cf - deploy atlas broker with provided templates
 - reaper - delete clusters/project from Atlas 
-!NOTE! Only Dynamic Plans are currently supported (right?)
 
-"e2e-cf" action have commented parts in case we need spring-music as a test application 
+"e2e-cf" action have commented parts in case spring-music are more preferiable as a test application 
 
 ## base-dockerfile
 The Dockerfile included here is used for actions and also contains helper functions for actions
@@ -21,7 +20,7 @@ All disabled/cancelled/saved for future use workflows are placed in here. For ex
 
 ## workflows
 Active workflows for operating. 
-- `clean-cf.yml` clean and prepare Cloud Foundry
+- `clean-cf.yml` clean Cloud Foundry from previous usage
 - `deploy-broker.yml` deploy broker to CF
 - `reaper.yml` delete clusters from Atlas
 - `create-release-package.yml` create a release
@@ -39,9 +38,9 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s ATLAS_PRIVATE_KEY=<private key>
 -s ATLAS_PUBLIC_KEY=<public key>
 -s ATLAS_ORG_ID=<org_id for the templates>
--s PCF_PASSWORD=<password>
--s PCF_URL=https://pcf.something.com
--s PCF_USER=<user>
+-s CF_PASSWORD=<password>
+-s CF_API=api.something
+-s CF_USER=<user>
 ```
 
 Now simply call:
