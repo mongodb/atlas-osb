@@ -21,33 +21,16 @@ import (
 )
 
 var _ = Describe("Feature: Atlas broker supports basic template", func() {
-	const (
-		orgName    = "atlas-gt"
-		tPath      = "./samples/plans"
-		mPlaceName = "atlas"
-	)
-	var (
-		brokerURL  = ""
-		appURL     = ""
-		spaceName  = "tover" + Commit
-		brokerApp  = "brokerApp" + Commit
-		broker     = "brokerAn" + Commit
-		planName   = "override-bind-db-plan"
-		serviceIns = "instance-over" + Commit
-		testApp    = "simple-ruby" + Commit
-	)
 
 	When("Given names and plan template", func() {
-
 		It("Can login to CF and create organization", func() {
 			// Login(endpoint, user, password)
 			Eventually("true").Should(Equal("true"))
-			GinkgoWriter.Write([]byte(PCFKeys.User))
 			Eventually(cfc.Cf("login", "-a", PCFKeys.Endpoint, "-u", PCFKeys.User, "-p", PCFKeys.Password, "--skip-ssl-validation")).Should(Say("OK"))
 			Eventually(cfc.Cf("create-org", orgName)).Should(Say("OK"))
 			Eventually(cfc.Cf("target", "-o", orgName)).Should(Exit(0))
 		}, 10)
-		It("Create service broker , set env", func() {
+		It("Can create service broker from repo and setup env", func() {
 			Eventually(cfc.Cf("create-space", spaceName)).Should(Exit(0))
 			Eventually(cfc.Cf("target", "-s", spaceName)).Should(Exit(0))
 
@@ -73,11 +56,9 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			Eventually(cfc.Cf("marketplace")).Should(Say(mPlaceName))
 		})
 
-		FIt("Possible to create a service", func() {
+		It("Possible to create a service", func() {
 			orgID := APIKeys.Keys[TKey].OrgID
-			serviceIns = "add-check3" //TODO remove
 			c := fmt.Sprintf("{\"org_id\":\"%s\"}", orgID)
-
 			s := cfc.Cf("create-service", mPlaceName, planName, serviceIns, "-c", c)
 			Eventually(s).Should(Exit(0))
 			Eventually(s).Should(Say("OK"))
@@ -86,7 +67,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 		})
 
 		//TODO: PARALLEL CHECKS
-		It("Possible to send PUT and GET request to application", func() {
+		It("Can install test app", func() {
 			testAppRepo := "https://github.com/leo-ri/simple-ruby.git"
 			_, err := git.PlainClone("simple-ruby", false, &git.CloneOptions{ //TODO change with mini-docker image
 				URL:               testAppRepo,
@@ -102,7 +83,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			s := cfc.Cf("restart", testApp)
 			Eventually(s, "2m", "10s").Should(Exit(0))
 			Eventually(s, "2m", "10s").Should(Say("running"))
-			appURL = "http://" + string(regexp.MustCompile(`routes:[ ]*(.+)`).FindSubmatch(s.Out.Contents())[1])
+			appURL = string(regexp.MustCompile(`routes:[ ]*(.+)`).FindSubmatch(s.Out.Contents())[1])
 			Expect(appURL).ShouldNot(BeEmpty())
 		})
 		It("Can send data to cluster and get it back", func() {
@@ -115,15 +96,15 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 
 			resp, err := client.Do(r)
 			if err != nil {
-				GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get responce %s", err)))
+				GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
 			}
 			defer resp.Body.Close()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(resp.StatusCode).Should(Equal(200))
 
-			resp, err = http.Get(appURL)
+			resp, err = http.Get(appURL) //nolint
 			if err != nil {
-				GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get responce %s", err)))
+				GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
 			}
 			defer resp.Body.Close()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -135,9 +116,9 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			}
 			Expect(string(responseData)).To(Equal(ds))
 		})
-		It("possible create service key", func() {
+		It("Possible to create service-key", func() {
 			Eventually(cfc.Cf("create-service-key", serviceIns, "atlasKey")).Should(Say("OK"))
-			GinkgoWriter.Write([]byte("Possible create service key check is not ready")) //TODO !
+			GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) //TODO !
 		})
 		It("Backup is active as default", func() {
 			AC = AClient()
@@ -150,7 +131,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			Eventually(cfc.Cf("update-service", serviceIns, "-c", "{\"instance_size\":\"M20\"}")).Should(Say("OK"))
 			waitServiceStatus(serviceIns, "update succeeded")
 		})
-		It("Possible to continue using app after updating", func() {
+		It("Possible to continue using app after update", func() {
 
 		})
 		//TODO move to tierdown
@@ -165,12 +146,35 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 		})
 		It("Possible to delete service", func() {
 			Eventually(cfc.Cf("delete-service", serviceIns, "-f")).Should(Say("OK"))
+			waitForDelete(serviceIns)
 		})
-		It("Service broker could be deleted", func() {
+		It("Possible to delete Service broker", func() {
 			Eventually(cfc.Cf("delete-service-broker", broker, "-f")).Should(Say("OK"))
 		})
 	})
 })
+
+func waitForDelete(serviceName string) {
+	waiting := true
+	try := 0
+	for waiting {
+		time.Sleep(1 * time.Minute) //TODO :\\
+		try++
+		session := cfc.Cf("service", serviceName)
+		isDeleted := strings.Contains(string(session.Out.Contents()), "Service instance not found")
+		GinkgoWriter.Write([]byte(fmt.Sprintf("Waiting for deletion (try #%d)", try)))
+
+		if isDeleted {
+			waiting = false
+			GinkgoWriter.Write([]byte("Finish waiting. Succeed."))
+		}
+		if try > 15 { //TODO ??
+			waiting = false
+			GinkgoWriter.Write([]byte("Finish waiting. Timeout"))
+			//TODO call fail
+		}
+	}
+}
 
 //waitStatus wait until status is appear
 func waitServiceStatus(serviceName string, expectedStatus string) {

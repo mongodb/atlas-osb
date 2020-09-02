@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/mongodb-forks/digest"
+	c "github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
-	c "github.com/mongodb/mongodb-atlas-service-broker/pkg/broker/credentials"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -45,14 +45,25 @@ const (
 	CFEventuallyTimeout   = 60 * time.Second
 	CFConsistentlyTimeout = 60 * time.Millisecond
 	TKey                  = "testKey" //TODO get it from the plan
+	orgName               = "atlas-gt"
+	tPath                 = "./samples/plans"
+	mPlaceName            = "atlas"
 )
 
 var (
-	homeDir string //nolint
-	APIKeys KeyList
-	PCFKeys PCF
-	AC      *mongodbatlas.Client
-	Commit  string
+	homeDir    string //nolint
+	APIKeys    KeyList
+	PCFKeys    PCF
+	AC         *mongodbatlas.Client
+	branch     string
+	brokerURL  = ""
+	appURL     = ""
+	spaceName  = "tover"
+	brokerApp  = "brokerApp"
+	broker     = "brokerAn"
+	planName   = "override-bind-db-plan"
+	serviceIns = "instance-over"
+	testApp    = "simple-ruby"
 )
 
 func TestBroker(t *testing.T) {
@@ -61,30 +72,38 @@ func TestBroker(t *testing.T) {
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	GinkgoWriter.Write([]byte("==============================Global FIRST Node Synchronized Before Each==============================\n")) //nolint
-	GinkgoWriter.Write([]byte("SetUp Global Timeout\n"))//nolint
+	GinkgoWriter.Write([]byte("==============================Global FIRST Node Synchronized Before Each==============================\n"))
+	GinkgoWriter.Write([]byte("SetUp Global Timeout\n"))
 	SetDefaultEventuallyTimeout(CFEventuallyTimeout)
 	SetDefaultConsistentlyDuration(CFConsistentlyTimeout)
-	GinkgoWriter.Write([]byte("==============================End of Global FIRST Node Synchronized Before Each=======================\n")) //nolint
+	setUp()
+	GinkgoWriter.Write([]byte("==============================End of Global FIRST Node Synchronized Before Each=======================\n"))
 	return nil
 }, func(_ []byte) {
-	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================Global Node %d Synchronized Before Each==============================", GinkgoParallelNode())))//nolint
+	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================Global Node %d Synchronized Before Each==============================", GinkgoParallelNode())))
 	if GinkgoParallelNode() != 1 {
 		Fail("Please Test suite cannot run in parallel")
 	}
-	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================End of Global Node %d Synchronized Before Each========================", GinkgoParallelNode())))//nolint
+	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================End of Global Node %d Synchronized Before Each========================", GinkgoParallelNode())))
 })
 
 var _ = BeforeEach(func() {
-	GinkgoWriter.Write([]byte("==============================Global Before Each==============================\n")) //nolint
-	setUp()
-	GinkgoWriter.Write([]byte("========================End of Global Before Each==============================\n")) //nolint
+	GinkgoWriter.Write([]byte("==============================Global Before Each==============================\n"))
+	// setUp()
+	GinkgoWriter.Write([]byte("========================End of Global Before Each==============================\n"))
 })
 
 func setUp() {
-	Commit = os.Getenv("GITHUB_REF") // refs/heads/sample
-	Commit = string(regexp.MustCompile(".+/(.+)").FindSubmatch([]byte(Commit))[1])
-	Expect(Commit).ToNot(BeEmpty())
+	branch = os.Getenv("GITHUB_REF") // refs/heads/sample
+	branch = string(regexp.MustCompile(".+/(.+)").FindSubmatch([]byte(branch))[1])
+	Expect(branch).ToNot(BeEmpty())
+	// brokerURL = ""
+	// appURL = ""
+	spaceName += branch
+	brokerApp += branch
+	broker += branch
+	serviceIns += branch
+	testApp += branch
 
 	PCFKeys = PCF{
 		Endpoint: os.Getenv("INPUT_CF_API"),      //TODO do we need opsman pass? INPUT_PCF_URL
