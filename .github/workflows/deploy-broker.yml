@@ -6,6 +6,9 @@ on: [push]
 
 name: e2e VMware TAS
 
+env:
+  TYPE: ${{ github.event.ref_type }}
+
 jobs:
   golangci:
     name: lint
