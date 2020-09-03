@@ -4,11 +4,11 @@ source ".github/base-dockerfile/helpers/cf-helper.sh"
 source ".github/base-dockerfile/helpers/params.sh"
 
 #final cleaning
-if [[ "$type" == "branch" ]]; then
-    echo "$type $branch has been deleted"
+if [[ "$TYPE" == "branch" ]]; then
+    echo "$TYPE $BRANCH has been deleted"
 
     cf_login
-    cf target -o "$ORG_PREFIX$branch"
+    cf target -o "$ORG_PREFIX$BRANCH"
     
     empty=$(cf spaces | awk '/No spaces found/{print "true"}')
     if ! "$empty"; then
@@ -34,5 +34,5 @@ if [[ "$type" == "branch" ]]; then
         done
     fi
 
-    cf delete-org "$ORG_PREFIX$branch" -f
+    cf delete-org "$ORG_PREFIX$BRANCH" -f
 fi
