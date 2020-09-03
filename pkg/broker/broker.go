@@ -136,13 +136,13 @@ func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynam
 }
 
 func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (dp *dynamicplans.Plan, err error) {
+	dp, err = b.getInstancePlan(ctx, instanceID)
+	if err == nil {
+		return
+	}
+
 	// planCtx == nil means the instance should exist
 	if planCtx == nil {
-		dp, err = b.getInstancePlan(ctx, instanceID)
-		if err == nil {
-			return
-		}
-
 		err = errors.Wrapf(err, "cannot find plan for instance %q", instanceID)
 		return
 	}
