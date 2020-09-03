@@ -6,7 +6,8 @@ We deploy Atlas Broker to Cloud Foundry using [GitHub Actions](https://docs.gith
 ## action
 The folder consists of implemented GitHub actions which are used in "workflows".
 Actions available right now:
-- cleanup-cf - clean CF from the previous deployment
+- clean-failed - triggered by deleting the branch, `purge` failed services and clean test-organization
+- cleanup-cf - clean Cloud Foundry space after testing
 - e2e-cf - deploy atlas broker with provided templates
 - reaper - delete clusters/project from Atlas 
 
@@ -44,6 +45,7 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 ```
 
 Now simply call:
+
 ```
 act delete #call clean-cf workflow
 act push #call deploy-broker
@@ -51,3 +53,9 @@ act <trigger>
 ```
 
 !NOTE! deploy-broker workflow deletes installed services at the end. If you need to look at prepared services - uncomment/delete "Cleanup ENV for current branch" step from deploy-broker.yml
+
+Also, `act` can use [event payload](https://developer.github.com/webhooks/event-payloads/#delete) as an argument
+
+```
+act delete -e delete.json
+```

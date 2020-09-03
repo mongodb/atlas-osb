@@ -10,7 +10,8 @@ commit_id=$(git rev-parse --short HEAD)
 postfix=$branch_name-$commit_id
 
 #arguments for actions
-ORG_NAME="atlas-test-$branch_name"
+ORG_PREFIX="atlas-test-"
+ORG_NAME="$ORG_PREFIX$branch_name"
 SPACE_NAME=$commit_id
 BROKER=atlas-osb-$postfix
 BROKER_APP=atlas-osb-app-$postfix
