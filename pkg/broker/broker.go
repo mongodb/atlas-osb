@@ -44,7 +44,6 @@ var _ domain.ServiceBroker = new(Broker)
 // an API server.
 type Broker struct {
 	logger      *zap.SugaredLogger
-	whitelist   Whitelist
 	credentials *credentials.Credentials
 	atlasURL    string
 	realmURL    string
@@ -58,7 +57,6 @@ func New(
 	credentials *credentials.Credentials,
 	atlasURL string,
 	realmURL string,
-	whitelist Whitelist,
 	userAgent string,
 ) *Broker {
 	b := &Broker{
@@ -66,7 +64,6 @@ func New(
 		credentials: credentials,
 		atlasURL:    atlasURL,
 		realmURL:    realmURL,
-		whitelist:   whitelist,
 		userAgent:   userAgent,
 	}
 

@@ -29,13 +29,6 @@ import (
 // idPrefix will be prepended to service and plan IDs to ensure their uniqueness.
 const idPrefix = "aosb-cluster"
 
-// providerNames contains all the available cloud providers on which clusters
-// may be provisioned. The available instance sizes for each provider are
-// fetched dynamically from the Atlas API.
-var (
-	providerNames = []string{"AWS", "GCP", "AZURE", "TENANT"}
-)
-
 // Services generates the service catalog which will be presented to consumers of the API.
 func (b *Broker) Services(ctx context.Context) ([]domain.Service, error) {
 	logger := b.funcLogger()
