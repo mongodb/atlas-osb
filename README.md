@@ -185,6 +185,13 @@ You can check this works with the hello-atlas-cf app with something like this:
 cf app hello-atlas-cf | grep routes | cut -d: -f2 | xargs -I {} google-chrome "{}"
 ```
 
+Or you can call [create-service-key](https://cli.cloudfoundry.org/en-US/v6/create-service-key.html) command:
+
+```bash
+cf create-service-key service-instance-name key-name -c '{"user" : {"roles" : [ { "roleName" : "readWrite", "databaseName" : "mydatabase"} ] } }'
+```
+
+
 ### Pausing a cluster
 
 ```bash

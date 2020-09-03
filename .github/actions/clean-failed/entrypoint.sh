@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1091,SC2034
+# shellcheck disable=SC1091,SC2119
 source ".github/base-dockerfile/helpers/cf-helper.sh"
 source ".github/base-dockerfile/helpers/params.sh"
 

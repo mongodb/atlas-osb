@@ -18,3 +18,4 @@ delete_application "$TEST_SIMPLE_APP"
 delete_application "$BROKER_APP"
 cf delete-service "$CREDHUB" -f
 cf delete-space "$SPACE_NAME" -f
+cf delete-org "$ORG_NAME" -f
