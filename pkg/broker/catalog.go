@@ -15,20 +15,31 @@
 package broker
 
 import (
-	atlasprivate "github.com/mongodb/atlas-osb/pkg/atlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 
+// InstanceSize represents an available cluster size.
+type InstanceSize struct {
+	Name string `json:"name"`
+}
+
+// Provider represents a single cloud provider to which a cluster can be
+// deployed.
+type Provider struct {
+	Name          string `json:"@provider"`
+	InstanceSizes map[string]InstanceSize
+}
+
 type catalog struct {
 	services  []domain.Service
-	providers map[string]atlasprivate.Provider
+	providers map[string]Provider
 	plans     map[string]domain.ServicePlan
 }
 
 func newCatalog() *catalog {
 	return &catalog{
 		services:  []domain.Service{},
-		providers: map[string]atlasprivate.Provider{},
+		providers: map[string]Provider{},
 		plans:     map[string]domain.ServicePlan{},
 	}
 }

@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	atlasprivate "github.com/mongodb/atlas-osb/pkg/atlas"
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 )
@@ -54,7 +53,7 @@ func (b *Broker) buildCatalog() {
 		b.catalog.plans[p.ID] = p
 	}
 
-	b.catalog.providers[svc.ID] = atlasprivate.Provider{Name: "template"}
+	b.catalog.providers[svc.ID] = Provider{Name: "template"}
 	b.catalog.services = append(b.catalog.services, svc)
 	logger.Infow("Built service", "provider", "template")
 }
