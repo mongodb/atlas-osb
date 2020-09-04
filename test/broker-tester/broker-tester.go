@@ -16,22 +16,17 @@ package main
 
 import (
 	"context"
-	"flag"
-
-	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
-	"github.com/davecgh/go-spew/spew"
-
-	//mongodbatlas "go.mongodb.org/atlas"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 
+	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"gopkg.in/yaml.v2"
-
-	//osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
 	osb "sigs.k8s.io/go-open-service-broker-client/v2"
 )
 
@@ -83,7 +78,6 @@ func GetBroker(url string) (osb.Client, *mongodbatlas.Client, error) {
 }
 
 func main() {
-
 	var plan string
 	var name string
 	var params string
