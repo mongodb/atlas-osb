@@ -220,6 +220,9 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
+	// Atlas doesn't allow for cluster renaming - ignore any changes
+	newPlan.Cluster.Name = existingCluster.Name
+
 	resultingCluster, _, err := client.Clusters.Update(ctx, oldPlan.Project.ID, existingCluster.Name, newPlan.Cluster)
 	if err != nil {
 		logger.Errorw("Failed to update Atlas cluster", "error", err, "new_cluster", newPlan.Cluster)
@@ -325,7 +328,7 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 	for k, v := range b.credentials.Keys() {
 		logger = logger.With("orgID", k)
 
-		state, err := statestorage.Get(v, b.atlasURL, b.realmURL, b.logger)
+		state, err := statestorage.Get(v, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 		if err != nil {
 			logger.Errorw("Cannot get state storage for org", "error", err)
 			continue

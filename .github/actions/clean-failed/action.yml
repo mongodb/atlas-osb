@@ -1,0 +1,19 @@
+name: 'Delete organization'
+description: 'uses for cleaning environments after/before testing'
+inputs:
+  cf_api:
+    description: "PCF url uses for pcf command"
+    required: true
+  cf_user:
+    description: "PCF user uses for pcf command"
+    required: true
+  cf_password:
+    description: "PCF password uses for pcf command"
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.cf_user }}
+    - ${{ inputs.cf_password }}
+    - ${{ inputs.cf_api }}

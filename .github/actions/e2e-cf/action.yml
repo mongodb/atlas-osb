@@ -2,13 +2,13 @@
 name: 'Atlas broker testing'
 description: 'uses for preparing environments for testing'
 inputs:
-  pcf_url:
+  cf_api:
     description: "PCF url uses for pcf command"
     required: true
-  pcf_user:
+  cf_user:
     description: "PCF user uses for pcf command"
     required: true
-  pcf_password:
+  cf_password:
     description: "PCF password uses for pcf command"
     required: true
   atlas_project_id:
@@ -26,9 +26,6 @@ inputs:
   credhub_file:
     description: "sample credhub config file"
     required: true
-  broker_db_connection_string:
-    description: "db for the broker"
-    required: true
   atlas_org_id:
     description: "atlas org id"
     required: true
@@ -39,13 +36,12 @@ runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
-    - ${{ inputs.pcf_user }}
-    - ${{ inputs.pcf_password }}
-    - ${{ inputs.pcf_url }}
+    - ${{ inputs.cf_user }}
+    - ${{ inputs.cf_password }}
+    - ${{ inputs.cf_api }}
     - ${{ inputs.atlas_project_id }}
     - ${{ inputs.atlas_project_id_bay }}
     - ${{ inputs.atlas_public_key }}
     - ${{ inputs.atlas_private_key }}
     - ${{ inputs.credhub_file}}
-    - ${{ inputs.broker_db_connection_string }}
     - ${{ inputs.atlas_org_id}}

@@ -1,14 +1,14 @@
 # Manually triggered using GitHub UI. 
 # Please, open Actions tab, choose workflow "Create GitHub Package Manually" and press "Run workflow"
 # Tags must be Major.minor.patch, e.g. v0.0.1/v0.0.1-alpha
-name: Create GitHub Package Manually
+name: Create GitHub Release Package Manually
 
 on:
   workflow_dispatch:
     inputs:
       release: 
         description: "Release name. String"
-        default: "Test Release"  #TODO autogen mb?
+        default: "atlas-osb beta"
         required: true
       version: #(major: -M, minor: -m, patch: -p)
         description: "Version key(-Mmp).Major.minor.patch,e.g. -M/-m/-p/-mp/etc"
@@ -18,10 +18,9 @@ on:
         description: "Draft (release only). Boolean"
         default: "true"
         required: true
-      alpha:
-        description: "Add Posfix alpha and mark it as a release"
-        default: "true"
-        required: true
+      postfix:
+        description: "Add Posfix (e.g. alpha/beta) will create PRERELEASE"
+        required: false
         
 jobs:
 
@@ -46,7 +45,7 @@ jobs:
       uses: leo-ri/increment-semver@master
       with:
         vlevel: ${{ github.event.inputs.version }}
-        alpha: ${{ github.event.inputs.alpha }}
+        postfix: ${{ github.event.inputs.postfix }}
 
     - name: Build Binary
       run: |
@@ -56,7 +55,7 @@ jobs:
         version=${{ steps.semver.outputs.version }}
         echo "Building version=${version}"
         GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="-s -w -X main.releaseVersion=${version}" -o .
-        tar czvf mongodb-atlas-service-broker-$version.tar.gz mongodb-atlas-service-broker
+        tar czvf atlas-osb-$version.tar.gz atlas-osb
 
     - name: Make archive
       run: |
@@ -71,7 +70,7 @@ jobs:
         tag_name: ${{ steps.semver.outputs.version }}
         release_name: ${{ github.event.inputs.release }}
         draft: ${{ github.event.inputs.draft }}
-        prerelease: ${{ github.event.inputs.alpha }}
+        prerelease: ${{ steps.semver.outputs.preversion }}
 
     - name: Upload Release Asset
       id: upload-release-asset

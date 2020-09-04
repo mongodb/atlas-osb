@@ -36,23 +36,22 @@ var releaseVersion = "0.0.0+devbuild." + time.Now().UTC().Format("20060102T15040
 
 // command-line arguments and env variables with default values
 type Args struct {
-	LogLevel      zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
-	WhitelistFile string        `arg:"-w,env:PROVIDERS_WHITELIST_FILE"`
-
-	AtlasURL string `arg:"-a,env:ATLAS_BASE_URL" default:"https://cloud.mongodb.com/api/atlas/v1.0/"`
-	RealmURL string `arg:"-r,env:REALM_BASE_URL" default:"https://realm.mongodb.com/api/admin/v3.0/"`
+	LogLevel zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
 
 	BrokerConfig
 }
 
 type BrokerConfig struct {
+	AtlasURL            string `arg:"-a,env:ATLAS_BASE_URL" default:"https://cloud.mongodb.com/api/atlas/v1.0/"`
+	RealmURL            string `arg:"-r,env:REALM_BASE_URL" default:"https://realm.mongodb.com/api/admin/v3.0/"`
 	Host                string `arg:"-h,env:BROKER_HOST" default:"127.0.0.1"`
 	Port                uint16 `arg:"-p,env:BROKER_PORT" default:"4000"`
 	CertPath            string `arg:"-c,env:BROKER_TLS_CERT_FILE"`
 	KeyPath             string `arg:"-k,env:BROKER_TLS_KEY_FILE"`
 	ServiceName         string `arg:"env:BROKER_OSB_SERVICE_NAME" default:"atlas"`
 	ServiceDisplayName  string `arg:"env:BROKER_OSB_SERVICE_DISPLAY_NAME" default:"Template Services"`
-	ServiceDesc         string `arg:"env:BROKER_OSB_SERVICE_DESC" default:"MonogoDB Atlas Plan Template Deployments"`
+	ServiceDesc         string `arg:"env:BROKER_OSB_SERVICE_DESC" default:"MongoDB Atlas Plan Template Deployments"`
+	ServiceTags         string `arg:"env:BROKER_OSB_SERVICE_TAGS" default:"mongodb"`
 	ImageURL            string `arg:"env:BROKER_OSB_IMAGE_URL" default:"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"`
 	DocumentationURL    string `arg:"env:BROKER_OSB_DOCS_URL" default:"https://support.mongodb.com/welcome"`
 	ProviderDisplayName string `arg:"env:BROKER_OSB_PROVIDER_DISPLAY_NAME" default:"MongoDB"`
@@ -127,25 +126,12 @@ func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
-	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL, "whitelist_file", args.WhitelistFile)
+	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL)
 
 	creds := deduceCredentials(logger, args.AtlasURL)
 	userAgent := fmt.Sprintf("%s/%s (%s;%s)", toolName, releaseVersion, runtime.GOOS, runtime.GOARCH)
 
-	// Administrators can control what providers/plans are available to users
-	if args.WhitelistFile == "" {
-		return broker.New(logger, creds, args.AtlasURL, args.RealmURL, nil, userAgent)
-	}
-
-	// TODO
-	logger.Fatal("Whitelist is not implemented yet")
-
-	whitelist, err := broker.ReadWhitelistFile(args.WhitelistFile)
-	if err != nil {
-		logger.Fatal("Cannot load providers whitelist: %v", err)
-	}
-
-	return broker.New(logger, creds, args.AtlasURL, args.RealmURL, whitelist, userAgent)
+	return broker.New(logger, creds, broker.Config(args.BrokerConfig), userAgent)
 }
 
 func startBrokerServer() {

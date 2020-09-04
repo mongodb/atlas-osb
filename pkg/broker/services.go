@@ -18,24 +18,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	atlasprivate "github.com/mongodb/atlas-osb/pkg/atlas"
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 
 // idPrefix will be prepended to service and plan IDs to ensure their uniqueness.
 const idPrefix = "aosb-cluster"
-
-// providerNames contains all the available cloud providers on which clusters
-// may be provisioned. The available instance sizes for each provider are
-// fetched dynamically from the Atlas API.
-var (
-	providerNames = []string{"AWS", "GCP", "AZURE", "TENANT"}
-)
 
 // Services generates the service catalog which will be presented to consumers of the API.
 func (b *Broker) Services(ctx context.Context) ([]domain.Service, error) {
@@ -54,7 +45,7 @@ func (b *Broker) buildCatalog() {
 		b.catalog.plans[p.ID] = p
 	}
 
-	b.catalog.providers[svc.ID] = atlasprivate.Provider{Name: "template"}
+	b.catalog.providers[svc.ID] = Provider{Name: "template"}
 	b.catalog.services = append(b.catalog.services, svc)
 	logger.Infow("Built service", "provider", "template")
 }
@@ -62,17 +53,18 @@ func (b *Broker) buildCatalog() {
 func (b *Broker) buildServiceTemplate() (service domain.Service) {
 	return domain.Service{
 		ID:                   serviceIDForProvider("template"),
-		Name:                 getEnvOrDefault("BROKER_OSB_SERVICE_NAME", "atlas"),
-		Description:          getEnvOrDefault("BROKER_OSB_SERVICE_DESC", "MonogoDB Atlas Plan Template Deployments"),
+		Name:                 b.cfg.ServiceName,
+		Description:          b.cfg.ServiceDesc,
+		Tags:                 strings.Split(b.cfg.ServiceTags, ","),
 		Bindable:             true,
 		InstancesRetrievable: true,
 		BindingsRetrievable:  false,
 		Metadata: &domain.ServiceMetadata{
-			DisplayName:         fmt.Sprintf("MongoDB Atlas - %s", getEnvOrDefault("BROKER_OSB_SERVICE_DISPLAY_NAME", "Template Services")),
-			ImageUrl:            getEnvOrDefault("BROKER_OSB_IMAGE_URL", "https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"),
-			DocumentationUrl:    getEnvOrDefault("BROKER_OSB_DOCS_URL", "https://support.mongodb.com/welcome"),
-			ProviderDisplayName: getEnvOrDefault("BROKER_OSB_PROVIDER_DISPLAY_NAME", "MongoDB"),
-			LongDescription:     "Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/mongodb/atlas-osb",
+			DisplayName:         fmt.Sprintf("MongoDB Atlas - %s", b.cfg.ServiceDisplayName),
+			ImageUrl:            b.cfg.ImageURL,
+			DocumentationUrl:    b.cfg.DocumentationURL,
+			ProviderDisplayName: b.cfg.ProviderDisplayName,
+			LongDescription:     b.cfg.LongDescription,
 		},
 		PlanUpdatable: true,
 		Plans:         b.buildPlansForProviderDynamic(),
@@ -157,15 +149,4 @@ func serviceIDForProvider(providerName string) string {
 
 func planIDForDynamicPlan(providerName string, planName string) string {
 	return fmt.Sprintf("%s-plan-%s-%s", idPrefix, strings.ToLower(providerName), strings.ToLower(planName))
-}
-
-// getEnvOrDefault will try getting an environment variable and return a default
-// value in case it doesn't exist.
-func getEnvOrDefault(name string, def string) string {
-	value, exists := os.LookupEnv(name)
-	if !exists {
-		return def
-	}
-
-	return value
 }

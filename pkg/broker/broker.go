@@ -44,29 +44,40 @@ var _ domain.ServiceBroker = new(Broker)
 // an API server.
 type Broker struct {
 	logger      *zap.SugaredLogger
-	whitelist   Whitelist
 	credentials *credentials.Credentials
-	atlasURL    string
-	realmURL    string
+	cfg         Config
 	catalog     *catalog
 	userAgent   string
+}
+
+type Config struct {
+	AtlasURL            string
+	RealmURL            string
+	Host                string
+	Port                uint16
+	CertPath            string
+	KeyPath             string
+	ServiceName         string
+	ServiceDisplayName  string
+	ServiceDesc         string
+	ServiceTags         string
+	ImageURL            string
+	DocumentationURL    string
+	ProviderDisplayName string
+	LongDescription     string
 }
 
 // New creates a new Broker with a logger.
 func New(
 	logger *zap.SugaredLogger,
 	credentials *credentials.Credentials,
-	atlasURL string,
-	realmURL string,
-	whitelist Whitelist,
+	cfg Config,
 	userAgent string,
 ) *Broker {
 	b := &Broker{
 		logger:      logger,
 		credentials: credentials,
-		atlasURL:    atlasURL,
-		realmURL:    realmURL,
-		whitelist:   whitelist,
+		cfg:         cfg,
 		userAgent:   userAgent,
 	}
 
@@ -139,13 +150,13 @@ func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynam
 }
 
 func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (dp *dynamicplans.Plan, err error) {
+	dp, err = b.getInstancePlan(ctx, instanceID)
+	if err == nil {
+		return
+	}
+
 	// planCtx == nil means the instance should exist
 	if planCtx == nil {
-		dp, err = b.getInstancePlan(ctx, instanceID)
-		if err == nil {
-			return
-		}
-
 		err = errors.Wrapf(err, "cannot find plan for instance %q", instanceID)
 		return
 	}
@@ -194,7 +205,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.atlasURL))
+	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.cfg.AtlasURL))
 	if err != nil {
 		err = errors.Wrap(err, "cannot create Atlas client")
 		return
@@ -218,7 +229,7 @@ func (b *Broker) getState(orgID string) (*statestorage.RealmStateStorage, error)
 		return nil, err
 	}
 
-	return statestorage.Get(key, b.atlasURL, b.realmURL, b.logger)
+	return statestorage.Get(key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
@@ -226,11 +237,11 @@ func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
 		return authMiddleware(*b.credentials.Broker)
 	}
 
-	return simpleAuthMiddleware(b.atlasURL)
+	return simpleAuthMiddleware(b.cfg.AtlasURL)
 }
 
 func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
-	apiURL, err := url.Parse(b.atlasURL)
+	apiURL, err := url.Parse(b.cfg.AtlasURL)
 	if err != nil {
 		return err.Error()
 	}

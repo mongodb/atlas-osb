@@ -7,7 +7,6 @@ source ".github/base-dockerfile/helpers/params.sh"
 INSTALL_TIMEOUT=40 #service deploy timeout
 
 echo "init"
-make_pcf_metadata "$INPUT_PCF_URL" "$INPUT_PCF_USER" "$INPUT_PCF_PASSWORD"
 make_multikey_config samples/apikeys-config.json
 
 echo "Login. Create ORG and SPACE depended on the branch name"
@@ -74,9 +73,11 @@ else
     exit 1
 fi
 
+cf rename-service "$SERVICE_ATLAS" "$SERVICE_ATLAS_RENAME"
+
 echo "Updating service"
-cf update-service "${SERVICE_ATLAS}" -c '{"instance_size":"M20"}'
-check_service_update "$SERVICE_ATLAS"
+cf update-service "${SERVICE_ATLAS_RENAME}" -c '{"instance_size":"M20"}'
+check_service_update "$SERVICE_ATLAS_RENAME"
 
 echo "Check that saved data still exists"
 result=$(curl -s -X GET "${app_url}")

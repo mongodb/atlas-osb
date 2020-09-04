@@ -9,7 +9,7 @@ require (
 	github.com/alexflint/go-arg v1.3.1-0.20200806235247-96c756c382ed
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-git/go-git/v5 v5.1.0
-	github.com/goccy/go-yaml v1.8.0
+	github.com/goccy/go-yaml v1.8.1
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/mux v1.8.0
@@ -17,19 +17,18 @@ require (
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kubernetes-incubator/service-catalog v0.2.1
-	github.com/kubernetes-sigs/service-catalog v0.2.1
-	github.com/mitchellh/mapstructure v1.3.3
+	github.com/kubernetes-sigs/service-catalog v0.2.3
 	github.com/mongodb-forks/digest v1.0.1
 	github.com/mongodb/go-client-mongodb-atlas v0.3.0
-	github.com/mongodb/mongodb-atlas-service-broker v1.0.0 // indirect
+	github.com/mongodb/mongodb-atlas-service-broker v1.0.0
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/pivotal-cf-experimental/cf-test-helpers v0.0.0-20170428144005-e56b6ec41da9
 	github.com/pivotal-cf/brokerapi v5.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.6.1
-	go.mongodb.org/mongo-driver v1.4.0
-	go.uber.org/zap v1.15.0
+	go.mongodb.org/mongo-driver v1.4.1
+	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
