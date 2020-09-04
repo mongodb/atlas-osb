@@ -7,7 +7,6 @@ source ".github/base-dockerfile/helpers/params.sh"
 INSTALL_TIMEOUT=30
 
 echo "CleanUP: delete service broker, service, unbind app"
-make_pcf_metadata "$INPUT_PCF_URL" "$INPUT_PCF_USER" "$INPUT_PCF_PASSWORD"
 cf_login "$ORG_NAME" "$SPACE_NAME"
 
 delete_bind "$SERVICE_ATLAS_RENAME" "$TEST_SIMPLE_APP"

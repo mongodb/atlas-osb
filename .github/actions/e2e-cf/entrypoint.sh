@@ -7,7 +7,6 @@ source ".github/base-dockerfile/helpers/params.sh"
 INSTALL_TIMEOUT=40 #service deploy timeout
 
 echo "init"
-make_pcf_metadata "$INPUT_PCF_URL" "$INPUT_PCF_USER" "$INPUT_PCF_PASSWORD"
 make_multikey_config samples/apikeys-config.json
 
 echo "Login. Create ORG and SPACE depended on the branch name"

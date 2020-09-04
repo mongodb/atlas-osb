@@ -1,4 +1,4 @@
-name: 'Atlas broker testing'
+name: 'Delete organization'
 description: 'uses for cleaning environments after/before testing'
 inputs:
   cf_api:

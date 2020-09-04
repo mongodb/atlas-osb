@@ -11,12 +11,7 @@ cf_login() {
   if [[ -z $sys ]]; then
     sys="system"
   fi
-
-  local cf_app_url="api.$(pcf cf-info | grep system_domain | cut -d' ' -f 3)"
-  local cf_app_user="$(pcf cf-info | grep admin_username | cut -d' ' -f 3)"
-  local cf_app_password="$(pcf cf-info | grep admin_password | cut -d' ' -f 3)"
-
-  cf login -a "$cf_app_url" -u "$cf_app_user" -p "$cf_app_password" --skip-ssl-validation -o ${org} -s ${sys}
+  cf login -a "$INPUT_CF_API" -u "$INPUT_CF_USER" -p "$INPUT_CF_PASSWORD" --skip-ssl-validation -o ${org} -s ${sys}
 }
 
 #cf.helper. wait for particular service status
@@ -102,10 +97,6 @@ create_service() {
   local instance_name=$1 #aws-atlas-test-instance-$INPUT_BRANCH_NAME
   local plan=$2
   #local config=$2
-  # instance_name is used for Atlas project & cluster name, but cluster names need to follow
-  # The name can only contain ASCII letters, numbers, and hyphens.
-  # Here we only catch '.'dot's for release builds.
-  instance_name=$(echo "${instance_name}" | tr "." "-")
   cf create-service mongodb-atlas-aws "$plan" "$instance_name" -c '{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
   wait_service_status_change "$instance_name" "create in progress"
   service_status=$(cf services | awk '/'"$instance_name"'[ ].*succeeded/{print "succeeded"}')
