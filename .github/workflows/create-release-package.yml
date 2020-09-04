@@ -1,7 +1,7 @@
 # Manually triggered using GitHub UI. 
 # Please, open Actions tab, choose workflow "Create GitHub Package Manually" and press "Run workflow"
 # Tags must be Major.minor.patch, e.g. v0.0.1/v0.0.1-alpha
-name: Create GitHub Package Manually
+name: Create GitHub Release Package Manually
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ on:
         required: true
       alpha:
         description: "Add Posfix alpha and mark it as a release"
-        default: "true"
+        default: "false"
         required: true
         
 jobs:
@@ -56,7 +56,7 @@ jobs:
         version=${{ steps.semver.outputs.version }}
         echo "Building version=${version}"
         GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v -ldflags="-s -w -X main.releaseVersion=${version}" -o .
-        tar czvf mongodb-atlas-service-broker-$version.tar.gz mongodb-atlas-service-broker
+        tar czvf atlas-osb-$version.tar.gz atlas-osb
 
     - name: Make archive
       run: |
