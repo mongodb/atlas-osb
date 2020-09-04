@@ -1,7 +1,7 @@
 #shellcheck shell=bash disable=SC2034
 
 branch_name=$(echo "$GITHUB_REF" | awk -F'/' '{print $3}')
-branch_name=${branch_name:0:30} #service name max length is 50 symbols minus prefixes
+branch_name=${branch_name:0:26} #service name max length is 50 symbols minus prefixes
 # instance_name is used for Atlas project & cluster name, but cluster names need to follow
 # The name can only contain ASCII letters, numbers, and hyphens.
 # Here we only catch '.'dot's for release builds.
@@ -19,5 +19,6 @@ CREDHUB=credhub-$postfix
 TEST_SIMPLE_APP=simple-app-$postfix
 TEST_SPRING_APP=music-$postfix
 SERVICE_ATLAS=instance-$postfix
+SERVICE_ATLAS_RENAME=$SERVICE_ATLAS-rnm
 
 BROKER_OSB_SERVICE_NAME="atlas"
