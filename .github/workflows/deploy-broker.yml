@@ -2,12 +2,12 @@
 # e2e VMware TAS
 # An end-to-end deployment of atlas-osb to a Pivotal pie environment.
 
-on: [push]
+on:
+  push:
+    branches:
+      - '*'
 
 name: e2e VMware TAS
-
-env:
-  TYPE: ${{ github.event.ref_type }}
 
 jobs:
   golangci:
