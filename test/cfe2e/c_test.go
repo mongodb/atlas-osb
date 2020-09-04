@@ -118,6 +118,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 		})
 		It("Possible to create service-key", func() {
 			Eventually(cfc.Cf("create-service-key", serviceIns, "atlasKey")).Should(Say("OK"))
+			// '{"user" : { "roles" : [ { "roleName":"atlasAdmin", "databaseName" : "admin" } ] } }' 
 			GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) //TODO !
 		})
 		It("Backup is active as default", func() {
