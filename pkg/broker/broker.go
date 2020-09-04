@@ -45,25 +45,39 @@ var _ domain.ServiceBroker = new(Broker)
 type Broker struct {
 	logger      *zap.SugaredLogger
 	credentials *credentials.Credentials
-	atlasURL    string
-	realmURL    string
+	cfg         Config
 	catalog     *catalog
 	userAgent   string
+}
+
+type Config struct {
+	AtlasURL            string
+	RealmURL            string
+	Host                string
+	Port                uint16
+	CertPath            string
+	KeyPath             string
+	ServiceName         string
+	ServiceDisplayName  string
+	ServiceDesc         string
+	ServiceTags         string
+	ImageURL            string
+	DocumentationURL    string
+	ProviderDisplayName string
+	LongDescription     string
 }
 
 // New creates a new Broker with a logger.
 func New(
 	logger *zap.SugaredLogger,
 	credentials *credentials.Credentials,
-	atlasURL string,
-	realmURL string,
+	cfg Config,
 	userAgent string,
 ) *Broker {
 	b := &Broker{
 		logger:      logger,
 		credentials: credentials,
-		atlasURL:    atlasURL,
-		realmURL:    realmURL,
+		cfg:         cfg,
 		userAgent:   userAgent,
 	}
 
@@ -191,7 +205,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.atlasURL))
+	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.cfg.AtlasURL))
 	if err != nil {
 		err = errors.Wrap(err, "cannot create Atlas client")
 		return
@@ -215,7 +229,7 @@ func (b *Broker) getState(orgID string) (*statestorage.RealmStateStorage, error)
 		return nil, err
 	}
 
-	return statestorage.Get(key, b.atlasURL, b.realmURL, b.logger)
+	return statestorage.Get(key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
@@ -223,11 +237,11 @@ func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
 		return authMiddleware(*b.credentials.Broker)
 	}
 
-	return simpleAuthMiddleware(b.atlasURL)
+	return simpleAuthMiddleware(b.cfg.AtlasURL)
 }
 
 func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
-	apiURL, err := url.Parse(b.atlasURL)
+	apiURL, err := url.Parse(b.cfg.AtlasURL)
 	if err != nil {
 		return err.Error()
 	}
