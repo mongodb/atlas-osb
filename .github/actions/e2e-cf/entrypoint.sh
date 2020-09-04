@@ -74,9 +74,11 @@ else
     exit 1
 fi
 
+cf rename-service "$SERVICE_ATLAS" "$SERVICE_ATLAS_RENAME"
+
 echo "Updating service"
-cf update-service "${SERVICE_ATLAS}" -c '{"instance_size":"M20"}'
-check_service_update "$SERVICE_ATLAS"
+cf update-service "${SERVICE_ATLAS_RENAME}" -c '{"instance_size":"M20"}'
+check_service_update "$SERVICE_ATLAS_RENAME"
 
 echo "Check that saved data still exists"
 result=$(curl -s -X GET "${app_url}")

@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/client/clientset_generated/clientset"
 	testutil "github.com/mongodb/atlas-osb/test/util"
 	"github.com/stretchr/testify/assert"

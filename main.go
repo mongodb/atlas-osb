@@ -36,11 +36,9 @@ var releaseVersion = "0.0.0+devbuild." + time.Now().UTC().Format("20060102T15040
 
 // command-line arguments and env variables with default values
 type Args struct {
-	LogLevel      zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
-	WhitelistFile string        `arg:"-w,env:PROVIDERS_WHITELIST_FILE"`
-
-	AtlasURL string `arg:"-a,env:ATLAS_BASE_URL" default:"https://cloud.mongodb.com/api/atlas/v1.0/"`
-	RealmURL string `arg:"-r,env:REALM_BASE_URL" default:"https://realm.mongodb.com/api/admin/v3.0/"`
+	LogLevel zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
+	AtlasURL string        `arg:"-a,env:ATLAS_BASE_URL" default:"https://cloud.mongodb.com/api/atlas/v1.0/"`
+	RealmURL string        `arg:"-r,env:REALM_BASE_URL" default:"https://realm.mongodb.com/api/admin/v3.0/"`
 
 	BrokerConfig
 }
@@ -127,25 +125,12 @@ func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.
 }
 
 func createBroker(logger *zap.SugaredLogger) *broker.Broker {
-	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL, "whitelist_file", args.WhitelistFile)
+	logger.Infow("Creating broker", "atlas_base_url", args.AtlasURL)
 
 	creds := deduceCredentials(logger, args.AtlasURL)
 	userAgent := fmt.Sprintf("%s/%s (%s;%s)", toolName, releaseVersion, runtime.GOOS, runtime.GOARCH)
 
-	// Administrators can control what providers/plans are available to users
-	if args.WhitelistFile == "" {
-		return broker.New(logger, creds, args.AtlasURL, args.RealmURL, nil, userAgent)
-	}
-
-	// TODO
-	logger.Fatal("Whitelist is not implemented yet")
-
-	whitelist, err := broker.ReadWhitelistFile(args.WhitelistFile)
-	if err != nil {
-		logger.Fatal("Cannot load providers whitelist: %v", err)
-	}
-
-	return broker.New(logger, creds, args.AtlasURL, args.RealmURL, whitelist, userAgent)
+	return broker.New(logger, creds, args.AtlasURL, args.RealmURL, userAgent)
 }
 
 func startBrokerServer() {
