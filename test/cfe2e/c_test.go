@@ -23,9 +23,12 @@ import (
 var _ = Describe("Feature: Atlas broker supports basic template", func() {
 
 	When("Given names and plan template", func() {
-		It("Can login to CF and create organization", func() {
-			// Login(endpoint, user, password)
+		FIt("test GitHub action", func() {
+			GinkgoWriter.Write([]byte("test1"))
+			GinkgoWriter.Write([]byte(APIKeys.Broker.Username))
 			Eventually("true").Should(Equal("true"))
+		}, 10)
+		It("Can login to CF and create organization", func() {
 			Eventually(cfc.Cf("login", "-a", PCFKeys.Endpoint, "-u", PCFKeys.User, "-p", PCFKeys.Password, "--skip-ssl-validation")).Should(Say("OK"))
 			Eventually(cfc.Cf("create-org", orgName)).Should(Say("OK"))
 			Eventually(cfc.Cf("target", "-o", orgName)).Should(Exit(0))
@@ -44,7 +47,6 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			Eventually(cfc.Cf("set-env", brokerApp, "ATLAS_BROKER_TEMPLATEDIR", tPath)).Should(Exit(0))
 			Eventually(cfc.Cf("set-env", brokerApp, "BROKER_OSB_SERVICE_NAME", mPlaceName)).Should(Exit(0))
 
-			Eventually(cfc.Cf("env", brokerApp)).Should(Exit(0))
 			s = cfc.Cf("restart", brokerApp)
 			Eventually(s, "5m", "10s").Should(Say("running")) //TODO probably one of the common timeouts
 			brokerURL = "http://" + string(regexp.MustCompile(`routes:[ ]*(.+)`).FindSubmatch(s.Out.Contents())[1])
@@ -162,7 +164,7 @@ func waitForDelete(serviceName string) {
 		time.Sleep(1 * time.Minute) //TODO :\\
 		try++
 		session := cfc.Cf("service", serviceName)
-		isDeleted := strings.Contains(string(session.Out.Contents()), "Service instance not found")
+		isDeleted := strings.Contains(string(session.Out.Contents()), fmt.Sprintf("Service instance %s not found", serviceName))
 		GinkgoWriter.Write([]byte(fmt.Sprintf("Waiting for deletion (try #%d)", try)))
 
 		if isDeleted {

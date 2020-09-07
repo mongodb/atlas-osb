@@ -58,11 +58,11 @@ var (
 	branch     string
 	brokerURL  = ""
 	appURL     = ""
-	spaceName  = "tover"
-	brokerApp  = "brokerApp"
-	broker     = "brokerAn"
+	spaceName  = "s-"
+	brokerApp  = "b-app-"
+	broker     = "broker-aosb-"
 	planName   = "override-bind-db-plan"
-	serviceIns = "instance-over"
+	serviceIns = "inst-"
 	testApp    = "simple-ruby"
 )
 
@@ -97,8 +97,6 @@ func setUp() {
 	branch = os.Getenv("GITHUB_REF") // refs/heads/sample
 	branch = string(regexp.MustCompile(".+/(.+)").FindSubmatch([]byte(branch))[1])
 	Expect(branch).ToNot(BeEmpty())
-	// brokerURL = ""
-	// appURL = ""
 	spaceName += branch
 	brokerApp += branch
 	broker += branch
