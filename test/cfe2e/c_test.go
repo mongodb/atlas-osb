@@ -23,11 +23,6 @@ import (
 var _ = Describe("Feature: Atlas broker supports basic template", func() {
 
 	When("Given names and plan template", func() {
-		FIt("test GitHub action", func() {
-			GinkgoWriter.Write([]byte("test1"))
-			GinkgoWriter.Write([]byte(APIKeys.Broker.Username))
-			Eventually("true").Should(Equal("true"))
-		}, 10)
 		It("Can login to CF and create organization", func() {
 			Eventually(cfc.Cf("login", "-a", PCFKeys.Endpoint, "-u", PCFKeys.User, "-p", PCFKeys.Password, "--skip-ssl-validation")).Should(Say("OK"))
 			Eventually(cfc.Cf("create-org", orgName)).Should(Say("OK"))

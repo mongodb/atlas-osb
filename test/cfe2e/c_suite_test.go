@@ -80,11 +80,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	GinkgoWriter.Write([]byte("==============================End of Global FIRST Node Synchronized Before Each=======================\n"))
 	return nil
 }, func(_ []byte) {
-	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================Global Node %d Synchronized Before Each==============================", GinkgoParallelNode())))
+	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================Global Node %d Synchronized Before Each==============================\n", GinkgoParallelNode())))
 	if GinkgoParallelNode() != 1 {
 		Fail("Please Test suite cannot run in parallel")
 	}
-	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================End of Global Node %d Synchronized Before Each========================", GinkgoParallelNode())))
+	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================End of Global Node %d Synchronized Before Each========================\n", GinkgoParallelNode())))
 })
 
 var _ = BeforeEach(func() {

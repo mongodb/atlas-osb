@@ -35,7 +35,8 @@ issues:
   exclude-rules:
     - path: test/
       linters:
-        - errcheck
+        - whitespace
         - golint
         - stylecheck
         - gocyclo
+        - errcheck
