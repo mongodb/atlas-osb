@@ -1,6 +1,5 @@
-# action.yml
 name: 'Atlas broker testing'
-description: 'uses for preparing environments for testing'
+description: 'tests'
 inputs:
   cf_api:
     description: "PCF url uses for cf command"
@@ -11,27 +10,15 @@ inputs:
   cf_password:
     description: "PCF password uses for cf command"
     required: true
-  atlas_project_id:
-    description: "for now we should provide our working projectID/groupID in Atlas"
-    required: true
-  atlas_project_id_bay:
-    description: "for now we should provide our working projectID/groupID in Atlas"
-    required: false
   atlas_public_key:
     description: "public key for our working projectID/groupID"
     required: true
   atlas_private_key:
     description: "private key for our working projectID/groupID"
     required: true
-  credhub_file:
-    description: "sample credhub config file"
-    required: true
   atlas_org_id:
     description: "atlas org id"
     required: true
-outputs:
-  app_url:
-    description: 'Application url'
 runs:
   using: 'docker'
   image: 'Dockerfile'
@@ -39,9 +26,6 @@ runs:
     - ${{ inputs.cf_user }}
     - ${{ inputs.cf_password }}
     - ${{ inputs.cf_api }}
-    - ${{ inputs.atlas_project_id }}
-    - ${{ inputs.atlas_project_id_bay }}
     - ${{ inputs.atlas_public_key }}
     - ${{ inputs.atlas_private_key }}
-    - ${{ inputs.credhub_file}}
     - ${{ inputs.atlas_org_id}}
