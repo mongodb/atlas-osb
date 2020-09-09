@@ -32,11 +32,9 @@ import (
 // These constants are returned during provisioning, deprovisioning, and
 // updates and are subsequently included in async polls from the platform.
 const (
-	OperationProvision   = "provision"
-	OperationDeprovision = "deprovision"
-	OperationUpdate      = "update"
-	InstanceSizeNameM2   = "M2"
-	InstanceSizeNameM5   = "M5"
+	operationProvision   = "provision"
+	operationDeprovision = "deprovision"
+	operationUpdate      = "update"
 )
 
 // Provision will create a new Atlas cluster with the instance ID as its name.
@@ -130,7 +128,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 
 	return domain.ProvisionedServiceSpec{
 		IsAsync:       true,
-		OperationData: OperationProvision,
+		OperationData: operationProvision,
 		DashboardURL:  b.GetDashboardURL(dp.Project.ID, resultingCluster.Name),
 	}, nil
 }
@@ -203,7 +201,11 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}
 
 		_, _, err = client.Clusters.Update(ctx, oldPlan.Project.ID, oldPlan.Cluster.Name, request)
-		return
+		return domain.UpdateServiceSpec{
+			IsAsync:       true,
+			OperationData: operationUpdate,
+			DashboardURL:  b.GetDashboardURL(oldPlan.Project.ID, oldPlan.Cluster.Name),
+		}, err
 	}
 
 	// Fetch the cluster from Atlas. The Atlas API requires an instance size to
@@ -266,7 +268,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 
 	return domain.UpdateServiceSpec{
 		IsAsync:       true,
-		OperationData: OperationUpdate,
+		OperationData: operationUpdate,
 		DashboardURL:  b.GetDashboardURL(oldPlan.Project.ID, resultingCluster.Name),
 	}, nil
 }
@@ -304,7 +306,7 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 
 	return domain.DeprovisionServiceSpec{
 		IsAsync:       true,
-		OperationData: OperationDeprovision,
+		OperationData: operationDeprovision,
 	}, nil
 }
 
@@ -359,7 +361,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	defer func() {
 		if err != nil {
 			resp.State = domain.Failed
-			resp.Description = err.Error()
+			resp.Description = "got error: " + err.Error()
 			err = nil
 		}
 	}()
@@ -379,7 +381,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	logger.Infow("Found existing cluster", "cluster", cluster)
 
 	switch details.OperationData {
-	case OperationProvision, OperationUpdate:
+	case operationProvision, operationUpdate:
 		if r.StatusCode == http.StatusNotFound {
 			resp.State = domain.Failed
 			resp.Description = "cluster not found"
@@ -396,7 +398,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 			resp.Description = fmt.Sprintf("unknown cluster state %q", cluster.StateName)
 		}
 
-	case OperationDeprovision:
+	case operationDeprovision:
 		switch {
 		// The Atlas API may return a 404 response if a cluster is deleted or it
 		// will return the cluster with a state of "DELETED". Both of these
@@ -435,21 +437,10 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		default:
 			resp.Description = fmt.Sprintf("unknown cluster state %q", cluster.StateName)
 		}
+
+	default:
+		resp.Description = fmt.Sprintf("unknown operation %q", details.OperationData)
 	}
 
 	return resp, err
-}
-
-// NormalizeClusterName will sanitize a name to make sure it will be accepted
-// by the Atlas API. Atlas has different name length requirements depending on
-// which environment it's running in. A length of 23 is a safe choice and
-// truncates UUIDs nicely.
-func NormalizeClusterName(name string) string {
-	const maximumNameLength = 23
-
-	if len(name) > maximumNameLength {
-		return name[0:maximumNameLength]
-	}
-
-	return name
 }
