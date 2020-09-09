@@ -36,7 +36,7 @@ var releaseVersion = "0.0.0+devbuild." + time.Now().UTC().Format("20060102T15040
 
 // command-line arguments and env variables with default values
 type Args struct {
-	LogLevel zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
+	LogLevel zapcore.Level `arg:"-l,env:BROKER_LOG_LEVEL" default:"INFO"`
 
 	BrokerConfig
 }
