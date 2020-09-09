@@ -27,11 +27,10 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			Eventually(cfc.Cf("login", "-a", PCFKeys.Endpoint, "-u", PCFKeys.User, "-p", PCFKeys.Password, "--skip-ssl-validation")).Should(Say("OK"))
 			Eventually(cfc.Cf("create-org", orgName)).Should(Say("OK"))
 			Eventually(cfc.Cf("target", "-o", orgName)).Should(Exit(0))
-		}, 10)
-		It("Can create service broker from repo and setup env", func() {
 			Eventually(cfc.Cf("create-space", spaceName)).Should(Exit(0))
 			Eventually(cfc.Cf("target", "-s", spaceName)).Should(Exit(0))
-
+		}, 10)
+		It("Can create service broker from repo and setup env", func() {
 			s := cfc.Cf("push", brokerApp, "-p", "../../.", "--no-start") //ginkgo starts from test-root folder
 			Eventually(s, "2m", "10s").Should(Exit(0))                    //TODO probably one of the common timeouts
 			Eventually(s).Should(Say("down"))
@@ -115,7 +114,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 		})
 		It("Possible to create service-key", func() {
 			Eventually(cfc.Cf("create-service-key", serviceIns, "atlasKey")).Should(Say("OK"))
-			// '{"user" : { "roles" : [ { "roleName":"atlasAdmin", "databaseName" : "admin" } ] } }' 
+			// '{"user" : { "roles" : [ { "roleName":"atlasAdmin", "databaseName" : "admin" } ] } }'
 			GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) //TODO !
 		})
 		It("Backup is active as default", func() {
@@ -159,6 +158,7 @@ func waitForDelete(serviceName string) {
 		time.Sleep(1 * time.Minute) //TODO :\\
 		try++
 		session := cfc.Cf("service", serviceName)
+		Eventually(session).Should(Say("Showing info of service"))
 		isDeleted := strings.Contains(string(session.Out.Contents()), fmt.Sprintf("Service instance %s not found", serviceName))
 		GinkgoWriter.Write([]byte(fmt.Sprintf("Waiting for deletion (try #%d)", try)))
 
@@ -166,7 +166,7 @@ func waitForDelete(serviceName string) {
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Succeed."))
 		}
-		if try > 15 { //TODO ??
+		if try > 13 { //TODO ??
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Timeout"))
 			//TODO call fail
