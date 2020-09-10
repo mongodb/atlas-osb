@@ -47,7 +47,6 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 		})
 		It("Possible to create service-broker", func() {
 			GinkgoWriter.Write([]byte(brokerURL))
-			// brokerURL = "http://brokerapp.apps.sanmarcos.cf-app.com" //TODO remove
 			Eventually(cfc.Cf("create-service-broker", broker, APIKeys.Broker.Username, APIKeys.Broker.Password, brokerURL, "--space-scoped")).Should(Exit(0))
 			Eventually(cfc.Cf("marketplace")).Should(Say(mPlaceName))
 		})
@@ -143,7 +142,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 		})
 		It("Possible to delete service", func() {
 			Eventually(cfc.Cf("delete-service", serviceIns, "-f")).Should(Say("OK"))
-			waitForDelete(serviceIns)
+			waitForDelete()
 		})
 		It("Possible to delete Service broker", func() {
 			Eventually(cfc.Cf("delete-service-broker", broker, "-f")).Should(Say("OK"))
@@ -151,22 +150,22 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 	})
 })
 
-func waitForDelete(serviceName string) {
+func waitForDelete() {
 	waiting := true
 	try := 0
 	for waiting {
 		time.Sleep(1 * time.Minute) //TODO :\\
 		try++
-		session := cfc.Cf("service", serviceName)
-		Eventually(session).Should(Say("Showing info of service"))
-		isDeleted := strings.Contains(string(session.Out.Contents()), fmt.Sprintf("Service instance %s not found", serviceName))
+		session := cfc.Cf("services")
+		Eventually(session).Should(Exit(0))
+		isDeleted := strings.Contains(string(session.Out.Contents()), "No services found")
 		GinkgoWriter.Write([]byte(fmt.Sprintf("Waiting for deletion (try #%d)", try)))
 
 		if isDeleted {
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Succeed."))
 		}
-		if try > 13 { //TODO ??
+		if try > 13 { //TODO what is our req. for awaiting
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Timeout"))
 			//TODO call fail

@@ -3,7 +3,6 @@ package cfe2e
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
@@ -18,17 +17,21 @@ import (
 
 /*
 Following environment varialble should be present:
-INPUT_ATLAS_PROJECT_ID
 INPUT_ATLAS_ORG_ID
 INPUT_ATLAS_PRIVATE_KEY
 INPUT_ATLAS_PUBLIC_KEY
-INPUT_PCF_URL
-INPUT_PCF_USER
-INPUT_PCF_PASSWORD
 INPUT_CF_API
 INPUT_CF_USER
 INPUT_CF_PASSWORD
 These variables are copies of github secrets
+
+These set up by pipeline (param.sh)
+ORG_NAME
+SPACE_NAME
+BROKER
+BROKER_APP
+TEST_SIMPLE_APP
+SERVICE_ATLAS
 */
 
 type KeyList struct {
@@ -45,7 +48,6 @@ const (
 	CFEventuallyTimeout   = 60 * time.Second
 	CFConsistentlyTimeout = 60 * time.Millisecond
 	TKey                  = "testKey" //TODO get it from the plan
-	orgName               = "atlas-gt"
 	tPath                 = "./samples/plans"
 	mPlaceName            = "atlas"
 )
@@ -55,15 +57,16 @@ var (
 	APIKeys    KeyList
 	PCFKeys    PCF
 	AC         *mongodbatlas.Client
-	branch     string
-	brokerURL  = ""
-	appURL     = ""
-	spaceName  = "s-"
-	brokerApp  = "b-app-"
-	broker     = "broker-aosb-"
-	planName   = "override-bind-db-plan"
-	serviceIns = "inst-"
-	testApp    = "simple-ruby"
+	orgName    string
+	brokerURL  string
+	appURL     string
+	spaceName  string
+	brokerApp  string
+	broker     string
+	serviceIns string
+	testApp    string
+
+	planName = "override-bind-db-plan"
 )
 
 func TestBroker(t *testing.T) {
@@ -94,19 +97,22 @@ var _ = BeforeEach(func() {
 })
 
 func setUp() {
-	branch = os.Getenv("GITHUB_REF") // refs/heads/sample
-	branch = string(regexp.MustCompile(".+/(.+)").FindSubmatch([]byte(branch))[1])
-	Expect(branch).ToNot(BeEmpty())
-	spaceName += branch
-	brokerApp += branch
-	broker += branch
-	serviceIns += branch
-	testApp += branch
+	orgName = os.Getenv("ORG_NAME")
+	spaceName = os.Getenv("SPACE_NAME")
+	brokerApp = os.Getenv("BROKER_APP")
+	broker = os.Getenv("BROKER")
+	serviceIns = os.Getenv("SERVICE_ATLAS")
+	testApp = os.Getenv("TEST_SIMPLE_APP")
+	Expect(orgName).ToNot(BeEmpty())
+	Expect(spaceName).ToNot(BeEmpty())
+	Expect(brokerApp).ToNot(BeEmpty())
+	Expect(serviceIns).ToNot(BeEmpty())
+	Expect(testApp).ToNot(BeEmpty())
 
 	PCFKeys = PCF{
-		Endpoint: os.Getenv("INPUT_CF_API"),      //TODO do we need opsman pass? INPUT_PCF_URL
-		User:     os.Getenv("INPUT_CF_USER"),     //TODO do we need opsman pass? INPUT_PCF_USER
-		Password: os.Getenv("INPUT_CF_PASSWORD"), //TODO do we need opsman pass? INPUT_PCCF_PASSWORD
+		Endpoint: os.Getenv("INPUT_CF_API"),
+		User:     os.Getenv("INPUT_CF_USER"),
+		Password: os.Getenv("INPUT_CF_PASSWORD"),
 	}
 
 	keys := c.APIKey{

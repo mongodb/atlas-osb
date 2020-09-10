@@ -11,6 +11,9 @@ postfix=$branch_name-$commit_id
 
 #arguments for actions
 ORG_PREFIX="atlas-test-"
+if [[ $TEST_TYPE == "go" ]]; then #override for go-test, TODO: delete after living only one type of tests
+    ORG_PREFIX="atlas-gt-"
+fi
 ORG_NAME="$ORG_PREFIX$branch_name"
 SPACE_NAME=$commit_id
 BROKER=atlas-osb-$postfix
@@ -20,5 +23,4 @@ TEST_SIMPLE_APP=simple-app-$postfix
 TEST_SPRING_APP=music-$postfix
 SERVICE_ATLAS=instance-$postfix
 SERVICE_ATLAS_RENAME=$SERVICE_ATLAS-rnm
-
 BROKER_OSB_SERVICE_NAME="atlas"

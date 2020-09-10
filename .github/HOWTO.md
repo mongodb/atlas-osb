@@ -9,7 +9,7 @@ Actions available right now:
 - clean-failed - triggered by deleting the branch, `purge` failed services and clean test-organization
 - cleanup-cf - clean Cloud Foundry space after testing
 - e2e-cf - deploy atlas broker with provided templates
-- reaper - delete clusters/project from Atlas 
+- reaper - delete clusters/project from Atlas
 
 "e2e-cf" action have commented parts in case spring-music are more preferiable as a test application 
 
