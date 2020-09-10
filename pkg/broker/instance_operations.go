@@ -22,10 +22,10 @@ import (
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/mongodb/atlas-osb/pkg/broker/statestorage"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 	"github.com/pkg/errors"
+	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 // The different async operations that can be performed.

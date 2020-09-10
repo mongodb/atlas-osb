@@ -30,9 +30,9 @@ import (
 	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/mongodb/atlas-osb/pkg/broker/statestorage"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pkg/errors"
+	"go.mongodb.org/atlas/mongodbatlas"
 	"go.uber.org/zap"
 )
 
