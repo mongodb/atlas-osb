@@ -24,7 +24,6 @@ import (
 	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"github.com/mongodb/atlas-osb/pkg/mongodbrealm"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
-	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -179,7 +178,7 @@ func (ss *RealmStateStorage) idByName(ctx context.Context, name string) (id stri
 	return "", fmt.Errorf("value with name %q not found", name)
 }
 
-func (ss *RealmStateStorage) FindOne(ctx context.Context, name string) (spec *domain.GetInstanceDetailsSpec, err error) {
+func (ss *RealmStateStorage) FindOne(ctx context.Context, name string, out interface{}) (err error) {
 	id, err := ss.idByName(ctx, name)
 	if err != nil {
 		return
@@ -195,11 +194,10 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, name string) (spec *do
 	}
 
 	if val.Value == nil {
-		return nil, errors.New("val.Value was nil from realm, should never happen")
+		return errors.New("val.Value was nil from realm, should never happen")
 	}
 
-	spec = &domain.GetInstanceDetailsSpec{}
-	err = json.Unmarshal(val.Value, &spec)
+	err = json.Unmarshal(val.Value, out)
 	return
 }
 
@@ -213,7 +211,7 @@ func (ss *RealmStateStorage) DeleteOne(ctx context.Context, name string) error {
 	return err
 }
 
-func (ss *RealmStateStorage) Put(ctx context.Context, name string, value *domain.GetInstanceDetailsSpec) (*mongodbrealm.RealmValue, error) {
+func (ss *RealmStateStorage) Put(ctx context.Context, name string, value interface{}) (*mongodbrealm.RealmValue, error) {
 	vv, err := json.Marshal(value)
 	if err != nil {
 		return nil, err

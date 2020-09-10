@@ -16,9 +16,11 @@ package broker
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/mongodb/atlas-osb/pkg/broker/statestorage"
@@ -100,12 +102,12 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(dp.Project.OrgID)
+	state, err := b.stateStorage(dp.Project.OrgID)
 	if err != nil {
 		return
 	}
 
-	v, err := state.Put(context.Background(), instanceID, &s)
+	v, err := state.Put(ctx, instanceID, s)
 	if err != nil {
 		logger.Errorw("Error during provision, broker maintenance:", "err", err)
 		return
@@ -242,7 +244,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(oldPlan.Project.OrgID)
+	state, err := b.stateStorage(oldPlan.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -254,7 +256,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
-	obj, err := state.Put(ctx, instanceID, &s)
+	obj, err := state.Put(ctx, instanceID, s)
 	if err != nil {
 		logger.Errorw("Error insert one from state", "err", err, "instanceID", instanceID, "s", s)
 		return
@@ -313,7 +315,7 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 	logger := b.funcLogger().With("instanceID", instanceID)
 	logger.Info("Fetching instance")
 
-	spec, err = b.getInstance(ctx, instanceID)
+	err = b.getState(ctx, instanceID, &spec)
 	if err != nil {
 		logger.Errorw("Unable to fetch instance", "err", err)
 		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "get-instance")
@@ -322,29 +324,33 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 	return spec, nil
 }
 
-func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
-	logger := b.funcLogger().With("instanceID", instanceID)
+func (b Broker) getState(ctx context.Context, id string, out interface{}) error {
+	logger := b.funcLogger().With("id", id)
 
-	for k, v := range b.credentials.Keys() {
+	for k := range b.credentials.Keys() {
 		logger = logger.With("orgID", k)
 
-		state, err := statestorage.Get(v, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+		ss, err := b.stateStorage(k)
 		if err != nil {
 			logger.Errorw("Cannot get state storage for org", "error", err)
 			continue
 		}
 
-		instance, err := state.FindOne(ctx, instanceID)
+		var value string
+		err = ss.FindOne(ctx, id, &value)
 		if err != nil {
 			if err != statestorage.ErrInstanceNotFound {
 				logger.Errorw("Cannot find instance in maintenance DB", "error", err)
 			}
 			continue
 		}
-		return *instance, nil
+
+		b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(value))
+		err = json.NewDecoder(b64).Decode(out)
+		return err
 	}
 
-	return domain.GetInstanceDetailsSpec{}, errors.New("cannot find instance in maintenance DB(s): no instances found")
+	return errors.New("cannot find state in maintenance DB(s): no state found")
 }
 
 // LastOperation should fetch the state of the provision/deprovision
@@ -417,7 +423,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				)
 			}
 
-			state, errDel := b.getState(p.Project.OrgID)
+			state, errDel := b.stateStorage(p.Project.OrgID)
 			if errDel != nil {
 				logger.Errorw("Failed to get state storage", "error", errDel)
 				break

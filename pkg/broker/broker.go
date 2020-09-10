@@ -134,23 +134,9 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 	return dp, nil
 }
 
-func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynamicplans.Plan, error) {
-	i, err := b.getInstance(ctx, instanceID)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot fetch instance")
-	}
-
-	params, ok := i.Parameters.(string)
-	if !ok {
-		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
-	}
-
-	plan, err := decodePlan(params)
-	return &plan, err
-}
-
 func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (dp *dynamicplans.Plan, err error) {
-	dp, err = b.getInstancePlan(ctx, instanceID)
+	dp = &dynamicplans.Plan{}
+	err = b.getState(ctx, instanceID, dp)
 	if err == nil {
 		return
 	}
@@ -223,7 +209,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 	return
 }
 
-func (b *Broker) getState(orgID string) (*statestorage.RealmStateStorage, error) {
+func (b *Broker) stateStorage(orgID string) (*statestorage.RealmStateStorage, error) {
 	key, err := b.credentials.ByOrg(orgID)
 	if err != nil {
 		return nil, err
@@ -259,11 +245,4 @@ func encodePlan(v dynamicplans.Plan) (string, error) {
 
 	err = b64.Close()
 	return b.String(), err
-}
-
-func decodePlan(enc string) (dynamicplans.Plan, error) {
-	b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(enc))
-	dp := dynamicplans.Plan{}
-	err := json.NewDecoder(b64).Decode(&dp)
-	return dp, err
 }

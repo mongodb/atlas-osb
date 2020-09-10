@@ -39,26 +39,14 @@ func (b *Broker) buildCatalog() {
 	logger := b.funcLogger()
 	b.catalog = newCatalog()
 
-	svc := b.buildServiceTemplate()
-
-	for _, p := range svc.Plans {
-		b.catalog.plans[p.ID] = p
-	}
-
-	b.catalog.providers[svc.ID] = Provider{Name: "template"}
-	b.catalog.services = append(b.catalog.services, svc)
-	logger.Infow("Built service", "provider", "template")
-}
-
-func (b *Broker) buildServiceTemplate() (service domain.Service) {
-	return domain.Service{
+	svc := domain.Service{
 		ID:                   serviceIDForProvider("template"),
 		Name:                 b.cfg.ServiceName,
 		Description:          b.cfg.ServiceDesc,
 		Tags:                 strings.Split(b.cfg.ServiceTags, ","),
 		Bindable:             true,
 		InstancesRetrievable: true,
-		BindingsRetrievable:  false,
+		BindingsRetrievable:  true,
 		Metadata: &domain.ServiceMetadata{
 			DisplayName:         fmt.Sprintf("MongoDB Atlas - %s", b.cfg.ServiceDisplayName),
 			ImageUrl:            b.cfg.ImageURL,
@@ -67,11 +55,19 @@ func (b *Broker) buildServiceTemplate() (service domain.Service) {
 			LongDescription:     b.cfg.LongDescription,
 		},
 		PlanUpdatable: true,
-		Plans:         b.buildPlansForProviderDynamic(),
+		Plans:         b.buildPlans(),
 	}
+
+	for _, p := range svc.Plans {
+		b.catalog.plans[p.ID] = p
+	}
+
+	b.catalog.providers[svc.ID] = Provider{Name: "template"}
+	b.catalog.services = append(b.catalog.services, svc)
+	logger.Infow("Built service")
 }
 
-func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
+func (b *Broker) buildPlans() []domain.ServicePlan {
 	logger := b.funcLogger()
 	var plans []domain.ServicePlan
 

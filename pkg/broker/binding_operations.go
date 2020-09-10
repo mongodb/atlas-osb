@@ -19,14 +19,14 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pivotal-cf/brokerapi/domain"
-	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -124,6 +124,13 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	spec = domain.Binding{
 		Credentials: connDetails,
 	}
+
+	ss, err := b.stateStorage(p.Project.OrgID)
+	if err != nil {
+		return spec, err
+	}
+
+	_, err = ss.Put(ctx, bindingID, spec)
 	return
 }
 
@@ -155,6 +162,12 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	logger.Infow("Successfully deleted Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
 
 	spec = domain.UnbindSpec{}
+	ss, err := b.stateStorage(p.Project.OrgID)
+	if err != nil {
+		return
+	}
+
+	err = ss.DeleteOne(ctx, bindingID)
 	return
 }
 
@@ -163,15 +176,42 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec domain.GetBindingSpec, err error) {
 	logger := b.funcLogger()
 	logger.Infow("Retrieving binding", "instance_id", instanceID, "binding_id", bindingID)
-
-	err = apiresponses.NewFailureResponse(fmt.Errorf("unknown binding ID %s", bindingID), 404, "get-binding")
+	err = b.getState(ctx, bindingID, &spec)
 	return
 }
 
 // LastBindingOperation should fetch the status of the last creation/deletion
 // of a database user.
-func (b Broker) LastBindingOperation(ctx context.Context, instanceID string, bindingID string, details domain.PollDetails) (domain.LastOperation, error) {
-	panic("not implemented")
+func (b Broker) LastBindingOperation(ctx context.Context, instanceID string, bindingID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
+	logger := b.funcLogger()
+	logger.Infow("Fetching state of last binding operation", "instance_id", instanceID, "details", details)
+
+	resp.State = domain.Failed
+
+	// brokerapi will NOT update service state if we return any error, so... we won't?
+	defer func() {
+		if err != nil {
+			resp.State = domain.Failed
+			resp.Description = err.Error()
+			err = nil
+		}
+	}()
+
+	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
+	if err != nil {
+		return
+	}
+
+	_, r, err := client.DatabaseUsers.Get(ctx, "admin", p.Project.ID, bindingID)
+	switch r.StatusCode {
+	case http.StatusNotFound:
+	default:
+		err = errors.Wrap(err, "cannot get binding")
+		logger.Errorw("Failed to get binding", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+		return
+	}
+
+	return resp, err
 }
 
 // generatePassword will generate a cryptographically secure password.
