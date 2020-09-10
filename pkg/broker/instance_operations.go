@@ -407,7 +407,8 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				resp.State = domain.Succeeded
 			}
 
-			_, err = client.Projects.Delete(ctx, p.Project.ID)
+			var r *mongodbatlas.Response
+			r, err = client.Projects.Delete(ctx, p.Project.ID)
 			if err != nil {
 				err = errors.Wrap(err, "cannot delete Atlas project")
 				logger.Errorw(
@@ -416,7 +417,13 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 					"projectID", p.Project.ID,
 					"projectName", p.Project.Name,
 				)
-				break
+
+				if r.StatusCode != http.StatusNotFound {
+					break
+				}
+
+				// don't fail if the project is already deleted
+				err = nil
 			}
 
 			state, errDel := b.getState(p.Project.OrgID)
