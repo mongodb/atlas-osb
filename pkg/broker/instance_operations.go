@@ -292,7 +292,6 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	_, err = client.Clusters.Delete(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		logger.Errorw("Failed to delete Atlas cluster", "error", err)
-		return
 	}
 
 	for _, u := range p.DatabaseUsers {
@@ -417,6 +416,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 					"projectID", p.Project.ID,
 					"projectName", p.Project.Name,
 				)
+				break
 			}
 
 			state, errDel := b.getState(p.Project.OrgID)
