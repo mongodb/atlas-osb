@@ -95,7 +95,7 @@ func (b *Broker) funcLogger() *zap.SugaredLogger {
 }
 
 func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamicplans.Plan, err error) {
-	logger := b.funcLogger()
+	logger := b.funcLogger().With("plan_id", planID)
 	sp, ok := b.catalog.plans[planID]
 	if !ok {
 		err = fmt.Errorf("plan ID %q not found in catalog", planID)
@@ -104,7 +104,7 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 
 	tpl, ok := sp.Metadata.AdditionalMetadata["template"].(dynamicplans.TemplateContainer)
 	if !ok {
-		err = errors.New("plan ID %q does not contain a valid plan template")
+		err = fmt.Errorf("plan ID %q does not contain a valid plan template", planID)
 		return
 	}
 
