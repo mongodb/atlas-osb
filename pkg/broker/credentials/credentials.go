@@ -20,8 +20,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pkg/errors"
+	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 type BrokerAuth struct {
