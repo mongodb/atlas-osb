@@ -8,7 +8,7 @@ import (
 
 	"github.com/mongodb-forks/digest"
 	c "github.com/mongodb/atlas-osb/pkg/broker/credentials"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"go.mongodb.org/atlas/mongodbatlas"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

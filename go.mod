@@ -18,11 +18,14 @@ require (
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kubernetes-incubator/service-catalog v0.2.1
 	github.com/kubernetes-sigs/service-catalog v0.2.3
-	github.com/pborman/uuid v1.2.0 // indirect
+	github.com/mongodb-forks/digest v1.0.1
+	github.com/mongodb/mongodb-atlas-service-broker v1.0.0
+	github.com/onsi/ginkgo v1.8.0
+	github.com/onsi/gomega v1.5.0
+	github.com/pivotal-cf-experimental/cf-test-helpers v0.0.0-20170428144005-e56b6ec41da9
 	github.com/pivotal-cf/brokerapi v5.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.6.1
-	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/atlas v0.4.0
 	go.mongodb.org/mongo-driver v1.4.1
 	go.uber.org/zap v1.16.0
