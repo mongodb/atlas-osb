@@ -46,8 +46,8 @@ type ConnectionDetails struct {
 // Bind will create a new database user with a username matching the binding ID
 // and a randomly generated password. The user credentials will be returned back.
 func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, details domain.BindDetails, asyncAllowed bool) (spec domain.Binding, err error) {
-	logger := b.funcLogger()
-	logger.Infow("Creating binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
+	logger := b.funcLogger().With("instance_id", instanceID, "binding_id", bindingID)
+	logger.Infow("Creating binding", "details", details)
 
 	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
@@ -69,32 +69,32 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	// Fetch the cluster from Atlas to ensure it exists.
 	cluster, _, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
-		logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
+		logger.Errorw("Failed to get existing cluster", "error", err)
 		return
 	}
 
 	// Generate a cryptographically secure random password.
 	password, err := generatePassword()
 	if err != nil {
-		logger.Errorw("Failed to generate password", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+		logger.Errorw("Failed to generate password", "error", err)
 		err = errors.New("failed to generate binding password")
 		return
 	}
 
 	user, err := b.userFromParams(bindingID, password, details.RawParameters, p)
 	if err != nil {
-		logger.Errorw("Couldn't create user from the passed parameters", "error", err, "instance_id", instanceID, "binding_id", bindingID, "details", details)
+		logger.Errorw("Couldn't create user from the passed parameters", "error", err, "details", details)
 		return
 	}
 
 	// Create a new Atlas database user from the generated definition.
 	_, _, err = client.DatabaseUsers.Create(ctx, p.Project.ID, user)
 	if err != nil {
-		logger.Errorw("Failed to create Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+		logger.Errorw("Failed to create Atlas database user", "error", err)
 		return
 	}
 
-	logger.Infow("Successfully created Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
+	logger.Infow("Successfully created Atlas database user")
 
 	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
 	if err != nil {
@@ -130,8 +130,8 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 // Unbind will delete the database user for a specific binding. The database
 // user should have the binding ID as its username.
 func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string, details domain.UnbindDetails, asyncAllowed bool) (spec domain.UnbindSpec, err error) {
-	logger := b.funcLogger()
-	logger.Infow("Releasing binding", "instance_id", instanceID, "binding_id", bindingID, "details", details)
+	logger := b.funcLogger().With("instance_id", instanceID, "binding_id", bindingID)
+	logger.Infow("Releasing binding", "details", details)
 
 	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
@@ -141,18 +141,18 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	// Fetch the cluster from Atlas to ensure it exists.
 	_, _, err = client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
-		logger.Errorw("Failed to get existing cluster", "error", err, "instance_id", instanceID)
+		logger.Errorw("Failed to get existing cluster", "error", err)
 		return
 	}
 
 	// Delete database user which has the binding ID as its username.
 	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
 	if err != nil {
-		logger.Errorw("Failed to delete Atlas database user", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+		logger.Errorw("Failed to delete Atlas database user", "error", err)
 		return
 	}
 
-	logger.Infow("Successfully deleted Atlas database user", "instance_id", instanceID, "binding_id", bindingID)
+	logger.Infow("Successfully deleted Atlas database user")
 
 	spec = domain.UnbindSpec{}
 	return
@@ -161,8 +161,8 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 // GetBinding is currently not supported as specified by the
 // BindingsRetrievable setting in the service catalog.
 func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec domain.GetBindingSpec, err error) {
-	logger := b.funcLogger()
-	logger.Infow("Retrieving binding", "instance_id", instanceID, "binding_id", bindingID)
+	logger := b.funcLogger().With("instance_id", instanceID, "binding_id", bindingID)
+	logger.Infow("Retrieving binding")
 
 	err = apiresponses.NewFailureResponse(fmt.Errorf("unknown binding ID %s", bindingID), 404, "get-binding")
 	return
@@ -189,7 +189,7 @@ func generatePassword() (string, error) {
 }
 
 func (b *Broker) userFromParams(bindingID string, password string, rawParams []byte, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
-	logger := b.funcLogger()
+	logger := b.funcLogger().With("binding_id", bindingID)
 	// Set up a params object which will be used for deserialiation.
 	params := struct {
 		User *mongodbatlas.DatabaseUser `json:"user"`
