@@ -82,34 +82,16 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			Expect(appURL).ShouldNot(BeEmpty())
 		})
 		It("Can send data to cluster and get it back", func() {
-			// appURL = "simple-ruby.apps.sanmarcos.cf-app.com" //TODO remove
-			appURL = fmt.Sprintf("http://%s/service/mongo/test", appURL)
+			// appURL = "simple-ruby.apps.sanmarcos.cf-app.com"
+			URL := fmt.Sprintf("http://%s/service/mongo/test", appURL)
 			ds := `{"data":"somesimpletest130"}` //TODO gen
-			r, err := http.NewRequest("PUT", appURL, strings.NewReader(ds))
-			Expect(err).ShouldNot(HaveOccurred())
-			client := &http.Client{}
 
-			resp, err := client.Do(r)
-			if err != nil {
-				GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
-			}
-			defer resp.Body.Close()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(resp.StatusCode).Should(Equal(200))
+			respCode := putData(URL, ds)
+			Expect(respCode).Should(Equal(200))
 
-			resp, err = http.Get(appURL) //nolint
-			if err != nil {
-				GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
-			}
-			defer resp.Body.Close()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(resp.StatusCode).Should(Equal(200))
-
-			responseData, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				panic(err)
-			}
-			Expect(string(responseData)).To(Equal(ds))
+			respCode, answer := getData(URL)
+			Expect(respCode).Should(Equal(200))
+			Expect(answer).To(Equal(ds))
 		})
 		It("Possible to create service-key", func() {
 			Eventually(cfc.Cf("create-service-key", serviceIns, "atlasKey")).Should(Say("OK"))
@@ -128,7 +110,24 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			waitServiceStatus(serviceIns, "update succeeded")
 		})
 		It("Possible to continue using app after update", func() {
+			// appURL = "simple-app-serial-tests-bc0f0d9-2.apps.sanmarcos.cf-app.com"
+			URL := fmt.Sprintf("http://%s/service/mongo/test", appURL)
+			ds := `{"data":"somesimpletest130"}` //TODO gen
+			respCode, answer := getData(URL)
+			Expect(respCode).Should(Equal(200))
+			Expect(answer).To(Equal(ds))
+		})
+		It("Possible to PUT new data after update", func() {
+			// appURL = "simple-app-serial-tests-bc0f0d9-2.apps.sanmarcos.cf-app.com"
+			URL := fmt.Sprintf("http://%s/service/mongo/test2", appURL)
+			ds := `{"data":"somesimpletest130update"}` //TODO gen
+		
+			respCode := putData(URL, ds)
+			Expect(respCode).Should(Equal(200))
 
+			respCode, answer := getData(URL)
+			Expect(respCode).Should(Equal(200))
+			Expect(answer).To(Equal(ds))
 		})
 		//TODO move to tierdown
 		It("Possible to delete service-key", func() {
@@ -195,4 +194,29 @@ func waitServiceStatus(serviceName string, expectedStatus string) {
 			//TODO call fail
 		}
 	}
+}
+
+func putData(appURL string, ds string) int {
+	r, err := http.NewRequest("PUT", appURL, strings.NewReader(ds))
+	Expect(err).ShouldNot(HaveOccurred())
+	client := &http.Client{}
+
+	resp, err := client.Do(r)
+	if err != nil {
+		GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
+	}
+	defer resp.Body.Close()
+	Expect(err).ShouldNot(HaveOccurred())
+	return resp.StatusCode
+}
+
+func getData(appURL string) (int, string) {
+	resp, err := http.Get(appURL) //nolint
+	if err != nil {
+		GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
+	}
+	Expect(err).ShouldNot(HaveOccurred())
+	defer resp.Body.Close()
+	responseData, _ := ioutil.ReadAll(resp.Body)
+	return resp.StatusCode, string(responseData)
 }
