@@ -17,7 +17,7 @@ postfix=$branch_name-$commit_id
 
 #arguments for actions
 ORG_PREFIX="atlas-test-"
-if [[ $TEST_TYPE == "go" ]]; then #override for go-test, TODO: delete after living only one type of tests
+if [[ $TEST_TYPE == "go" ]]; then #override for go-test, TODO: delete after leaving only one type of tests
     ORG_PREFIX="atlas-gt-"
     postfix="$postfix-2"
     s_post="-go"

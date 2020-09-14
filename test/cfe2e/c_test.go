@@ -171,7 +171,7 @@ func waitForDelete() {
 		time.Sleep(1 * time.Minute) //TODO :\\
 		try++
 		session := cfc.Cf("services")
-		Eventually(session).Should(Exit(0))
+		EventuallyWithOffset(1, session).Should(Exit(0))
 		isDeleted := strings.Contains(string(session.Out.Contents()), "No services found")
 		GinkgoWriter.Write([]byte(fmt.Sprintf("Waiting for deletion (try #%d)", try)))
 
@@ -182,7 +182,7 @@ func waitForDelete() {
 		if try > 13 { //TODO what is our req. for awaiting
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Timeout"))
-			//TODO call fail
+			ExpectWithOffset(1, true).Should(Equal(false)) //TODO call fail
 		}
 	}
 }
@@ -195,8 +195,7 @@ func waitServiceStatus(serviceName string, expectedStatus string) {
 		time.Sleep(1 * time.Minute) //TODO :\\
 		try++
 		s := cfc.Cf("service", serviceName)
-		Eventually(s).Should(Exit(0))
-		// GinkgoWriter.Write(s.Out.Contents())
+		EventuallyWithOffset(1, s).Should(Exit(0))
 		status := string(regexp.MustCompile(`status:\s+(.+)\s+`).FindSubmatch(s.Out.Contents())[1])
 		GinkgoWriter.Write([]byte(fmt.Sprintf("Status is %s (try #%d)", status, try)))
 		if status == expectedStatus {
@@ -206,14 +205,14 @@ func waitServiceStatus(serviceName string, expectedStatus string) {
 		if try > 15 { //TODO ??
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Timeout"))
-			//TODO call fail
+			ExpectWithOffset(1, true).Should(Equal(false)) //TODO call fail
 		}
 	}
 }
 
 func putData(appURL string, ds string) int {
 	r, err := http.NewRequest("PUT", appURL, strings.NewReader(ds))
-	Expect(err).ShouldNot(HaveOccurred())
+	ExpectWithOffset(1, err).ShouldNot(HaveOccurred())
 	client := &http.Client{}
 
 	resp, err := client.Do(r)
@@ -221,7 +220,7 @@ func putData(appURL string, ds string) int {
 		GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
 	}
 	defer resp.Body.Close()
-	Expect(err).ShouldNot(HaveOccurred())
+	ExpectWithOffset(1, err).ShouldNot(HaveOccurred())
 	return resp.StatusCode
 }
 
@@ -230,7 +229,7 @@ func getData(appURL string) (int, string) {
 	if err != nil {
 		GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
 	}
-	Expect(err).ShouldNot(HaveOccurred())
+	ExpectWithOffset(1, err).ShouldNot(HaveOccurred())
 	defer resp.Body.Close()
 	responseData, _ := ioutil.ReadAll(resp.Body)
 	return resp.StatusCode, string(responseData)
