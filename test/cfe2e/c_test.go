@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"strconv"
 
 	"github.com/go-git/go-git/v5"
 	. "github.com/onsi/ginkgo"
@@ -99,15 +100,26 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) //TODO !
 		})
 		It("Backup is active as default", func() {
-			AC = AClient()
+			path := fmt.Sprintf("data/%s.yml.tpl", planName)
+			backup := getBackupStateFromPlanConfig(path)
+
+			AC := AClient()
 			projectInfo, _, _ := AC.Projects.GetOneProjectByName(context.Background(), serviceIns)
-			clusterInfo, _, _ := AC.Clusters.Get(context.Background(), projectInfo.ID, serviceIns)
-			// "providerBackupEnabled": false,
-			Expect(clusterInfo.ProviderBackupEnabled).Should(PointTo(Equal(true))) //TODO from plan configuration
+			clusterInfo, _, _ := AC.Clusters.Get(context.Background(), projectInfo.ID, serviceIns)			
+			Expect(clusterInfo.ProviderBackupEnabled).To(PointTo(Equal(backup)))
 		})
 		It("Can scale cluster size", func() {
+			newSize := "M20"
 			Eventually(cfc.Cf("update-service", serviceIns, "-c", "{\"instance_size\":\"M20\"}")).Should(Say("OK"))
 			waitServiceStatus(serviceIns, "update succeeded")
+
+			// get the real size
+			AC := AClient()		
+			projectInfo, _, err := AC.Projects.GetOneProjectByName(context.Background(), serviceIns)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(projectInfo.ID).ShouldNot(BeEmpty())
+			clusterInfo, _, _ := AC.Clusters.Get(context.Background(), projectInfo.ID, serviceIns)
+			Expect(clusterInfo.ProviderSettings.InstanceSizeName).Should(Equal(newSize))
 		})
 		It("Possible to continue using app after update", func() {
 			// appURL = "simple-app-serial-tests-bc0f0d9-2.apps.sanmarcos.cf-app.com"
@@ -145,6 +157,9 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 		})
 		It("Possible to delete Service broker", func() {
 			Eventually(cfc.Cf("delete-service-broker", broker, "-f")).Should(Say("OK"))
+		})
+		It("Possible to delete broker application", func() {
+			Eventually(cfc.Cf("delete", brokerApp, "-f")).Should(Say("OK"))
 		})
 	})
 })
@@ -219,4 +234,14 @@ func getData(appURL string) (int, string) {
 	defer resp.Body.Close()
 	responseData, _ := ioutil.ReadAll(resp.Body)
 	return resp.StatusCode, string(responseData)
+}
+
+func getBackupStateFromPlanConfig(path string) bool {
+	config, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	match := "providerBackupEnabled: .+ \"(.+)\" .+"
+	backup, _ := strconv.ParseBool(string(regexp.MustCompile(match).FindSubmatch(config)[1]))
+	return backup
 }

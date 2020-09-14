@@ -48,7 +48,7 @@ const (
 	CFEventuallyTimeout   = 60 * time.Second
 	CFConsistentlyTimeout = 60 * time.Millisecond
 	TKey                  = "testKey" //TODO get it from the plan
-	tPath                 = "./samples/plans"
+	tPath                 = "./test/cfe2e/data"
 	mPlaceName            = "atlas"
 )
 
@@ -56,7 +56,6 @@ var (
 	homeDir    string //nolint
 	APIKeys    KeyList
 	PCFKeys    PCF
-	AC         *mongodbatlas.Client
 	orgName    string
 	brokerURL  string
 	appURL     string

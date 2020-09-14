@@ -7,6 +7,7 @@ on: [delete]
 name: Clean CF
 
 env:
+  BRANCH: ${{ github.event.ref }}
   TYPE: ${{ github.event.ref_type }}
 
 jobs:

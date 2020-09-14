@@ -5,7 +5,7 @@ source ".github/base-dockerfile/helpers/params.sh"
 
 #final cleaning
 if [[ "$TYPE" == "branch" ]]; then
-    echo "$TYPE $branch_name will be deleted"
+    echo "$TYPE's orgs $branch_name will be deleted"
 
     cf_login
     cf target -o "$ORG_NAME"

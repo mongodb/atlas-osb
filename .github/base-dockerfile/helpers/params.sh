@@ -1,6 +1,12 @@
 #shellcheck shell=bash disable=SC2034
 
-branch_name=$(echo "$GITHUB_REF" | awk -F'/' '{print $3}')
+#make `act` -e works
+if [[ ! -z $BRANCH ]]
+then
+    branch_name=$BRANCH
+else
+    branch_name=$(echo "$GITHUB_REF" | awk -F'/' '{print $3}')
+fi
 branch_name=${branch_name:0:26} #service name max length is 50 symbols minus prefixes
 # instance_name is used for Atlas project & cluster name, but cluster names need to follow
 # The name can only contain ASCII letters, numbers, and hyphens.
