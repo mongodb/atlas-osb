@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 
 	"github.com/go-git/go-git/v5"
 	. "github.com/onsi/ginkgo"
@@ -105,7 +105,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 
 			AC := AClient()
 			projectInfo, _, _ := AC.Projects.GetOneProjectByName(context.Background(), serviceIns)
-			clusterInfo, _, _ := AC.Clusters.Get(context.Background(), projectInfo.ID, serviceIns)			
+			clusterInfo, _, _ := AC.Clusters.Get(context.Background(), projectInfo.ID, serviceIns)
 			Expect(clusterInfo.ProviderBackupEnabled).To(PointTo(Equal(backup)))
 		})
 		It("Can scale cluster size", func() {
@@ -114,7 +114,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			waitServiceStatus(serviceIns, "update succeeded")
 
 			// get the real size
-			AC := AClient()		
+			AC := AClient()
 			projectInfo, _, err := AC.Projects.GetOneProjectByName(context.Background(), serviceIns)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(projectInfo.ID).ShouldNot(BeEmpty())
@@ -133,7 +133,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			// appURL = "simple-app-serial-tests-bc0f0d9-2.apps.sanmarcos.cf-app.com"
 			URL := fmt.Sprintf("http://%s/service/mongo/test2", appURL)
 			ds := `{"data":"somesimpletest130update"}` //TODO gen
-		
+
 			respCode := putData(URL, ds)
 			Expect(respCode).Should(Equal(200))
 
