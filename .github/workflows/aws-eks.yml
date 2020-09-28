@@ -27,7 +27,7 @@ on: [workflow_dispatch]
   
 name: Deploy to Amazon ECS
 
-jobs: aws-ecr-job
+jobs:
   aws-ecr:
     name: 
     runs-on: ubuntu-latest
