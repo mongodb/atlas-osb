@@ -22,7 +22,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.6.1
 	github.com/xdg/stringprep v1.0.0 // indirect
-	go.mongodb.org/atlas v0.4.0
+	go.mongodb.org/atlas v0.4.1-0.20200925175827-e50596dbdf29
 	go.mongodb.org/mongo-driver v1.4.1
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect

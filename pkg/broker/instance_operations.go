@@ -273,8 +273,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		logger.Errorw("Error insert one from state", "err", err, "s", s)
 		return
 	}
-	//
-	//s, err := b.state.UpdateOne(instanceID,
+
 	logger.Infow("Inserted into state", "obj", obj)
 	logger.Infow("Successfully started Atlas cluster update process", "cluster", resultingCluster)
 
@@ -408,7 +407,17 @@ func (b *Broker) performOperation(ctx context.Context, planContext dynamicplans.
 
 	case "RemoveUserFromProject":
 		// TODO
-		b.funcLogger().Error("Atlas API does not support user removal")
+		email, ok := planContext["email"].(string)
+		if !ok {
+			return errors.New("")
+		}
+		u, _, err := client.AtlasUsers.GetByName(ctx, email)
+		if err != nil {
+			return err
+		}
+
+		_, err = client.Projects.RemoveUserFromProject(ctx, p.Project.ID, u.ID)
+		return err
 
 	default:
 		return fmt.Errorf("unknown operation %q", op)
