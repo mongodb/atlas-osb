@@ -208,6 +208,16 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}, err
 	}
 
+	// special case: perform update operations
+	if op, ok := planContext["op"].(string); ok {
+		err = b.performOperation(ctx, planContext, client, op)
+		return domain.UpdateServiceSpec{
+			IsAsync:       false, // feature spec: "[the broker] will not maintain ANY state of the list of users in an Atlas project", so no "in progress" indicator
+			OperationData: operationUpdate,
+			DashboardURL:  b.GetDashboardURL(oldPlan.Project.ID, oldPlan.Cluster.Name),
+		}, err
+	}
+
 	// Fetch the cluster from Atlas. The Atlas API requires an instance size to
 	// be passed during updates (if there are other update to the provider, such
 	// as region). The plan is not included in the OSB call unless it has changed
@@ -346,6 +356,57 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 	}
 
 	return domain.GetInstanceDetailsSpec{}, errors.New("cannot find instance in maintenance DB(s): no instances found")
+}
+
+func (b *Broker) performOperation(ctx context.Context, planContext dynamicplans.Context, client *mongodbatlas.Client, op string) error {
+	userFromContext := func() (u *mongodbatlas.AtlasUser, err error) {
+		email, ok := planContext["email"].(string)
+		if !ok {
+			return nil, fmt.Errorf("email should be string, got %T", planContext["email"])
+		}
+
+		password, ok := planContext["password"].(string)
+		if !ok {
+			password, err = generatePassword()
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return &mongodbatlas.AtlasUser{
+			EmailAddress: email,
+			Password:     password,
+		}, nil
+	}
+
+	switch op {
+	case "AddUserToProject":
+		u, err := userFromContext()
+		if err != nil {
+			return err
+		}
+
+		_, _, err = client.AtlasUsers.Create(ctx, u)
+		if err != nil {
+			return err
+		}
+
+	case "RemoveUserFromProject":
+		u, err := userFromContext()
+		if err != nil {
+			return err
+		}
+
+		_, _, err = client.AtlasUsers.Create(ctx, u)
+		if err != nil {
+			return err
+		}
+
+	default:
+		return fmt.Errorf("unknown operation %q", op)
+	}
+
+	return nil
 }
 
 // LastOperation should fetch the state of the provision/deprovision

@@ -24,17 +24,19 @@ import (
 
 // Plan represents a set of MongoDB Atlas resources
 type Plan struct {
-	Version             string                             `json:"version,omitempty"`
-	Name                string                             `json:"name,omitempty"`
-	Description         string                             `json:"description,omitempty"`
-	Free                *bool                              `json:"free,omitempty"`
-	APIKey              *credentials.APIKey                `json:"apiKey,omitempty"`
-	Project             *mongodbatlas.Project              `json:"project,omitempty"`
-	Cluster             *mongodbatlas.Cluster              `json:"cluster,omitempty"`
-	DatabaseUsers       []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
-	IPWhitelists        []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
-	DefaultBindingRoles *[]mongodbatlas.Role               `json:"defaultBindingRoles"`
-	Bindings            []*Binding                         `json:"bindings,omitempty"` // READ ONLY! Populated by bind()
+	Version       string                             `json:"version,omitempty"`
+	Name          string                             `json:"name,omitempty"`
+	Description   string                             `json:"description,omitempty"`
+	Free          *bool                              `json:"free,omitempty"`
+	APIKey        *credentials.APIKey                `json:"apiKey,omitempty"`
+	Project       *mongodbatlas.Project              `json:"project,omitempty"`
+	Cluster       *mongodbatlas.Cluster              `json:"cluster,omitempty"`
+	DatabaseUsers []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
+	IPWhitelists  []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
+
+	// TODO: what's this?
+	// DefaultBindingRoles *[]mongodbatlas.Role               `json:"defaultBindingRoles"`
+	// Bindings            []*Binding                         `json:"bindings,omitempty"` // READ ONLY! Populated by bind()
 
 	Settings map[string]string `json:"settings,omitempty"`
 }
