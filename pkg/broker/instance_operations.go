@@ -212,7 +212,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 
 	// special case: perform update operations
 	if op, ok := planContext["op"].(string); ok {
-		err = b.performOperation(ctx, planContext, client, oldPlan, op)
+		err = b.performOperation(ctx, client, planContext, oldPlan, op)
 		return domain.UpdateServiceSpec{
 			IsAsync:       false, // feature spec: "[the broker] will not maintain ANY state of the list of users in an Atlas project", so no "in progress" indicator
 			OperationData: operationUpdate,
@@ -357,73 +357,6 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 	}
 
 	return domain.GetInstanceDetailsSpec{}, errors.New("cannot find instance in maintenance DB(s): no instances found")
-}
-
-func (b *Broker) performOperation(ctx context.Context, planContext dynamicplans.Context, client *mongodbatlas.Client, p *dynamicplans.Plan, op string) error {
-	userFromContext := func() (u *mongodbatlas.AtlasUser, err error) {
-		email, ok := planContext["email"].(string)
-		if !ok {
-			return nil, fmt.Errorf("email should be string, got %T", planContext["email"])
-		}
-
-		password, ok := planContext["password"].(string)
-		if !ok {
-			password, err = generatePassword()
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		role := p.Settings[overrideAtlasUserRole]
-		if role == "" {
-			role = "GROUP_READ_ONLY"
-		}
-
-		return &mongodbatlas.AtlasUser{
-			EmailAddress: email,
-			Password:     password,
-			Country:      "US",
-			Username:     email,
-			Roles: []mongodbatlas.AtlasRole{
-				{
-					GroupID:  p.Project.ID,
-					RoleName: role,
-				},
-			},
-		}, nil
-	}
-
-	switch op {
-	case "AddUserToProject":
-		u, err := userFromContext()
-		if err != nil {
-			return err
-		}
-
-		_, _, err = client.AtlasUsers.Create(ctx, u)
-		if err != nil {
-			return err
-		}
-
-	case "RemoveUserFromProject":
-		// TODO
-		email, ok := planContext["email"].(string)
-		if !ok {
-			return errors.New("")
-		}
-		u, _, err := client.AtlasUsers.GetByName(ctx, email)
-		if err != nil {
-			return err
-		}
-
-		_, err = client.Projects.RemoveUserFromProject(ctx, p.Project.ID, u.ID)
-		return err
-
-	default:
-		return fmt.Errorf("unknown operation %q", op)
-	}
-
-	return nil
 }
 
 // LastOperation should fetch the state of the provision/deprovision
