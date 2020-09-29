@@ -1,7 +1,7 @@
 # Destroy clusters from organization
 
 on:
-    workflow_dispatch:
+  workflow_dispatch:
 
 name: Cluster Reaper
 
@@ -14,5 +14,5 @@ jobs:
       - name: delete clusters and projects
         uses: ./.github/actions/reaper
         with:
-          public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
-          private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
+          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
