@@ -7,11 +7,8 @@ applications:
       - https://github.com/cloudfoundry/go-buildpack.git
     env:
       GOVERSION: "1.15"
-      APPD_AGENT: golang
       BROKER_HOST: "0.0.0.0"
       BROKER_PORT: "8080"
       ATLAS_BROKER_TEMPLATEDIR: "samples/plans"
       BROKER_OSB_SERVICE_NAME: "atlas"
       BROKER_APIKEYS: "samples/apikeys-config.json"
-    services:
-      # - appd
