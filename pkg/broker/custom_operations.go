@@ -24,6 +24,16 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		}
 	}
 
+	firstName, ok := planContext["firstName"].(string)
+	if !ok {
+		return fmt.Errorf("firstName should be string, got %T = %v", planContext["firstName"], planContext["firstName"])
+	}
+
+	lastName, ok := planContext["lastName"].(string)
+	if !ok {
+		return fmt.Errorf("lastName should be string, got %T = %v", planContext["lastName"], planContext["lastName"])
+	}
+
 	role := p.Settings[overrideAtlasUserRole]
 	if role == "" {
 		role = "GROUP_READ_ONLY"
@@ -34,6 +44,8 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		Password:     password,
 		Country:      "US",
 		Username:     email,
+		FirstName:    firstName,
+		LastName:     lastName,
 		Roles: []mongodbatlas.AtlasRole{
 			{
 				GroupID:  p.Project.ID,

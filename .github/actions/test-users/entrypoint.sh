@@ -14,8 +14,9 @@ cf create-space "$SPACE_NAME" && cf target -s "$SPACE_NAME"
 password=$(date | md5sum)
 user_email="test12323ao@gmail.com"
 
-cf update-service "${SERVICE_ATLAS_RENAME}" -c '{ "op" : "AddUserToProject", "email" : "'"${user_email}"'", "password" : "'"${password}"'"}'
+cf update-service "${SERVICE_ATLAS_RENAME}" -c '{ "op" : "AddUserToProject", "email" : "'"${user_email}"'", "password" : "'"${password}"'", "firstName":"Test1", "lastName":"Test1"}'
 check_service_update "$SERVICE_ATLAS_RENAME"
+#TODO 
 users=$(get_org_users "${INPUT_ATLAS_ORG_ID}")
 status=$(echo "${users}" | awk '/'\"username\"'[: ]*'\"${user_email}\"'/{print "exist"}')
 assert_equal "${status}" "exist"
@@ -23,18 +24,7 @@ echo "User created"
 
 cf update-service "${SERVICE_ATLAS_RENAME}" -c '{ "op" : "RemoveUserFromProject", "email" : "'"${user_email}"'"}'
 check_service_update "$SERVICE_ATLAS_RENAME"
+projectID=$(get_projects | jq '.results[] | select(.name=="'"${SERVICE_ATLAS}"'") | .id')
 users=$(get_org_users "${INPUT_ATLAS_ORG_ID}")
-
-for elkey in $(echo "$users" | jq '.results | keys | .[]'); do
-    user=$(echo "$users" | jq ".results[$elkey]")
-    username=$(echo "$user" | jq -r '.username')
-    if [[ $username == ${user_email} ]]; then
-        for rolekey in $(echo "$user" | jq '.roles | keys | .[]'); do
-            el=$(echo "$user" | jq ".roles[$rolekey]")
-            orgId=$(echo "$el" | jq -r '.orgId')
-            # role=$(echo "$el" | jq -r '.roleName')
-            echo "Check if user doesn't have organization in the list"
-            assert_not_equal $orgId ${INPUT_ATLAS_ORG_ID}
-        done
-    fi
-done
+project=$(echo "${users}" | jq '.results[] | select(.emailAddress=="'"${user_email}"'") | .roles[] | select(.groupId=='"${projectID}"') ')
+assert_equal "${project}" ""
