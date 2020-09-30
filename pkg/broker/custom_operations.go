@@ -76,7 +76,8 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		return err
 	}
 
-	u.Roles = append(u.Roles, mongodbatlas.AtlasRole{
+	req := new(mongodbatlas.AtlasUser)
+	req.Roles = append(u.Roles, mongodbatlas.AtlasRole{
 		GroupID:  p.Project.ID,
 		RoleName: role,
 	})
