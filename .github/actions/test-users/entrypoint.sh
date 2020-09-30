@@ -11,12 +11,11 @@ cf create-org "$ORG_NAME" && cf target -o "$ORG_NAME"
 cf create-space "$SPACE_NAME" && cf target -s "$SPACE_NAME"
 
 #check users
-password=$(date | md5sum)
 user_email="test12323ao@gmail.com"
 
-cf update-service "${SERVICE_ATLAS_RENAME}" -c '{ "op" : "AddUserToProject", "email" : "'"${user_email}"'", "password" : "'"${password}"'", "firstName":"Test1", "lastName":"Test1"}'
+cf update-service "${SERVICE_ATLAS_RENAME}" -c '{ "op" : "AddUserToProject", "email" : "'"${user_email}"'"}'
 check_service_update "$SERVICE_ATLAS_RENAME"
-#TODO 
+#TODO
 users=$(get_org_users "${INPUT_ATLAS_ORG_ID}")
 status=$(echo "${users}" | awk '/'\"username\"'[: ]*'\"${user_email}\"'/{print "exist"}')
 assert_equal "${status}" "exist"

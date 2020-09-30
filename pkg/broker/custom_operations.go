@@ -26,12 +26,17 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 
 	firstName, ok := planContext["firstName"].(string)
 	if !ok {
-		return fmt.Errorf("firstName should be string, got %T = %v", planContext["firstName"], planContext["firstName"])
+		firstName = "Unnamed"
 	}
 
 	lastName, ok := planContext["lastName"].(string)
 	if !ok {
-		return fmt.Errorf("lastName should be string, got %T = %v", planContext["lastName"], planContext["lastName"])
+		lastName = "Unnamed"
+	}
+
+	country, ok := planContext["country"].(string)
+	if !ok {
+		country = "US"
 	}
 
 	role := p.Settings[overrideAtlasUserRole]
@@ -42,7 +47,7 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 	u := &mongodbatlas.AtlasUser{
 		EmailAddress: email,
 		Password:     password,
-		Country:      "US",
+		Country:      country,
 		Username:     email,
 		FirstName:    firstName,
 		LastName:     lastName,
