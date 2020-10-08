@@ -35,6 +35,8 @@ const (
 	operationProvision   = "provision"
 	operationDeprovision = "deprovision"
 	operationUpdate      = "update"
+
+	overrideAtlasUserRole = "overrideAtlasUserRole"
 )
 
 // Provision will create a new Atlas cluster with the instance ID as its name.
@@ -208,6 +210,16 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}, err
 	}
 
+	// special case: perform update operations
+	if op, ok := planContext["op"].(string); ok {
+		err = b.performOperation(ctx, client, planContext, oldPlan, op)
+		return domain.UpdateServiceSpec{
+			IsAsync:       false, // feature spec: "[the broker] will not maintain ANY state of the list of users in an Atlas project", so no "in progress" indicator
+			OperationData: operationUpdate,
+			DashboardURL:  b.GetDashboardURL(oldPlan.Project.ID, oldPlan.Cluster.Name),
+		}, err
+	}
+
 	// Fetch the cluster from Atlas. The Atlas API requires an instance size to
 	// be passed during updates (if there are other update to the provider, such
 	// as region). The plan is not included in the OSB call unless it has changed
@@ -261,8 +273,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		logger.Errorw("Error insert one from state", "err", err, "s", s)
 		return
 	}
-	//
-	//s, err := b.state.UpdateOne(instanceID,
+
 	logger.Infow("Inserted into state", "obj", obj)
 	logger.Infow("Successfully started Atlas cluster update process", "cluster", resultingCluster)
 

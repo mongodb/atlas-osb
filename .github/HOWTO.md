@@ -25,6 +25,7 @@ Active workflows for operating.
 - `deploy-broker.yml` deploy broker to CF
 - `reaper.yml` delete clusters from Atlas
 - `create-release-package.yml` create a release
+- `test-org-user.yml` copy of `deploy-broker.yml` additionally, it includes a check to create org users by broker
 
 # Using GitHub Actions locally
 Tools for successfully running pipeline locally:
@@ -58,4 +59,10 @@ Also, `act` can use [event payload](https://developer.github.com/webhooks/event-
 
 ```
 act delete -e delete.json
+```
+
+for running pipeline `test-org-user.yml` we can run a separate job
+
+```
+act -j check-users
 ```

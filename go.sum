@@ -237,13 +237,15 @@ github.com/stretchr/testify v1.6.1 h1:hDPOHmpOpP40lSULcqw7IrRb/u7w6RpDC9399XyoNd
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/tidwall/pretty v1.0.0 h1:HsD+QiTn7sK6flMKIvNmpqz1qrpP3Ps6jOKIKMooyg4=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
+github.com/vasilevp/go-client-mongodb-atlas v0.4.0 h1:xDTXrskbkFoVauNVo74ZltoO3gULl5cN8fQrTY4tsGM=
+github.com/vasilevp/go-client-mongodb-atlas v0.4.0/go.mod h1:QlKvZKT43+R6lhHlaTy2E7Q/3AoAljMI6v5apfqslIs=
+github.com/vasilevp/go-client-mongodb-atlas v0.4.1-0.20200929173204-8ad4fb0f428e h1:NXrmaH12XjCQTgH7c5NGYRrejwp7qq47xgGoaXyx1JU=
+github.com/vasilevp/go-client-mongodb-atlas v0.4.1-0.20200929173204-8ad4fb0f428e/go.mod h1:CIaBeO8GLHhtYLw7xSSXsw7N90Z4MFY87Oy9qcPyuEs=
 github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c h1:u40Z8hqBAAQyv+vATcGgV0YCnDjqSL7/q/JyPhhJSPk=
 github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c/go.mod h1:lB8K/P019DLNhemzwFU4jHLhdvlE6uDZjXFejJXr49I=
 github.com/xdg/stringprep v0.0.0-20180714160509-73f8eece6fdc/go.mod h1:Jhud4/sHMO4oL310DaZAKk9ZaJ08SJfe+sJh0HrGL1Y=
 github.com/xdg/stringprep v1.0.0 h1:d9X0esnoa3dFsV0FG35rAT0RIhYFlPq7MiP+DW89La0=
 github.com/xdg/stringprep v1.0.0/go.mod h1:Jhud4/sHMO4oL310DaZAKk9ZaJ08SJfe+sJh0HrGL1Y=
-go.mongodb.org/atlas v0.4.0 h1:XTRposWn5XHKDXswMcOtqMRQnVdFPJ8ISaOD7qGWuy4=
-go.mongodb.org/atlas v0.4.0/go.mod h1:QlKvZKT43+R6lhHlaTy2E7Q/3AoAljMI6v5apfqslIs=
 go.mongodb.org/mongo-driver v1.4.1 h1:38NSAyDPagwnFpUA/D5SFgbugUYR3NzYRNa4Qk9UxKs=
 go.mongodb.org/mongo-driver v1.4.1/go.mod h1:llVBH2pkj9HywK0Dtdt6lDikOjFLbceHVu/Rc0iMKLs=
 go.uber.org/atomic v1.6.0 h1:Ezj3JGmsOnG1MoRWQkPBsKLe9DwWD9QeXzTRzzldNVk=

@@ -2,6 +2,8 @@ module github.com/mongodb/atlas-osb
 
 go 1.11
 
+replace go.mongodb.org/atlas => github.com/vasilevp/go-client-mongodb-atlas v0.4.1-0.20200929173204-8ad4fb0f428e
+
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/Masterminds/sprig/v3 v3.1.0
@@ -39,5 +41,3 @@ require (
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1 // indirect
 	sigs.k8s.io/go-open-service-broker-client/v2 v2.0.0-20200706192557-3a0d26033ee6
 )
-
-replace github.com/mongodb/go-client => ../go-client-mongodb-atlas
