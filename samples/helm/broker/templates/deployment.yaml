@@ -1,0 +1,63 @@
+---
+# Deployment to run the service broker.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-service-broker
+  labels:
+    app: {{ .Release.Name }}-service-broker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-service-broker
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-service-broker
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-service-broker
+          image: {{ .Values.image }}
+          ports:
+            - containerPort: 4000
+          env:
+            - name: BROKER_HOST
+              value: "0.0.0.0"
+            - name: BROKER_PORT
+              value: "4000"
+            - name: BROKER_OSB_SERVICE_NAME
+              value: {{ .Values.broker.deployment.serviceName }}
+            - name: BROKER_APIKEYS
+              value: "/etc/data/keys/apikeys.json"
+            - name: ATLAS_BROKER_TEMPLATEDIR
+              value: "/etc/data/plans"
+          volumeMounts:
+            - name: apikeys
+              mountPath: "/etc/data/keys"
+            - name: plans
+              mountPath: "/etc/data/plans"
+      volumes:
+        - name: apikeys
+          secret:
+            secretName: {{ .Release.Name }}-auth
+        - name: plans
+          configMap:
+            name: plans
+
+---
+# Service to expose the service broker inside the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-service-broker
+  labels:
+    app: {{ .Release.Name }}-service-broker
+spec:
+  selector:
+    # Will match pods deployed by the "atlas-service-broker" deployment.
+    app: {{ .Release.Name }}-service-broker
+  ports:
+    - protocol: TCP
+      port: 4000
+      targetPort: 4000

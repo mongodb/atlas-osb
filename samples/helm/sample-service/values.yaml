@@ -1,0 +1,22 @@
+# This default values file contains
+# settings for the following components:
+# 
+# - MongoDB Atlas Open Service Broker
+#
+# - 1 MongoDB Atlas cluster
+#
+
+#credentials for deployed broker
+
+broker:
+  auth:
+    username: "admin" 
+    password: "admin"
+  deployment:
+    serviceName: "atlas"
+
+cluster:
+  serviceName: "test1"
+  planName: override-bind-db-plan
+  region: US_EAST_1
+  provider: AWS

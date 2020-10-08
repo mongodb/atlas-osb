@@ -1,0 +1,7 @@
+#Please put the name of instance service and broker port
+broker:
+  deployment:
+    port: "8080"
+
+service:
+  name: "atlas-inst"
