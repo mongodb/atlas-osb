@@ -38,7 +38,7 @@ type Plan struct {
 	// DefaultBindingRoles *[]mongodbatlas.Role               `json:"defaultBindingRoles"`
 	// Bindings            []*Binding                         `json:"bindings,omitempty"` // READ ONLY! Populated by bind()
 
-	Settings map[string]string `json:"settings,omitempty"`
+	Settings map[string]interface{} `json:"settings,omitempty"`
 }
 
 func (p *Plan) SafeCopy() Plan {

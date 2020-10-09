@@ -35,8 +35,10 @@ const (
 	operationProvision   = "provision"
 	operationDeprovision = "deprovision"
 	operationUpdate      = "update"
+)
 
-	overrideAtlasUserRole = "overrideAtlasUserRole"
+const (
+	overrideAtlasUserRoles = "overrideAtlasUserRoles"
 )
 
 // Provision will create a new Atlas cluster with the instance ID as its name.

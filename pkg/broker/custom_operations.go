@@ -39,9 +39,17 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		country = "US"
 	}
 
-	role := p.Settings[overrideAtlasUserRole]
-	if role == "" {
-		role = "GROUP_READ_ONLY"
+	roleNames, ok := p.Settings[overrideAtlasUserRoles].([]string)
+	if !ok {
+		roleNames = []string{"GROUP_READ_ONLY"}
+	}
+
+	roles := make([]mongodbatlas.AtlasRole, 0, len(roleNames))
+	for _, r := range roleNames {
+		roles = append(roles, mongodbatlas.AtlasRole{
+			GroupID:  p.Project.ID,
+			RoleName: r,
+		})
 	}
 
 	u := &mongodbatlas.AtlasUser{
@@ -51,12 +59,7 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		Username:     email,
 		FirstName:    firstName,
 		LastName:     lastName,
-		Roles: []mongodbatlas.AtlasRole{
-			{
-				GroupID:  p.Project.ID,
-				RoleName: role,
-			},
-		},
+		Roles:        roles,
 	}
 
 	_, r, err := client.AtlasUsers.Create(ctx, u)
@@ -76,10 +79,7 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		return err
 	}
 
-	_, _, err = client.AtlasUsers.Update(ctx, u.ID, []mongodbatlas.AtlasRole{{
-		GroupID:  p.Project.ID,
-		RoleName: role,
-	}})
+	_, _, err = client.AtlasUsers.Update(ctx, u.ID, roles)
 	return err
 }
 
