@@ -34,7 +34,7 @@ jobs:
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
 
       - name: Check users
-        id: prepare
+        id: check
         uses: ./.github/actions/test-users
         with:
           cf_api: ${{ secrets.CF_API }}
