@@ -38,12 +38,12 @@ var (
 	ErrInstanceNotFound = errors.New("unable to find instance in state storage")
 )
 
-//type StateStorage interface {
+// type StateStorage interface {
 //    FindOne(context.Context, string)                   (*map[string]interface{}, error)
 //    InsertOne(context.Context, string, interface{})    (*map[string]interface{}, error)
 //    DeleteOne(context.Context, string)                 (error)
-//
-//}
+
+// }
 
 type RealmStateStorage struct {
 	OrgID        string `json:"orgId,omitempty"`

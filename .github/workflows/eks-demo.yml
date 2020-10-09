@@ -1,0 +1,21 @@
+#demo: deploy atlas-osb to kubernetis cluster
+
+on:
+  workflow_dispatch:
+
+name: K8s Demo
+
+jobs:
+  eksdemo:
+    name: Deploy to eks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Push atlas-osb to Docker Hub
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: leori/atlas-osb
+          tag_with_ref: true

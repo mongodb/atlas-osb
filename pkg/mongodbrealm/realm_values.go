@@ -63,9 +63,9 @@ type RealmValue struct {
 }
 
 // realmValuesResponse is the response from the RealmValuesService.List.
-//type realmValuesResponse struct {
+// type realmValuesResponse struct {
 //        Apps []RealmValue
-//}
+// }
 
 // List all API-KEY in the organization associated to {ORG-ID}.
 // See more: https://docs.atlas.mongodb.com/reference/api/apiKeys-orgs-get-all/

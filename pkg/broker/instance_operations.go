@@ -261,8 +261,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		logger.Errorw("Error insert one from state", "err", err, "instanceID", instanceID, "s", s)
 		return
 	}
-	//
-	//s, err := b.state.UpdateOne(instanceID,
+
 	logger.Infow("Inserted into state", "obj", obj)
 	logger.Infow("Successfully started Atlas cluster update process", "instance_id", instanceID, "cluster", resultingCluster)
 

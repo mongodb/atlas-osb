@@ -42,6 +42,8 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s CF_PASSWORD=<password>
 -s CF_API=api.something
 -s CF_USER=<user>
+-s DOCKERHUB_USERNAME=<...>
+-s DOCKERHUB_TOKEN=<...>
 ```
 
 Now simply call:

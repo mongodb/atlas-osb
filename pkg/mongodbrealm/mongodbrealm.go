@@ -133,15 +133,15 @@ func (resp *Response) IsLastPage() bool {
 
 // CurrentPage gets the current page for list pagination request.
 func (resp *Response) CurrentPage() (int, error) {
-	//link, err := resp.getCurrentPageLink()
-	//if err != nil {
-	//	return 0, err
-	//}
+	// link, err := resp.getCurrentPageLink()
+	// if err != nil {
+	// 	return 0, err
+	// }
 
-	//pageNumStr, err := link.getHrefQueryParam("pageNum")
-	//if err != nil {
-	//	return 0, err
-	//}
+	// pageNumStr, err := link.getHrefQueryParam("pageNum")
+	// if err != nil {
+	// 	return 0, err
+	// }
 	pageNumStr := "0"
 	pageNum, err := strconv.Atoi(pageNumStr)
 	if err != nil {
