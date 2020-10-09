@@ -43,16 +43,21 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		country = "US"
 	}
 
-	roleNames, ok := p.Settings[overrideAtlasUserRoles].([]string)
+	roleNames, ok := p.Settings[overrideAtlasUserRoles].([]interface{})
 	if !ok {
-		roleNames = []string{"GROUP_READ_ONLY"}
+		roleNames = []interface{}{"GROUP_READ_ONLY"}
 	}
 
 	roles := make([]mongodbatlas.AtlasRole, 0, len(roleNames))
 	for _, r := range roleNames {
+		role, ok := r.(string)
+		if !ok {
+			return fmt.Errorf("role name must be a string, got %v (%T)", r, r)
+		}
+
 		roles = append(roles, mongodbatlas.AtlasRole{
 			GroupID:  p.Project.ID,
-			RoleName: r,
+			RoleName: role,
 		})
 	}
 
