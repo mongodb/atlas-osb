@@ -44,6 +44,8 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s CF_USER=<user>
 -s DOCKERHUB_USERNAME=<...>
 -s DOCKERHUB_TOKEN=<...>
+-s AWS_ACCESS_KEY=<...>
+-s AWS_SECRET_KEY=<...>
 ```
 
 Now simply call:
