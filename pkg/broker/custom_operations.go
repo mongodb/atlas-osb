@@ -9,6 +9,10 @@ import (
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
+const (
+	overrideAtlasUserRoles = "overrideAtlasUserRoles"
+)
+
 func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Client, planContext dynamicplans.Context, p *dynamicplans.Plan) error {
 	email, ok := planContext["email"].(string)
 	if !ok {

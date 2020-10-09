@@ -17,7 +17,6 @@ package dynamicplans
 import (
 	"encoding/json"
 
-	"github.com/jinzhu/copier"
 	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
@@ -42,8 +41,13 @@ type Plan struct {
 }
 
 func (p *Plan) SafeCopy() Plan {
+	b, err := json.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+
 	safe := Plan{}
-	err := copier.Copy(&safe, p)
+	err = json.Unmarshal(b, &safe)
 	if err != nil {
 		panic(err)
 	}
@@ -62,10 +66,9 @@ func (p *Plan) SafeCopy() Plan {
 }
 
 func (p Plan) String() string {
-	s, _ := json.Marshal(p)
+	s, err := json.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
 	return string(s)
-}
-
-// Binding info
-type Binding struct {
 }

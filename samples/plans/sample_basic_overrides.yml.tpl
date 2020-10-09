@@ -4,8 +4,8 @@ free: true
 apiKey: {{ keyByAlias .credentials "testKey" }}
 settings:
   overrideBindDB: "OriginalMongoDBTileForPCFDBName"
-  overrideBindDBRole: "readWrite" 
-  overrideAtlasUserRoles: [GROUP_READ_ONLY]
+  overrideBindDBRole: "readWrite"
+  overrideAtlasUserRoles: [GROUP_OWNER]
 project:
   name: {{ .instance_name }}
   desc: Created from a template

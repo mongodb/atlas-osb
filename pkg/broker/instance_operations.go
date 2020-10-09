@@ -37,10 +37,6 @@ const (
 	operationUpdate      = "update"
 )
 
-const (
-	overrideAtlasUserRoles = "overrideAtlasUserRoles"
-)
-
 // Provision will create a new Atlas cluster with the instance ID as its name.
 // The process is always async.
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
@@ -250,7 +246,13 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
+	// update fields that can be safely updated
+	oldPlan.Description = newPlan.Description
+	oldPlan.Free = newPlan.Free
+	oldPlan.Version = newPlan.Version
+	oldPlan.Settings = newPlan.Settings
 	oldPlan.Cluster = resultingCluster
+
 	s := domain.GetInstanceDetailsSpec{
 		PlanID:       details.PlanID,
 		ServiceID:    details.ServiceID,
