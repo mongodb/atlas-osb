@@ -27,4 +27,3 @@ ipWhitelists:
   comment: "everything"
 - ipAddress: "128.0.0.0/1"
   comment: "everything"
-  
