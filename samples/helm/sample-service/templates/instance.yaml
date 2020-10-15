@@ -1,7 +1,7 @@
 apiVersion: servicecatalog.k8s.io/v1beta1
 kind: ServiceInstance
 metadata:
-  name: {{ .Release.Name }}-{{ .Values.cluster.serviceName }}
+  name: {{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
   labels:
     region: {{ .Values.cluster.region }}
@@ -9,7 +9,7 @@ metadata:
 spec:
   serviceClassExternalName: {{ .Values.broker.deployment.serviceName }}
   servicePlanExternalName: {{ .Values.cluster.planName }}
-  externalID: {{ .Release.Name }}-{{ .Values.cluster.serviceName }}
+  externalID: {{ .Release.Name }}
   parameters:
     cluster:
       providerSettings:

@@ -3,21 +3,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-service-broker
+  name: {{ .Release.Name }}
   labels:
-    app: {{ .Release.Name }}-service-broker
+    app: {{ .Release.Name }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-service-broker
+      app: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-service-broker
+        app: {{ .Release.Name }}
     spec:
       containers:
-        - name: {{ .Release.Name }}-service-broker
+        - name: {{ .Release.Name }}
           image: {{ .Values.image }}
           ports:
             - containerPort: 4000
@@ -50,13 +50,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-service-broker
+  name: {{ .Release.Name }}
   labels:
-    app: {{ .Release.Name }}-service-broker
+    app: {{ .Release.Name }}
 spec:
   selector:
     # Will match pods deployed by the "atlas-service-broker" deployment.
-    app: {{ .Release.Name }}-service-broker
+    app: {{ .Release.Name }}
   ports:
     - protocol: TCP
       port: 4000

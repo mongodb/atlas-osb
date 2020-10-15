@@ -1,9 +1,9 @@
 apiVersion: servicecatalog.k8s.io/v1beta1
 kind: ServiceBroker
 metadata:
-  name: {{ .Release.Name }}-service-broker
+  name: {{ .Release.Name }}
 spec:
-  url: http://{{ .Release.Name }}-service-broker.{{ .Release.Namespace }}:4000
+  url: http://{{ .Release.Name }}.{{ .Release.Namespace }}:4000
   authInfo:
     basic:
       secretRef:

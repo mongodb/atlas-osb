@@ -25,6 +25,7 @@ Active workflows for operating.
 - `deploy-broker.yml` deploy broker to CF
 - `reaper.yml` delete clusters from Atlas
 - `create-release-package.yml` create a release
+- `eks-demo.yml` demo (2 jobs: create, clean)
 
 # Using GitHub Actions locally
 Tools for successfully running pipeline locally:
@@ -63,3 +64,8 @@ Also, `act` can use [event payload](https://developer.github.com/webhooks/event-
 ```
 act delete -e delete.json
 ```
+
+## Demo
+eks-demo workflow has 2 jobs:
+1) `eksdemo` deploys broker into k8s cluster, creates service instance, deploys test application. In the end prints out test application URL
+2) `eksdemo-clean`

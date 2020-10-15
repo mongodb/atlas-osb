@@ -22,3 +22,9 @@ SERVICE_ATLAS=instance-$postfix
 SERVICE_ATLAS_RENAME=$SERVICE_ATLAS-rnm
 
 BROKER_OSB_SERVICE_NAME="atlas"
+
+#k8s demo names
+K_NAMESPACE="atlas-$postfix"
+K_BROKER="atlas-osb-$commit_id"
+K_SERVICE="aosbs-$postfix"
+K_TEST_APP="test-app-$commit_id"

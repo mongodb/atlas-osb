@@ -16,7 +16,6 @@ broker:
     serviceName: "atlas"
 
 cluster:
-  serviceName: "test1"
   planName: override-bind-db-plan
   region: US_EAST_1
   provider: AWS

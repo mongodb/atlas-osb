@@ -12,10 +12,36 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-      - name: Push atlas-osb to Docker Hub
-        uses: docker/build-push-action@v1
+      # - name: Push atlas-osb to Docker Hub
+      #   uses: docker/build-push-action@v1
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      #     repository: leori/atlas-osb
+      #     tag_with_ref: true
+      - name: create k8s namespaces
+        uses: ./.github/actions/eks-demo
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: leori/atlas-osb
-          tag_with_ref: true
+          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
+          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          AWS_DEFAULT_REGION: "us-east-2"
+  eksdemo-clean:
+    name: Clean EKS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: clean
+        uses: ./.github/actions/eks-clean
+        with:
+          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
+          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          AWS_DEFAULT_REGION: "us-east-2"

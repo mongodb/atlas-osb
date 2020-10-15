@@ -1,4 +1,5 @@
 #Please put the name of instance service and broker port
+image: leori/test:sample-hardcoded
 broker:
   deployment:
     port: "8080"

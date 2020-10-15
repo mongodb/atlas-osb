@@ -7,4 +7,4 @@ metadata:
     product: {{ .Chart.Name }}
 spec:
   instanceRef:
-    name: {{ .Release.Name }}-{{ .Values.cluster.serviceName }}
+    name: {{ .Release.Name }}

@@ -15,7 +15,7 @@ spec:
         app: {{ .Release.Name }}
     spec:
       containers:
-      - name: leori/test:sample-hardcoded
+      - name: test-app
         image: {{ .Values.image }}
         volumeMounts:
           - mountPath: /var/secrets/
@@ -38,7 +38,7 @@ metadata:
   labels:
     app: {{ .Release.Name }}
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: {{ .Release.Name }}
   ports:
