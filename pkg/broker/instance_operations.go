@@ -170,14 +170,13 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 func (b *Broker) doOverrideProjectOwner(ctx context.Context, client *mongodbatlas.Client, p *mongodbatlas.Project, owner string) error {
 	logger := b.funcLogger()
 
-	// users, _, err := client.Projects.GetAllUsers()
-	users, err := []mongodbatlas.AtlasUser{}, error(nil)
+	users, _, err := client.Projects.GetAllUsers(ctx, p.ID)
 	if err != nil {
 		return errors.Wrapf(err, "cannot get all Atlas users for project %s", p.ID)
 	}
 
-	if len(users) != 1 {
-		logger.Warnf("processing override %s: expected 1 user in newly created project, got %v", overrideProjectOwner, len(users))
+	if len(users.Results) != 1 {
+		logger.Warnf("processing override %s: expected 1 user in newly created project, got %v", overrideProjectOwner, len(users.Results))
 		return nil
 	}
 
@@ -203,9 +202,9 @@ func (b *Broker) doOverrideProjectOwner(ctx context.Context, client *mongodbatla
 	}
 
 	// remove old user from project
-	_, err = client.Projects.RemoveUserFromProject(ctx, p.ID, users[0].ID)
+	_, err = client.Projects.RemoveUserFromProject(ctx, p.ID, users.Results[0].ID)
 	if err != nil {
-		return errors.Wrapf(err, "cannot remove Atlas user %s", users[0].Username)
+		return errors.Wrapf(err, "cannot remove Atlas user %s", users.Results[0].Username)
 	}
 
 	return nil

@@ -2,7 +2,7 @@ module github.com/mongodb/atlas-osb
 
 go 1.11
 
-replace go.mongodb.org/atlas => github.com/vasilevp/go-client-mongodb-atlas v0.5.1-0.20201009105654-f85e9007703e
+replace go.mongodb.org/atlas => github.com/vasilevp/go-client-mongodb-atlas v0.5.1-0.20201016140620-c01f6790f383
 
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
@@ -16,7 +16,6 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/kubernetes-sigs/service-catalog v0.2.3
 	github.com/pborman/uuid v1.2.0 // indirect
