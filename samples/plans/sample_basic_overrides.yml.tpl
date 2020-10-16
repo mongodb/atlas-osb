@@ -6,6 +6,7 @@ settings:
   overrideBindDB: "OriginalMongoDBTileForPCFDBName"
   overrideBindDBRole: "readWrite"
   overrideAtlasUserRoles: [GROUP_OWNER]
+  overrideProjectOwner: "admin@example.com"
 project:
   name: {{ .instance_name }}
   desc: Created from a template

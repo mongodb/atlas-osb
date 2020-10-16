@@ -37,6 +37,10 @@ const (
 	operationUpdate      = "update"
 )
 
+const (
+	overrideProjectOwner = "overrideProjectOwner"
+)
+
 // Provision will create a new Atlas cluster with the instance ID as its name.
 // The process is always async.
 func (b Broker) Provision(ctx context.Context, instanceID string, details domain.ProvisionDetails, asyncAllowed bool) (spec domain.ProvisionedServiceSpec, err error) {
@@ -156,7 +160,55 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 		}
 	}
 
-	return p, nil
+	if owner, ok := dp.Settings[overrideProjectOwner].(string); ok {
+		err = b.doOverrideProjectOwner(ctx, client, p, owner)
+	}
+
+	return p, err
+}
+
+func (b *Broker) doOverrideProjectOwner(ctx context.Context, client *mongodbatlas.Client, p *mongodbatlas.Project, owner string) error {
+	logger := b.funcLogger()
+
+	// users, _, err := client.Projects.GetAllUsers()
+	users, err := []mongodbatlas.AtlasUser{}, error(nil)
+	if err != nil {
+		return errors.Wrapf(err, "cannot get all Atlas users for project %s", p.ID)
+	}
+
+	if len(users) != 1 {
+		logger.Warnf("processing override %s: expected 1 user in newly created project, got %v", overrideProjectOwner, len(users))
+		return nil
+	}
+
+	// add new user to project
+	u, _, err := client.AtlasUsers.GetByName(ctx, owner)
+	if err != nil {
+		return errors.Wrapf(err, "cannot get Atlas user %s", owner)
+	}
+
+	_, _, err = client.AtlasUsers.Update(
+		ctx,
+		u.ID,
+		[]mongodbatlas.AtlasRole{
+			{
+				GroupID:  p.ID,
+				RoleName: "GROUP_OWNER",
+			},
+		},
+	)
+
+	if err != nil {
+		return errors.Wrapf(err, "cannot update Atlas user %s", owner)
+	}
+
+	// remove old user from project
+	_, err = client.Projects.RemoveUserFromProject(ctx, p.ID, users[0].ID)
+	if err != nil {
+		return errors.Wrapf(err, "cannot remove Atlas user %s", users[0].Username)
+	}
+
+	return nil
 }
 
 // Update will change the configuration of an existing Atlas cluster asynchronously.
