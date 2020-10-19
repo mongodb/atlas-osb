@@ -26,5 +26,7 @@ BROKER_OSB_SERVICE_NAME="atlas"
 #k8s demo names
 K_NAMESPACE="atlas-$postfix"
 K_BROKER="atlas-osb-$commit_id"
-K_SERVICE="aosbs-$postfix"
+K_DEFAULT_SERVICE="aosbs-$postfix"
 K_TEST_APP="test-app-$commit_id"
+K_DEFAULT_USER="admin"
+K_DEFAULT_PASS="admin"

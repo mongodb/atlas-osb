@@ -1,16 +1,13 @@
 #!/bin/bash
+# Requires having service catalog installed https://kubernetes.io/docs/tasks/service-catalog/install-service-catalog-using-helm/
+# Please run `act -j eksdemo-catalog` (eks-deploy-catalog.yml) for installing service catalog
+
 source ".github/base-dockerfile/helpers/params.sh"
 
 helm version
 aws --version
 aws eks --region us-east-2 update-kubeconfig --name atlas-osb-eks
 kubectl version
-
-#catalog service
-# kubectl create namespace catalog
-# helm install catalog svc-cat/catalog --namespace catalog
-
-kubectl create namespace "${K_NAMESPACE}"
 
 broker_user="admin"
 broker_pass="admin"
@@ -23,7 +20,7 @@ helm install "${K_BROKER}" \
     --set atlas.privateKey="${INPUT_ATLAS_PRIVATE_KEY}" \
     --set broker.auth.username="${broker_user}" \
     --set broker.auth.password="${broker_pass}" \
-    samples/helm/broker/ --namespace "${K_NAMESPACE}" --wait --timeout 10m
+    samples/helm/broker/ --namespace "${K_NAMESPACE}" --wait --timeout 10m --create-namespace
 
 helm install "${K_SERVICE}" samples/helm/sample-service/ \
     --set broker.auth.username="${broker_user}" \
@@ -41,7 +38,7 @@ app_url=$(kubectl get services -n atlas-k8s-sample-8d390a8 | awk '/LoadBalancer/
 data='{"_class":"org.cloudfoundry.samples.music.domain.Album", "artist": "Tenno", "title": "Journey", "releaseYear": "2019", "genre": "chillhop" }'
 curl -H "Content-Type: application/json" -X PUT \
     -d  "${data}" "${app_url}/albums"
-result=$(curl -X GET ${app_url}/albums -s | awk '/Tenno/{print "true"}')
+result=$(curl -X GET "${app_url}/albums" -s | awk '/Tenno/{print "true"}')
 echo "GET result ${result}"
 
 #summary

@@ -1,0 +1,19 @@
+name: 'Deploy Atlas-osb'
+description: 'Deploy Atlas-osb to k8s'
+inputs:
+  atlas_public_key:
+    description: "organization public key"
+    required: true
+  atlas_private_key:
+    description: "organization private key"
+    required: true
+  atlas_org_id:
+    description: "default orgId"
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.atlas_public_key }}
+    - ${{ inputs.atlas_private_key }}
+    - ${{ inputs.atlas_org_id }}
