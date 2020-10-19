@@ -214,8 +214,8 @@ func (b *Broker) userFromParams(bindingID string, password string, rawParams []b
 	}
 
 	if plan.Settings != nil {
-		if overrideDBName, ok := plan.Settings[overrideBindDB]; ok {
-			overrideDBRole, ok := plan.Settings[overrideBindDBRole]
+		if overrideDBName, ok := plan.Settings[overrideBindDB].(string); ok {
+			overrideDBRole, ok := plan.Settings[overrideBindDBRole].(string)
 			if !ok {
 				overrideDBRole = "readWrite"
 			}
