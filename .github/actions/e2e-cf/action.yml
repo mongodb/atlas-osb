@@ -46,5 +46,6 @@ runs:
     - ${{ inputs.atlas_project_id_bay }}
     - ${{ inputs.atlas_public_key }}
     - ${{ inputs.atlas_private_key }}
-    - ${{ inputs.credhub_file}}
-    - ${{ inputs.atlas_org_id}}
+    - ${{ inputs.credhub_file }}
+    - ${{ inputs.atlas_org_id }}
+    - ${{ inputs.sentry_dsn }}

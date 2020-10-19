@@ -1,5 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1091,SC2034
+set -e
+
 source ".github/base-dockerfile/helpers/tmp-helper.sh"
 source ".github/base-dockerfile/helpers/cf-helper.sh"
 source ".github/base-dockerfile/helpers/params.sh"
@@ -10,7 +12,7 @@ echo "init"
 make_multikey_config samples/apikeys-config.json
 
 echo "Login. Create ORG and SPACE depended on the branch name"
-cf_login "$ORG_NAME" "$SPACE_NAME"
+cf_login "" ""
 cf create-org "$ORG_NAME" && cf target -o "$ORG_NAME"
 cf create-space "$SPACE_NAME" && cf target -s "$SPACE_NAME"
 
