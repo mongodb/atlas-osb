@@ -15,10 +15,13 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"runtime"
-	"time"
 
 	"github.com/TheZeroSlave/zapsentry"
 	"github.com/alexflint/go-arg"
@@ -33,7 +36,7 @@ import (
 const toolName = "atlas-aosb"
 
 // releaseVersion should be set by the linker at compile time.
-var releaseVersion = "0.0.0+devbuild." + time.Now().UTC().Format("20060102T150405")
+var releaseVersion = "0.0.0+devbuild." + getBinaryFootprint()
 
 // command-line arguments and env variables with default values
 type Args struct {
@@ -180,9 +183,10 @@ func startBrokerServer() {
 
 func addSentryLogger(log *zap.Logger, dsn string) *zap.Logger {
 	cfg := zapsentry.Configuration{
-		Level: zapcore.DebugLevel, //when to send message to sentry
+		Level: zapcore.WarnLevel, //when to send message to sentry
 		Tags: map[string]string{
-			"component": "system",
+			"component":      "system",
+			"releaseVersion": releaseVersion,
 		},
 	}
 
@@ -211,4 +215,16 @@ func createLogger() (*zap.SugaredLogger, error) {
 	}
 
 	return logger.Sugar(), nil
+}
+
+func getBinaryFootprint() string {
+	fname := os.Args[0]
+	f, err := ioutil.ReadFile(fname)
+	if err != nil {
+		return "unknown"
+	}
+
+	cs := sha256.Sum256(f)
+	bcs := hex.EncodeToString(cs[:])
+	return bcs[:16]
 }

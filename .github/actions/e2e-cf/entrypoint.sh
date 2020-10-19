@@ -16,6 +16,7 @@ cf create-space "$SPACE_NAME" && cf target -s "$SPACE_NAME"
 
 echo "Create service-broker"
 cf push "$BROKER_APP"
+cf set-env "$BROKER_APP" "SENTRY_DSN" "$INPUT_SENTRY_DSN"
 check_app_started "$BROKER_APP"
 app_url=$(cf app "$BROKER_APP" | awk '/routes:/{print $2}')
 

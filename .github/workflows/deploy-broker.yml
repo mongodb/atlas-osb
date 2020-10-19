@@ -58,6 +58,7 @@ jobs:
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
           credhub_file: ${{ secrets.CREDHUB_FILE }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+          sentry_dsn: ${{ secrets.SENTRY_DSN }}
 
       - name: Cleanup ENV for current branch
         uses: ./.github/actions/cleanup-cf
