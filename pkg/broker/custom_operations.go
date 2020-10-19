@@ -70,7 +70,6 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 	}
 
 	// 409 Conflict: user already exists in the system, need to add them to the project
-	// TODO: move this logic to main branch, then fallback to Create() if not found
 	u, _, err = client.AtlasUsers.GetByName(ctx, email)
 	if err != nil {
 		return err

@@ -56,7 +56,7 @@ Once you have your workstation ready, head over to http://cloud.mongodb.com and 
 1. Pull down the latest release of the atlas-osb (recommended).
 
 ```bash
-curl -OL https://github.com/mongodb/atlas-osb/releases/download/v0.1-alpha/atlas-osb-v0.1-alpha.tar.gz
+curl -L $(curl https://api.github.com/repos/mongodb/atlas-osb/releases/latest | grep tarball_url | awk '{print $2}' | tr -d '",') -o atlas-osb-latest.tar.gz
 tar xvf atlas-osb-latest.tar.gz
 cd atlas-osb
 ```
@@ -79,16 +79,12 @@ Copy this template and update with your own apikey information.
         "publicKey": "<PUBLIC-KEY>",
         "privateKey": "<PRIVATE-KEY>",
         "orgID": "<ORG-ID>",
-        "id": "my-test-key",
-        "desc": "My first key for the atlas-osb.",
       }
    }
 }
 ```
 
 Save this in a file called `keys`.
-
-__NOTE__ The `broker.db` field in the json above currently holds a connection string to another Atlas cluster we are using to store data on the mappings between serivce instance id's and the Atlas project, cluster, etc ids. The use of another external db will __NOT__ be a requirement of the GA version of atlas-osb. This is only a temporary solution, to be addressed in Sprint 3.
 
 3. Create a user provided service:
 
@@ -149,13 +145,12 @@ cf apps
 For this flow, we'll create an instance of the "basic-plan" called "hello-atlas-osb".
 See [/samples/plans/sample_basic.yml.tpl](/samples/plans/sample_basic.yml.tpl).
 
-Use your own <YOUR-ORG-ID> in the following command.
-
 ```bash
-cf create-service mongodb-atlas-template basic-plan hello-atlas-osb -c '{"org_id":"<YOUR-ORG-ID>"}'
+cf create-service mongodb-atlas-template basic-plan hello-atlas-osb
+cf service hello-atlas-osb
 ```
 
-Head over to http://cloud.mongodb.com to follow progress as your Atlas resources are provisioning.
+Head over to the Dashboard URL returned from the last command (http://cloud.mongodb.com/...) to follow progress as your Atlas resources are provisioning.
 
 6. (Optional) You can test connecting to your new Atlas cluster with a very simple app in package.
 
@@ -202,14 +197,14 @@ Note - do not put quotes around the true/value.
 
 ### Updating a cluster
 
-First - note not all possible updates are supported at this time.
+First - note not all possible updates are supported at this time. Some types of updates (i.e. project/cluster renaming) are not supported by Atlas at all.
 
 In general, to update a plan instance:
 
 ```
- cf create-service -b dyno-ss mongodb-atlas-template basic-plan dyno-ss-4oh -c '{"org_id":"5ea0477597999053a5f9cbec", "cluster" :  { "mongoDBMajorVersion": "4.0" } }'
+ cf update-service -b dyno-ss mongodb-atlas-template basic-plan dyno-ss-4oh -c '{ "cluster" :  { "mongoDBMajorVersion": "4.0" } }'
 
-Creating service instance dyno-ss-4oh in org atlas-broker-demo / space dynoss as admin...
+Updating service instance dyno-ss-4oh in org atlas-broker-demo / space dynoss as admin...
 OK
 ```
 
@@ -229,15 +224,15 @@ Configuration is handled with environment variables. Logs are written to
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
-| ATLAS_BASE_URL | `https://cloud.mongodb.com` | Base URL used for Atlas API connections |
-| BROKER_HOST | `127.0.0.1` | Address which the broker server listens on |
-| BROKER_PORT | `4000` | Port which the broker server listens on |
-| BROKER_LOG_LEVEL | `INFO` | Accepted values: `DEBUG`, `INFO`, `WARN`, `ERROR` |
-| BROKER_TLS_CERT_FILE | | Path to a certificate file to use for TLS. Leave empty to disable TLS. |
-| BROKER_TLS_KEY_FILE | | Path to private key file to use for TLS. Leave empty to disable TLS. |
-| PROVIDERS_WHITELIST_FILE | | Path to a JSON file containing limitations for providers and their plans. |
-| BROKER_APIKEYS | | Path to file or JSON string containing credentials.
-| ATLAS_BROKER_TEMPLATEDIR | | Path to folder containing plans e.g. ./samples/plans |
+| `ATLAS_BASE_URL` | `https://cloud.mongodb.com/api/atlas/v1.0/` | Base URL used for Atlas API connections |
+| `REALM_BASE_URL` | `https://realm.mongodb.com/api/admin/v3.0/` | Base URL used for Realm API connections |
+| `BROKER_HOST` | `127.0.0.1` | Address which the broker server listens on |
+| `BROKER_PORT` | `4000` | Port which the broker server listens on |
+| `BROKER_LOG_LEVEL` | `INFO` | Accepted values: `DEBUG`, `INFO`, `WARN`, `ERROR` |
+| `BROKER_TLS_CERT_FILE` | | Path to a certificate file to use for TLS. Leave empty to disable TLS. |
+| `BROKER_TLS_KEY_FILE` | | Path to private key file to use for TLS. Leave empty to disable TLS. |
+| `BROKER_APIKEYS` | | Path to file or JSON string containing credentials.
+| `ATLAS_BROKER_TEMPLATEDIR` | | Path to folder containing plans e.g. ./samples/plans |
 
 The values for the OSB "Service" for a given atlas-osb instance can be customized with a set of
 additional environement variables. Each of these are optional, and has default content.
@@ -248,14 +243,15 @@ Here are the settings for the `domain.Service` returned for each plan:
 domain.Service:
 | Field | Env variable | Default |
 | ----- | ------------- | --------- |
-| `ID` | NONE | `"<id>-template-service"` |
+| `ID` | NONE | `"aosb-cluster-service-template"` |
 | `Name` | `BROKER_OSB_SERVICE_NAME` | `"atlas"` |
 | `Description` | `BROKER_OSB_SERVICE_DESC` | `"MonogoDB Atlas Plan Template Deployments"` |
 | `Metadata.DisplayName` | `BROKER_OSB_SERVICE_DISPLAY_NAME` | `"MongoDB Atlas - %s"` with `"Template Services"` |
 | `Metadata.ImageUrl` | `BROKER_OSB_IMAGE_URL` | `"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"` |
 | `DocumentationUrl` | `BROKER_OSB_DOCS_URL` | `"https://support.mongodb.com/welcome"` |
 | `ProviderDisplayName` | `BROKER_OSB_PROVIDER_DISPLAY_NAME` | `"MongoDB"` |
-| `LongDescription` | | `"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/mongodb/atlas-osb"` |
+| `LongDescription` | `BROKER_OSB_LONG_DESC` | `"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/mongodb/atlas-osb"` |
+| `Metadata.Tags` | `BROKER_OSB_SERVICE_TAGS` | `"mongodb"` |
 
 ## Multiple API Key Support
 
@@ -264,31 +260,26 @@ These are the requirements for supporting multiple apikeys. Note: Sometimes we u
 1. The broker will accept a json/yaml object containing authentication credentials. The format for this will be:
 
 ```yaml
-bindingName: 'Main-Creds'
+# broker is a dictionary with the HTTP Basic Auth credentials for requests to service-broker
 broker:
   username: 'admin'
-  password: 'admin' 
-projects:
-- id: 'first-key'
-  desc: 'the first key'
-  publicKey: '12345'
-  privatekey: '12345'
-  roles: 
-  - groupId: '12345'        # TODO update to support `projectId` here
-- id: 'the 2nd key'         
-  publicKey: '12345'
-  privateKey: '12345'
-  roles: 
-  - groupId: '545454'        # TODO update to support `projectId` here
-orgs:
-- publicKey: '12345'
-  privateKey: '12345'
-  id: 'the org 1 key'
-  roles:
-  - orgId: '3030303030'
+  password: 'admin'
+# keys is a dictionary with Atlas API Keys in mostly native format
+keys:
+  first-key:
+    desc: 'the first key' # optional, for user reference only
+    publicKey: '12345'
+    privatekey: '12345'
+    orgID: '12345'
+  the 2nd key:
+    publicKey: '12345'
+    privateKey: '12345'
+    orgID: '545454'
 ```
 
-Where each key conforms to the following schema defined by the [ApiKey](https://github.com/mongodb/go-client-mongodb-atlas/blob/5a4b267c469e8a4baedb1b27a1f189de1e69bfd6/mongodbatlas/api_keys.go#L36) struct.
+Where each key conforms to the following schema defined by the [ApiKey](https://github.com/mongodb/go-client-mongodb-atlas/blob/5a4b267c469e8a4baedb1b27a1f189de1e69bfd6/mongodbatlas/api_keys.go#L36) struct, with a few changes:
+- an additional `orgID` field is used as fallback when a plan template has no explicitly selected key
+- `id` and `desc` are optional and are not currently used for anything
 
 Multi-apikey support requirements (_P#_ where _#_ is priority with 0 highest.)
 
@@ -304,7 +295,7 @@ Multi-apikey support requirements (_P#_ where _#_ is priority with 0 highest.)
 
 ## Atlas Plan Templates
 
-Providing support for all the myriad of combinations of Atlas resources and arbitrary validation logic is not possible with the current broker "service"/”plan” design. atlas-osb introduces an additional way to define new “services” and “plans” which represent arbitrary Atlas resource objects (object graphs) by leveraging the declarative design of the Atlas API and JSON templates.
+Providing support for all the myriad of combinations of Atlas resources and arbitrary validation logic is not possible with the current broker "service"/”plan” design. atlas-osb introduces an additional way to define new “services” and “plans” which represent arbitrary Atlas resource objects (object graphs) by leveraging the declarative design of the Atlas API and YAML templates.
 
 Most users and most apps need the following resources at minimum for typical usage:
 
@@ -321,17 +312,16 @@ We can model the above with the following set of templates:
 name: basic-plan
 description: This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection.
 free: true
-apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}
+apiKey: {{ keyByAlias .credentials "testKey" }}
 project:
   name: {{ .instance_name }}
   desc: Created from a template
-  orgId: {{ .org_id }}
 cluster:
   name: {{ .instance_name }}
   providerBackupEnabled: {{ default "true" .backups }}
   providerSettings:
     providerName: {{ default "AWS" .provider }}
-    instanceSizeName: {{ default "M20" .instance_size }}
+    instanceSizeName: {{ default "M10" .instance_size }}
     regionName: {{ default "US_EAST_1" .region }}
   labels:
     - key: Infrastructure Tool
@@ -345,6 +335,8 @@ databaseUsers:
     databaseName: {{ default "default" .role_db }}
 ipWhitelists:
 - ipAddress: "0.0.0.0/1"
+  comment: "everything"
+- ipAddress: "128.0.0.0/1"
   comment: "everything"
 ```
 ## Requirements
@@ -362,16 +354,14 @@ ipWhitelists:
 6. Users should be able to specify template parameters during service provisioning or update.
 7. Provide a set of common resource yaml/json samples and templates.
 8. Allow reading apikeys and group/org ids from the "CredHub" multi-apikey support
-    1. Make a template variable called `Credentials` available which contains all the apikeys
-9.   Allow reading apikey from a yaml/json file with a resource definition.
+    1. Make a template variable called `credentials` available which contains all the apikeys
+9. Allow reading apikey from a yaml/json file with a resource definition.
 10. :construction: Support a `--dry-run` flag whenever processing a provision, update, or delete operation on a custom plan. Default is `false`. Include pre & post template processing in logging output. (Not supported yet.)
 
 ## Plan Functional Design
 
 Each Plan instance is managed through the OSB provision, bind, unbind, and deprovision operations. 
 In this section we describe the relationship between a Plan's OSB operations and how the broker translates them to Atlas Client API calls.
-
-Each plan will have at least one apikey associated with it.
 
 :construction:
 
@@ -383,8 +373,8 @@ Plans are loaded at startup and first validated before being made available in t
 
 1. read plans from disk
 2. do a first-pass template parse with empty context (substitute "" for everything in template)
-   * Allow for default values? 
-   * Provide a way to test the plan actually works (dry-run)
+   * default values can be supplied using `{{ default "default-value" .dynamic_value }}`
+   * :construction: Provide a way to test the plan actually works (dry-run)
 3. parse the result into yaml, get static metadata like plan name, description, instance size, whatever
 4. on provision, do a parse with full context - this is the final plan spec
    * :construction: Allow for dry-run at this step too. 
@@ -395,12 +385,12 @@ This section describes how the state of plan definitions and service instance me
 
 atlas-osb introduces the use of MongoDB Realm applications to manage the state of your deployed service instances. This happens automatically, directly through the Atlas and Realm APIs.
 
-The atlas-osb will create special project called "Atlas Service Broker Maintenance" for each Atlas Organization. Here,  the broker will create a Realm App called "Broker State" :constuction: and use Realm Values to store reference data for the serivce instances you have deployed across your environments. This approach has several advantages:
+The atlas-osb will create special project called "Atlas Service Broker Maintenance" for each Atlas Organization. Here, the broker will create a Realm App called "Broker State" :constuction: and use Realm Values to store reference data for the serivce instances you have deployed across your environments. This approach has several advantages:
 
 * zero-footprint on OSB-marketplace environment
 * single location for all serivce instance metadata
 * follows the Atlas organization boundaries, allows support for multi-tenancy scenarios
-* automaticalluy encrypted via Realm 
+* automatically encrypted via Realm
 
 See [Realm Values & Secrets](https://docs.mongodb.com/realm/values-and-secrets/)
 
@@ -417,11 +407,13 @@ When the broker creates a binding, it will translate the Connection Details for 
 The format for the JSON available for binding in `VCAP_SERVICES` is:
 
 ```json
-{ 'connectionString': 'mongodb+srv://uuuuuuuuu:xxxxxxxx@chewy-123.6bikq.mongodb.net/admin',
-  'password': 'xxxxxxxxxx',
-  'uri': 'mongodb+srv://chewy-123.6bikq.mongodb.net',
-  'username': 'uuuuuuuuuu',
-  'datbase': 'admin'}
+{
+  "connectionString": "mongodb+srv://uuuuuuuuu:xxxxxxxx@chewy-123.6bikq.mongodb.net/admin",
+  "password": "xxxxxxxxxx",
+  "uri": "mongodb+srv://chewy-123.6bikq.mongodb.net",
+  "username": "uuuuuuuuuu",
+  "database": "admin"
+}
 ```
 
 Please see the [test/hello-atlas-cf](test/hello-atlas-cf) sample app to see details on the binding information available to apps.
@@ -439,10 +431,10 @@ For example, to set the default role for any database users created via the bind
 name: override-bind-db-plan
 description: This is an extension of the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection. But it added the ability to override the bind db.
 free: true
-apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}
+apiKey: {{ keyByAlias .credentials "testKey" }}
 settings:
   overrideBindDB: "products"
-  overrideBindDBRole: "readWrite" 
+  overrideBindDBRole: "readWrite"
 project:
   name: {{ .instance_name }}
   desc: Created from a template
@@ -477,19 +469,21 @@ The officially supported Atlas Resources are:
 
 This represents an Open Service Broker [plan](https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md#service-plan-object) (NOTE:  https://github.com/openservicebrokerapi/servicebroker/blob/master/spec.md#service-offering-object)
 
+Please see the [basic sample template](samples/plans/sample_basic.yml.tpl) for a documented ready-to-use template.
+
 ```go
 // Plan represents a set of MongoDB Atlas resources
 type Plan struct {
-    Version         string                              `json:"version,omitempty"`
-    Name            string                              `json:"name,omitempty"`
-    Description     string                              `json:"description,omitempty"`
-    ApiKey          *mongodbatlas.ApiKey                `json:"apiKey,omitempty"`
-    Project         *Project                            `json:"project,omitempty"`
-    Clusters        []*mongodbatlas.Cluster             `json:"clusters,omitempty"`
-    DatabaseUsers   []*mongodbatlas.DatabaseUser        `json:"databaseUsers,omitempty" yaml:"databaseUsers,omitempty"`
-    IPWhitelists    []*mongodbatlas.ProjectIPWhitelist  `json:"ipWhitelists,omitempty" yaml:"ipWhitelists,omitempty"`
-    Bindings        []*Bindings                   // READ ONLY! Populated by bind()
-    Settings            map[string]string                 `json:"settings,omitempty"`
+    Version       string                             `json:"version,omitempty"`
+    Name          string                             `json:"name,omitempty"`
+    Description   string                             `json:"description,omitempty"`
+    Free          *bool                              `json:"free,omitempty"`
+    APIKey        *credentials.APIKey                `json:"apiKey,omitempty"`
+    Project       *mongodbatlas.Project              `json:"project,omitempty"`
+    Cluster       *mongodbatlas.Cluster              `json:"cluster,omitempty"`
+    DatabaseUsers []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
+    IPWhitelists  []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
+    Settings      map[string]string                  `json:"settings,omitempty"`
 }
 ```
 
