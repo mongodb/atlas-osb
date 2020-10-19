@@ -9,6 +9,10 @@ import (
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
+const (
+	overrideAtlasUserRoles = "overrideAtlasUserRoles"
+)
+
 func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Client, planContext dynamicplans.Context, p *dynamicplans.Plan) error {
 	email, ok := planContext["email"].(string)
 	if !ok {
@@ -39,9 +43,22 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		country = "US"
 	}
 
-	role := p.Settings[overrideAtlasUserRole]
-	if role == "" {
-		role = "GROUP_READ_ONLY"
+	roleNames, ok := p.Settings[overrideAtlasUserRoles].([]interface{})
+	if !ok {
+		roleNames = []interface{}{"GROUP_READ_ONLY"}
+	}
+
+	roles := make([]mongodbatlas.AtlasRole, 0, len(roleNames))
+	for _, r := range roleNames {
+		role, ok := r.(string)
+		if !ok {
+			return fmt.Errorf("role name must be a string, got %v (%T)", r, r)
+		}
+
+		roles = append(roles, mongodbatlas.AtlasRole{
+			GroupID:  p.Project.ID,
+			RoleName: role,
+		})
 	}
 
 	u := &mongodbatlas.AtlasUser{
@@ -51,12 +68,7 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		Username:     email,
 		FirstName:    firstName,
 		LastName:     lastName,
-		Roles: []mongodbatlas.AtlasRole{
-			{
-				GroupID:  p.Project.ID,
-				RoleName: role,
-			},
-		},
+		Roles:        roles,
 	}
 
 	_, r, err := client.AtlasUsers.Create(ctx, u)
@@ -76,12 +88,7 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 		return err
 	}
 
-	u.Roles = append(u.Roles, mongodbatlas.AtlasRole{
-		GroupID:  p.Project.ID,
-		RoleName: role,
-	})
-
-	_, _, err = client.AtlasUsers.Update(ctx, u.ID, &mongodbatlas.AtlasUser{Roles: u.Roles})
+	_, _, err = client.AtlasUsers.Update(ctx, u.ID, roles)
 	return err
 }
 
