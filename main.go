@@ -183,7 +183,7 @@ func startBrokerServer() {
 
 func addSentryLogger(log *zap.Logger, dsn string) *zap.Logger {
 	cfg := zapsentry.Configuration{
-		Level: zapcore.WarnLevel, //when to send message to sentry
+		Level: zapcore.WarnLevel,
 		Tags: map[string]string{
 			"component":      "system",
 			"releaseVersion": releaseVersion,
@@ -191,9 +191,8 @@ func addSentryLogger(log *zap.Logger, dsn string) *zap.Logger {
 	}
 
 	core, err := zapsentry.NewCore(cfg, zapsentry.NewSentryClientFromDSN(dsn))
-	//in case of err it will return noop core. so we can safely attach it
 	if err != nil {
-		log.Warn("failed to init zap", zap.Error(err))
+		log.Fatal("failed to init zap", zap.Error(err))
 	}
 	return zapsentry.AttachCoreToLogger(core, log)
 }
