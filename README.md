@@ -428,7 +428,7 @@ In general, we do not recommend using this feature. However it will be released 
 For example, to set the default role for any database users created via the bind() OSB operation, add these to the `settings` for your plan.
 
 ```yaml
-name: override-bind-db-plan
+name: basic-overrides-plan
 description: This is an extension of the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection. But it added the ability to override the bind db.
 free: true
 apiKey: {{ keyByAlias .credentials "testKey" }}
