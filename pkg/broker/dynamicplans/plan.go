@@ -17,31 +17,37 @@ package dynamicplans
 import (
 	"encoding/json"
 
-	"github.com/jinzhu/copier"
 	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 // Plan represents a set of MongoDB Atlas resources
 type Plan struct {
-	Version             string                             `json:"version,omitempty"`
-	Name                string                             `json:"name,omitempty"`
-	Description         string                             `json:"description,omitempty"`
-	Free                *bool                              `json:"free,omitempty"`
-	APIKey              *credentials.APIKey                `json:"apiKey,omitempty"`
-	Project             *mongodbatlas.Project              `json:"project,omitempty"`
-	Cluster             *mongodbatlas.Cluster              `json:"cluster,omitempty"`
-	DatabaseUsers       []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
-	IPWhitelists        []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
-	DefaultBindingRoles *[]mongodbatlas.Role               `json:"defaultBindingRoles"`
-	Bindings            []*Binding                         `json:"bindings,omitempty"` // READ ONLY! Populated by bind()
+	Version       string                             `json:"version,omitempty"`
+	Name          string                             `json:"name,omitempty"`
+	Description   string                             `json:"description,omitempty"`
+	Free          *bool                              `json:"free,omitempty"`
+	APIKey        *credentials.APIKey                `json:"apiKey,omitempty"`
+	Project       *mongodbatlas.Project              `json:"project,omitempty"`
+	Cluster       *mongodbatlas.Cluster              `json:"cluster,omitempty"`
+	DatabaseUsers []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
+	IPWhitelists  []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
 
-	Settings map[string]string `json:"settings,omitempty"`
+	// TODO: what's this?
+	// DefaultBindingRoles *[]mongodbatlas.Role               `json:"defaultBindingRoles"`
+	// Bindings            []*Binding                         `json:"bindings,omitempty"` // READ ONLY! Populated by bind()
+
+	Settings map[string]interface{} `json:"settings,omitempty"`
 }
 
 func (p *Plan) SafeCopy() Plan {
+	b, err := json.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+
 	safe := Plan{}
-	err := copier.Copy(&safe, p)
+	err = json.Unmarshal(b, &safe)
 	if err != nil {
 		panic(err)
 	}
@@ -60,10 +66,9 @@ func (p *Plan) SafeCopy() Plan {
 }
 
 func (p Plan) String() string {
-	s, _ := json.Marshal(p)
+	s, err := json.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
 	return string(s)
-}
-
-// Binding info
-type Binding struct {
 }

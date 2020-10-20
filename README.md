@@ -22,7 +22,7 @@ Table of Contents
   * [License](#license)
   * [Development](#development)
 
-This project is a new version of the original [MongoDB Atlas Serivce Broker](https://github.com/mongodb/atlas-osb) called "atlas-osb"
+This project is a new version of the original [MongoDB Atlas Serivce Broker](https://github.com/mongodb/mongodb-atlas-service-broker) called "atlas-osb"
 
 Atlas-osb adds the ability to define your own plans from Atlas resource templates. This new and powerful feature brings the broker to a new level of production-readiness. One simple *"create service"* command is all you need to provision a complete Atlas deployment including a Project, Cluster, Database user, firewall access, and more.
 
@@ -436,7 +436,7 @@ In general, we do not recommend using this feature. However it will be released 
 For example, to set the default role for any database users created via the bind() OSB operation, add these to the `settings` for your plan.
 
 ```yaml
-name: override-bind-db-plan
+name: basic-overrides-plan
 description: This is an extension of the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection. But it added the ability to override the bind db.
 free: true
 apiKey: {{ mustToJson (index .credentials.Orgs (default "" .org_id)) }}

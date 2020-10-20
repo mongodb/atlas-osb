@@ -23,7 +23,7 @@ cf create-service-broker "$BROKER" "admin" "admin" http://"$app_url" --space-sco
 
 cf marketplace
 BROKER_OSB_SERVICE_NAME=$(echo "${BROKER_OSB_SERVICE_NAME}" | tr "." "-")
-cf create-service "$BROKER_OSB_SERVICE_NAME" "override-bind-db-plan" "$SERVICE_ATLAS" -c '{"org_id":"'"${INPUT_ATLAS_ORG_ID}"'"}' #'{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
+cf create-service "$BROKER_OSB_SERVICE_NAME" "basic-overrides-plan" "$SERVICE_ATLAS" -c '{"org_id":"'"${INPUT_ATLAS_ORG_ID}"'"}' #'{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
 check_service_creation "$SERVICE_ATLAS"
 
 echo "Simple app"

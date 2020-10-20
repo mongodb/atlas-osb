@@ -29,8 +29,8 @@ import (
 	"strings"
 
 	"github.com/google/go-querystring/query"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pkg/errors"
+	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 const (

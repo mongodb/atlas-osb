@@ -23,9 +23,9 @@ import (
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"github.com/mongodb/atlas-osb/pkg/mongodbrealm"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pkg/errors"
+	"go.mongodb.org/atlas/mongodbatlas"
 	"go.uber.org/zap"
 )
 
@@ -37,13 +37,6 @@ const (
 var (
 	ErrInstanceNotFound = errors.New("unable to find instance in state storage")
 )
-
-// type StateStorage interface {
-//    FindOne(context.Context, string)                   (*map[string]interface{}, error)
-//    InsertOne(context.Context, string, interface{})    (*map[string]interface{}, error)
-//    DeleteOne(context.Context, string)                 (error)
-
-// }
 
 type RealmStateStorage struct {
 	OrgID        string `json:"orgId,omitempty"`

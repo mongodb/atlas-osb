@@ -22,7 +22,7 @@ import (
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 func authMiddleware(auth credentials.BrokerAuth) mux.MiddlewareFunc {
