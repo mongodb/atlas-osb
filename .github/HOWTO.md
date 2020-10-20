@@ -69,3 +69,18 @@ act delete -e delete.json
 eks-demo workflow has 2 jobs:
 1) `eksdemo` deploys broker into k8s cluster, creates service instance, deploys test application. In the end prints out test application URL
 2) `eksdemo-clean`
+
+Usage example:
+
+```
+echo '{"action":"workflow_dispatch", "inputs": {"service_name":"sky-service","namespace":"atlas-osb"}}' > event.json
+act -j eksdemo-broker -e event.json
+act -j eksdemo-instance -e event.json
+act -j eksdemo-test -e event.json
+```
+
+or without event.json (it will use default values)
+
+```
+act -j eksdemo-broker
+```
