@@ -40,8 +40,9 @@ var releaseVersion = "0.0.0+devbuild." + getBinaryFootprint()
 
 // command-line arguments and env variables with default values
 type Args struct {
-	LogLevel  zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
-	SentryDSN string        `arg:"env:SENTRY_DSN"`
+	LogLevel    zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
+	SentryDSN   string        `arg:"env:SENTRY_DSN"`
+	SentryLevel zapcore.Level `arg:"env:SENTRY_LEVEL" default:"ERROR"`
 
 	BrokerConfig
 }
@@ -181,16 +182,16 @@ func startBrokerServer() {
 	}
 }
 
-func addSentryLogger(log *zap.Logger, dsn string) *zap.Logger {
+func addSentryLogger(log *zap.Logger) *zap.Logger {
 	cfg := zapsentry.Configuration{
-		Level: zapcore.WarnLevel,
+		Level: args.SentryLevel,
 		Tags: map[string]string{
 			"component":      "system",
 			"releaseVersion": releaseVersion,
 		},
 	}
 
-	core, err := zapsentry.NewCore(cfg, zapsentry.NewSentryClientFromDSN(dsn))
+	core, err := zapsentry.NewCore(cfg, zapsentry.NewSentryClientFromDSN(args.SentryDSN))
 	if err != nil {
 		log.Fatal("failed to init zap", zap.Error(err))
 	}
@@ -210,7 +211,7 @@ func createLogger() (*zap.SugaredLogger, error) {
 	}
 
 	if args.SentryDSN != "" {
-		logger = addSentryLogger(logger, args.SentryDSN)
+		logger = addSentryLogger(logger)
 	}
 
 	return logger.Sugar(), nil
