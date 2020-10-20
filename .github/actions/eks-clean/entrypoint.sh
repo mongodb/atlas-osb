@@ -9,10 +9,10 @@ kubectl version
 
 #delete instances first
 output=$(kubectl get all -n atlas-man4)
-echo $output | awk '/servicebinding.servicecatalog.k8s.io/{system("kubectl delete " $1 " -n atlas-man4")}'
-echo $output | awk '/ServiceClass\/atlas/{system("kubectl delete " $1 " -n atlas-man4")}'
+echo "${output}" | awk '/servicebinding.servicecatalog.k8s.io/{system("kubectl delete " $1 " -n atlas-man4")}'
+echo "${output}" | awk '/ServiceClass\/atlas/{system("kubectl delete " $1 " -n atlas-man4")}'
 
-helm uninstall ${K_APP_NAME} \
+helm uninstall "${K_APP_NAME}" \
     --namespace "${K_NAMESPACE}"
 
 helm uninstall "${K_SERVICE}" \
