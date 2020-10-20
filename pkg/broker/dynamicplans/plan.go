@@ -32,12 +32,7 @@ type Plan struct {
 	Cluster       *mongodbatlas.Cluster              `json:"cluster,omitempty"`
 	DatabaseUsers []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
 	IPWhitelists  []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
-
-	// TODO: what's this?
-	// DefaultBindingRoles *[]mongodbatlas.Role               `json:"defaultBindingRoles"`
-	// Bindings            []*Binding                         `json:"bindings,omitempty"` // READ ONLY! Populated by bind()
-
-	Settings map[string]interface{} `json:"settings,omitempty"`
+	Settings      map[string]interface{}             `json:"settings,omitempty"`
 }
 
 func (p *Plan) SafeCopy() Plan {
