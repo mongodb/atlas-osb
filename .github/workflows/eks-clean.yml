@@ -1,0 +1,33 @@
+#demo: Clean EKS namespace
+
+on:
+  workflow_dispatch:
+    input:
+      namespace:
+        description: "k8s Namespace"
+        required: false
+      service_name: 
+        description: "Service instance name"
+        required: false
+
+name: K8s Demo. Clean
+
+jobs:
+  eksdemo-clean: 
+    name: Clean EKS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: clean
+        uses: ./.github/actions/eks-clean
+        with:
+          NAMESPACE: ${{ github.event.inputs.namespace }}
+          SERVICE: ${{ github.event.inputs.service_name }}
+          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
+          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          AWS_DEFAULT_REGION: "us-east-2"

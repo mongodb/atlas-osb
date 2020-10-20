@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-service-broker-auth
+  namespace: {{ .Release.Namespace }}
+  labels:
+    product: {{ .Chart.Name }}
+type: Opaque
+stringData:
+  username: {{ .Values.broker.auth.username }}
+  password: {{ .Values.broker.auth.password }}
+  
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-auth
+  namespace: {{ .Release.Namespace }}
+  labels:
+    product: {{ .Chart.Name }}
+type: Opaque
+stringData:
+  apikeys.json: "
+  {
+    \"broker\": {
+      \"username\": \"{{ .Values.broker.auth.username }}\",
+      \"password\": \"{{ .Values.broker.auth.password }}\"
+    },
+    \"keys\": {
+      \"testKey\": {
+        \"orgID\" :\"{{ .Values.atlas.orgId }}\",
+        \"publicKey\": \"{{ .Values.atlas.publicKey }}\",
+        \"privateKey\":\"{{ .Values.atlas.privateKey }}\"
+      }
+    }
+  }"

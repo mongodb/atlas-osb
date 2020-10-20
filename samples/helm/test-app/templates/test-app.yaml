@@ -1,0 +1,47 @@
+#spring music test app
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: test-app
+        image: {{ .Values.image }}
+        volumeMounts:
+          - mountPath: /var/secrets/
+            name: {{ .Values.service.name }}
+        env:
+          - name: "CONNECTIONSTRING"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.service.name }}
+                key: uri
+      volumes:
+        - name: {{ .Values.service.name }}
+          secret:
+            secretName: {{ .Values.service.name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  type: LoadBalancer
+  selector:
+    app: {{ .Release.Name }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.broker.deployment.port }}
+      targetPort: {{ .Values.broker.deployment.port }}

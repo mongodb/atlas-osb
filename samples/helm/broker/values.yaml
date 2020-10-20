@@ -1,0 +1,24 @@
+# Atlas-osb image
+image: leori/test:atlas
+
+# Atlas Credentials
+atlas:
+  orgId: orgId
+  publicKey: public-key
+  privateKey: private-key-is-here
+
+#brokers enviromet variables and keys
+broker:
+  auth:
+    username: "admin" 
+    password: "admin"
+  deployment:
+    logLevel: "DEBUG"
+    host: "0.0.0.0"
+    port: "4000"
+    serviceName: "atlas"
+
+cluster:
+  planName: override-bind-db-plan
+  region: US_EAST_1
+  provider: AWS

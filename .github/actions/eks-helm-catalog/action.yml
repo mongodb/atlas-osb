@@ -1,0 +1,5 @@
+name: 'Helm catalog'
+description: 'helm install service catalog to `catalog` namespace'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

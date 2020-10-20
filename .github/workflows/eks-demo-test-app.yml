@@ -1,0 +1,30 @@
+#demo: Deploy test application
+
+on:
+  workflow_dispatch:
+    input:
+      namespace:
+        description: "k8s Namespace"
+        required: false
+      service_name: 
+        description: "Service instance name"
+        required: false
+
+name: K8s Demo. Deploy test application
+
+jobs:
+  eksdemo-test:
+    name: Deploy test application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Deploy test application
+        uses: ./.github/actions/eks-demo-test-app
+        with:
+          NAMESPACE: ${{ github.event.inputs.namespace }}
+          SERVICE: ${{ github.event.inputs.service_name }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          AWS_DEFAULT_REGION: "us-east-2"
