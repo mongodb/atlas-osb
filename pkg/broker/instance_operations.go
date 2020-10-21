@@ -150,7 +150,7 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 	}
 
 	if len(dp.IPWhitelists) > 0 {
-        logger.Warnw("The IPWhitelist Atlas resource is deprecated, please use AccessList")
+		logger.Warnw("The IPWhitelist Atlas resource is deprecated, please use AccessList")
 		_, _, err := client.ProjectIPWhitelist.Create(ctx, p.ID, dp.IPWhitelists)
 		if err != nil {
 			return nil, err
@@ -158,7 +158,7 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 	}
 
 	if len(dp.AccessLists) > 0 {
-		_, _, err := client.ProjectAccessList.Create(ctx, p.ID, dp.AccessLists)
+		_, _, err := client.ProjectIPAccessList.Create(ctx, p.ID, dp.AccessLists)
 		if err != nil {
 			return nil, err
 		}
