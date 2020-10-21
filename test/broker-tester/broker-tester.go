@@ -177,7 +177,7 @@ func main() {
 		}
 		log.Printf("%s", string(e))
 
-		ips, _, err2 := client.ProjectIPWhitelist.List(context.Background(), groupId, nil)
+		ips, _, err2 := client.ProjectAccessList.List(context.Background(), groupId, nil)
 		if err2 != nil {
 			log.Fatalf("error: %v", err2)
 		}

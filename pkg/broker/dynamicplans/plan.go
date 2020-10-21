@@ -31,6 +31,7 @@ type Plan struct {
 	Project       *mongodbatlas.Project              `json:"project,omitempty"`
 	Cluster       *mongodbatlas.Cluster              `json:"cluster,omitempty"`
 	DatabaseUsers []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
+	AccessLists   []*mongodbatlas.AccessList         `json:"accessLists,omitempty"`
 	IPWhitelists  []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
 	Settings      map[string]interface{}             `json:"settings,omitempty"`
 }
