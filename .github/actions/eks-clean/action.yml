@@ -1,0 +1,5 @@
+name: 'Clean EKS'
+description: 'helm uninstall'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

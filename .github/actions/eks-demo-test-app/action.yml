@@ -1,0 +1,5 @@
+name: 'Deploy test application to EKS'
+description: 'Deploy test application to EKS'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
