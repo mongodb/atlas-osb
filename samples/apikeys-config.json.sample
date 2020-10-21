@@ -1,7 +1,7 @@
 {
 	"broker": {
 		"username": "admin",
-		"password": "admin",
+		"password": "admin"
 	},
 	"keys": {
 		"testKey": {
