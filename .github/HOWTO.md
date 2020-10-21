@@ -25,7 +25,7 @@ Active workflows for operating.
 - `deploy-broker.yml` deploy broker to CF
 - `reaper.yml` delete clusters from Atlas
 - `create-release-package.yml` create a release
-- `eks-demo.yml` demo (2 jobs: create, clean)
+- `k8s-demo-*` demo 
 - `test-org-user.yml` copy of `deploy-broker.yml` additionally, it includes a check to create org users by broker
 
 # Using GitHub Actions locally
@@ -48,6 +48,7 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s DOCKERHUB_TOKEN=<...>
 -s AWS_ACCESS_KEY=<...>
 -s AWS_SECRET_KEY=<...>
+-s KUBE_CONFIG_DATA=<...one line json kubeconfig...>
 ```
 
 Now simply call:
@@ -73,21 +74,26 @@ act -j check-users
 ```
 
 ## Demo
-eks-demo workflow has 2 jobs:
-1) `eksdemo` deploys broker into k8s cluster, creates service instance, deploys test application. In the end prints out test application URL
-2) `eksdemo-clean`
+demo workflows:
+0) `k8s-demo-catalog` install service catalog to k8s cluster
+1) `k8s-demo-broker` deploys broker into k8s cluster, creates service instance, deploys test application. In the end, prints out test application URL
+2) `k8s-demo-instance` deploy service instance
+3) `k8s-demo-test-app` deploy test application for demonstration
+2) `k8s-demo-clean` clean k8s cluster
 
-Usage example:
+These jobs accept the `KUBE_CONFIG_DATA` secret, which is a copy of `kubectl config view -o json --raw | jq -c`
+
+```
+#sample if `.actrc` file doen't have `KUBE_CONFIG_DATA` secret or there are many different k8s cluster to use:
+act -s KUBE_CONFIG_DATA="$(cat ./kubeconfigoneline.json)" -j k8s-demo-broker
+```
+
+Workflows create and work with default parameters, if it is nessary to work with another namespaces then better way is to create event file with inputs: `service_name` and `namespace`. Samples:
 
 ```
 echo '{"action":"workflow_dispatch", "inputs": {"service_name":"sky-service","namespace":"atlas-osb"}}' > event.json
 act -j eksdemo-broker -e event.json
 act -j eksdemo-instance -e event.json
 act -j eksdemo-test -e event.json
-```
-
-or without event.json (it will use default values)
-
-```
-act -j eksdemo-broker
+#NOTE `.actrc` file should include `KUBE_CONFIG_DATA` secret
 ```

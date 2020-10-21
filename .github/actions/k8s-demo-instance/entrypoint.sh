@@ -2,7 +2,8 @@
 source ".github/base-dockerfile/helpers/params.sh"
 set -e
 
-aws eks --region us-east-2 update-kubeconfig --name atlas-osb-eks
+echo $INPUT_KUBE_CONFIG_DATA >> kubeconfig
+export KUBECONFIG="./kubeconfig"
 
 helm install "${K_SERVICE}" samples/helm/sample-service/ \
     --set broker.auth.username="${K_DEFAULT_USER}" \

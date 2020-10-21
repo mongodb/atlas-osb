@@ -1,0 +1,34 @@
+#demo: deploy atlas-osb to kubernetis cluster
+
+on:
+  workflow_dispatch:
+    input:
+      namespace:
+        description: "k8s Namespace"
+        required: false
+
+name: K8s Demo. Build Dockerimage and deploy Atlas-osb
+
+jobs:
+  k8s-demo-broker:
+    name: Build image, push to DockerHub and deploy to k8s cluster
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      # - name: Push Atlas-osb to Docker Hub
+      #   uses: docker/build-push-action@v1
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      #     repository: leori/atlas-osb
+      #     tag_with_ref: true
+      - name: deploy Atlas-osb
+        uses: ./.github/actions/k8s-demo-broker
+        with:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          NAMESPACE: ${{ github.event.inputs.namespace }}
+          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
+          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}      
+          

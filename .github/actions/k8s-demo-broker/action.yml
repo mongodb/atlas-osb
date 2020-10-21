@@ -1,6 +1,15 @@
 name: 'Deploy Atlas-osb'
 description: 'Deploy Atlas-osb to k8s'
 inputs:
+  kube_config_data:
+    description: "kubeconfig"
+    required: true
+  namespace:
+    description: "namespace name"
+    required: false
+  service:
+    description: "desired service name"
+    required: false
   atlas_public_key:
     description: "organization public key"
     required: true
@@ -14,6 +23,9 @@ runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
+    - ${{ inputs.kube_config_data }}
+    - ${{ inputs.namespace }}
+    - ${{ inputs.service }}
     - ${{ inputs.atlas_public_key }}
     - ${{ inputs.atlas_private_key }}
     - ${{ inputs.atlas_org_id }}

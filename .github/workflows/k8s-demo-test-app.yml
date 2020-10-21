@@ -1,4 +1,4 @@
-#demo: create service instance 
+#demo: Deploy test application
 
 on:
   workflow_dispatch:
@@ -10,21 +10,19 @@ on:
         description: "Service instance name"
         required: false
 
-name: K8s Demo. Create service instance
+name: K8s Demo. Deploy test application
 
 jobs:
-  eksdemo-instance:
-    name: Create service instance
+  k8s-demo-test:
+    name: Deploy test application
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-      - name: Create service instance
-        uses: ./.github/actions/eks-demo-instance
+      - name: Deploy test application
+        uses: ./.github/actions/k8s-demo-test-app
         with:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
           NAMESPACE: ${{ github.event.inputs.namespace }}
           SERVICE: ${{ github.event.inputs.service_name }}
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
-          AWS_DEFAULT_REGION: "us-east-2"
+          

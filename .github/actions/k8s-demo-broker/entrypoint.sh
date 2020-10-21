@@ -1,9 +1,11 @@
 #!/bin/bash
+set -e
 source ".github/base-dockerfile/helpers/params.sh"
 
-aws eks --region us-east-2 update-kubeconfig --name atlas-osb-eks
+echo $INPUT_KUBE_CONFIG_DATA >> kubeconfig
+export KUBECONFIG="./kubeconfig"
+kubectl version
 
-set -e
 echo "leori/atlas-osb:${branch_name}"
 helm install "${K_BROKER}" \
     --set namespace="${K_NAMESPACE}" \
