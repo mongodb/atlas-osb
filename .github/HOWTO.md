@@ -75,20 +75,20 @@ act -j check-users
 
 ## Demo
 demo workflows:
-0) `k8s-demo-catalog` install service catalog to k8s cluster
+0) `k8s-demo-catalog` install service catalog to k8s cluster to `catalog` namespace, run only if k8s doesn't have a service catalog installed
 1) `k8s-demo-broker` deploys broker into k8s cluster, creates service instance, deploys test application. In the end, prints out test application URL
 2) `k8s-demo-instance` deploy service instance
 3) `k8s-demo-test-app` deploy test application for demonstration
-2) `k8s-demo-clean` clean k8s cluster
+4) `k8s-demo-clean` clean k8s cluster
 
 These jobs accept the `KUBE_CONFIG_DATA` secret, which is a copy of `kubectl config view -o json --raw | jq -c`
 
 ```
-#sample if `.actrc` file doen't have `KUBE_CONFIG_DATA` secret or there are many different k8s cluster to use:
+#sample if `.actrc` file doesn't have `KUBE_CONFIG_DATA` secret or there are many different k8s clusters to use:
 act -s KUBE_CONFIG_DATA="$(cat ./kubeconfigoneline.json)" -j k8s-demo-broker
 ```
 
-Workflows create and work with default parameters, if it is nessary to work with another namespaces then better way is to create event file with inputs: `service_name` and `namespace`. Samples:
+Workflows work with default [parameters](https://github.com/mongodb/atlas-osb/blob/master/.github/base-dockerfile/helpers/params.sh), if it is necessary to work with another namespace then a better way is to create an event file with inputs: `service_name` and `namespace`. Samples:
 
 ```
 echo '{"action":"workflow_dispatch", "inputs": {"service_name":"sky-service","namespace":"atlas-osb"}}' > event.json
