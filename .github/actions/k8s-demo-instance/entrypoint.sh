@@ -2,7 +2,7 @@
 source ".github/base-dockerfile/helpers/params.sh"
 set -e
 
-echo $INPUT_KUBE_CONFIG_DATA >> kubeconfig
+echo "$INPUT_KUBE_CONFIG_DATA" >> kubeconfig
 export KUBECONFIG="./kubeconfig"
 
 helm install "${K_SERVICE}" samples/helm/sample-service/ \

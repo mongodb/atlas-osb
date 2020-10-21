@@ -2,7 +2,7 @@
 set -e
 source ".github/base-dockerfile/helpers/params.sh"
 
-echo $INPUT_KUBE_CONFIG_DATA >> kubeconfig
+echo "$INPUT_KUBE_CONFIG_DATA" >> kubeconfig
 export KUBECONFIG="./kubeconfig"
 kubectl version
 

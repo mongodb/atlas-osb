@@ -16,13 +16,13 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-      # - name: Push Atlas-osb to Docker Hub
-      #   uses: docker/build-push-action@v1
-      #   with:
-      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
-      #     repository: leori/atlas-osb
-      #     tag_with_ref: true
+      - name: Push Atlas-osb to Docker Hub
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: leori/atlas-osb
+          tag_with_ref: true
       - name: deploy Atlas-osb
         uses: ./.github/actions/k8s-demo-broker
         with:
