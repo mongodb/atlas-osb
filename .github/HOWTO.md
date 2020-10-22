@@ -75,6 +75,7 @@ act -j check-users
 
 ## Demo
 demo workflows:
+
 0) `k8s-demo-catalog` install service catalog to k8s cluster to `catalog` namespace, run only if k8s doesn't have a service catalog installed
 1) `k8s-demo-broker` deploys broker into k8s cluster, creates service instance, deploys test application. In the end, prints out test application URL
 2) `k8s-demo-instance` deploy service instance
