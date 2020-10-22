@@ -1,6 +1,8 @@
 #!/bin/bash
 source ".github/base-dockerfile/helpers/params.sh"
+source ".github/base-dockerfile/helpers/tmp-helper.sh"
 
+make_creds
 echo "$INPUT_KUBE_CONFIG_DATA" >> kubeconfig
 export KUBECONFIG="./kubeconfig"
 

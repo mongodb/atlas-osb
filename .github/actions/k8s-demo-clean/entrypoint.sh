@@ -1,7 +1,9 @@
 #!/bin/bash
-source ".github/base-dockerfile/helpers/params.sh"
 set -e
+source ".github/base-dockerfile/helpers/params.sh"
+source ".github/base-dockerfile/helpers/tmp-helper.sh"
 
+make_creds
 helm version
 aws --version
 echo "$INPUT_KUBE_CONFIG_DATA" >> kubeconfig

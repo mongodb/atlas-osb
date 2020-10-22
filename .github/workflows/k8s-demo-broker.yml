@@ -30,5 +30,8 @@ jobs:
           NAMESPACE: ${{ github.event.inputs.namespace }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
-          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}      
+          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           

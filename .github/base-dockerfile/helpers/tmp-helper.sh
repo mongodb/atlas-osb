@@ -23,3 +23,16 @@ make_multikey_config() {
 
 EOF
 }
+
+make_creds() {
+	mkdir ~/.aws
+	cat >>~/.aws/credentials <<EOF
+[default]
+aws_access_key_id="${AWS_ACCESS_KEY_ID}"
+aws_secret_access_key="${AWS_SECRET_ACCESS_KEY}"
+EOF
+	cat >>~/.aws/config <<EOF
+[default]
+region=us-east-2
+EOF
+}
