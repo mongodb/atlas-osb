@@ -22,12 +22,24 @@ jobs:
       - name: clean
         uses: ./.github/actions/k8s-demo-clean
         with:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
           NAMESPACE: ${{ github.event.inputs.namespace }}
           SERVICE: ${{ github.event.inputs.service_name }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
-          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          set -e
+          ./.github/base-dockerfile/helpers/install_k8s_helm.sh
+          source ".github/base-dockerfile/helpers/params.sh"
+
+          #prepare env
+          echo "$INPUT_KUBE_CONFIG_DATA" >> ./kube.config
+          export KUBECONFIG="./kube.config"
+
+          #delete instances first
+          output=$(kubectl get all -n "${K_NAMESPACE}")
+          echo "${output}" | awk '/servicebinding.servicecatalog.k8s.io/{system("kubectl delete " $1 " -n  '"${K_NAMESPACE}"'")}'
+          echo "${output}" | awk '/ServiceClass\/atlas/{system("kubectl delete " $1 " -n  '"${K_NAMESPACE}"'")}'
+
+          kubectl delete namespace "${K_NAMESPACE}"

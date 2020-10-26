@@ -13,9 +13,13 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v2
       - name: install service catalog
-        uses: ./.github/actions/k8s-helm-catalog
         with:
           KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          #prepare env
+          ./.github/base-dockerfile/helpers/install_k8s_helm.sh
+          echo "$INPUT_KUBE_CONFIG_DATA" >> ./kube.config
+          export KUBECONFIG="./kube.config"
+
+          helm repo add svc-cat https://svc-catalog-charts.storage.googleapis.com
+          helm install catalog svc-cat/catalog --namespace catalog --create-namespace
