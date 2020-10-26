@@ -98,7 +98,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		Parameters:   planEnc,
 	}
 
-	state, err := b.stateStorage(dp.Project.OrgID)
+	state, err := b.stateStorage(ctx, dp.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -260,7 +260,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		Parameters:   planEnc,
 	}
 
-	state, err := b.stateStorage(oldPlan.Project.OrgID)
+	state, err := b.stateStorage(ctx, oldPlan.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -344,7 +344,7 @@ func (b Broker) getState(ctx context.Context, id string, out interface{}) error 
 	for k := range b.credentials.Keys() {
 		logger = logger.With("orgID", k)
 
-		ss, err := b.stateStorage(k)
+		ss, err := b.stateStorage(ctx, k)
 		if err != nil {
 			logger.Errorw("Cannot get state storage for org", "error", err)
 			continue
@@ -443,7 +443,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				err = nil
 			}
 
-			state, errDel := b.stateStorage(p.Project.OrgID)
+			state, errDel := b.stateStorage(ctx, p.Project.OrgID)
 			if errDel != nil {
 				logger.Errorw("Failed to get state storage", "error", errDel)
 				break
