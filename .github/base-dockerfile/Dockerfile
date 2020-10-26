@@ -9,6 +9,7 @@ ENV TILE_GENERATOR_VERSION=12.0.8 \
     DUMB_INIT_VERSION=1.2.2 \
     GOLANG_VERSION=1.13.3 \
     CF_CLI_VERSION=6.51.0 \
+    HELM_VERSION=3.3.4 \
     PATH=/go/bin:/usr/local/go/bin:/root/google-cloud-sdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     GOPATH=/go
 RUN set -xe && \
@@ -31,46 +32,58 @@ RUN set -xe && \
     ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive && \
-    apt-get install -y --no-install-recommends build-essential git ruby-dev openssh-client unzip wget curl rsync vim-nox python openjdk-8-jdk jq && \
+    echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list && \
+    apt-get install -y --no-install-recommends build-essential git ruby-dev openssh-client unzip wget curl rsync vim-nox python openjdk-8-jdk jq apt-transport-https gnupg2 && \
+    curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
+    apt-get update && \
+    apt-get install -y kubectl && \
     apt-get autoremove && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 RUN wget https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -O yq && \
     mv yq /usr/local/bin/yq && \
-    chmod +x /usr/local/bin/yq && \
-    wget https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-${BOSH_CLI_VERSION}-linux-amd64 -O bosh && \
+    chmod +x /usr/local/bin/yq
+RUN wget https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-${BOSH_CLI_VERSION}-linux-amd64 -O bosh && \
     mv bosh /usr/local/bin/bosh && \
-    chmod +x /usr/local/bin/bosh && \
-    wget https://github.com/pivotal-cf/om/releases/download/${OM_VERSION}/om-linux-${OM_VERSION} -O om-linux && \
+    chmod +x /usr/local/bin/bosh
+RUN wget https://github.com/pivotal-cf/om/releases/download/${OM_VERSION}/om-linux-${OM_VERSION} -O om-linux && \
     mv om-linux /usr/local/bin/om && \
-    chmod +x /usr/local/bin/om && \
-    wget https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/${CREDHUB_CLI_VERSION}/credhub-linux-${CREDHUB_CLI_VERSION}.tgz -O credhub.tgz && \ 
+    chmod +x /usr/local/bin/om
+RUN wget https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/${CREDHUB_CLI_VERSION}/credhub-linux-${CREDHUB_CLI_VERSION}.tgz -O credhub.tgz && \ 
     tar xzf ./credhub.tgz && \
     mv credhub /usr/local/bin/credhub && \
     chmod +x /usr/local/bin/credhub && \
-    rm -f ./credhub.tgz && \
-    wget https://s3-us-west-1.amazonaws.com/cf-cli-releases/releases/v${CF_CLI_VERSION}/cf-cli_${CF_CLI_VERSION}_linux_x86-64.tgz -O cf.tgz && \
+    rm -f ./credhub.tgz
+RUN wget https://s3-us-west-1.amazonaws.com/cf-cli-releases/releases/v${CF_CLI_VERSION}/cf-cli_${CF_CLI_VERSION}_linux_x86-64.tgz -O cf.tgz && \
     tar xzf ./cf.tgz cf && \
     mv cf /usr/local/bin/cf && \
     chmod +x /usr/local/bin/cf && \
-    rm -f ./cf.tgz && \
-    wget https://github.com/pivotal-cf/pivnet-cli/releases/download/v${PIVNET_CLI_VERSION}/pivnet-linux-amd64-${PIVNET_CLI_VERSION} -O pivnet && \
+    rm -f ./cf.tgz
+RUN wget https://github.com/pivotal-cf/pivnet-cli/releases/download/v${PIVNET_CLI_VERSION}/pivnet-linux-amd64-${PIVNET_CLI_VERSION} -O pivnet && \
     mv pivnet /usr/local/bin/pivnet && \
-    chmod +x /usr/local/bin/pivnet && \
-    wget https://github.com/cf-platform-eng/tile-generator/releases/download/v${TILE_GENERATOR_VERSION}/pcf_linux-64bit -O pcf && \
+    chmod +x /usr/local/bin/pivnet
+RUN wget https://github.com/cf-platform-eng/tile-generator/releases/download/v${TILE_GENERATOR_VERSION}/pcf_linux-64bit -O pcf && \
     mv pcf /usr/local/bin/pcf && \
-    chmod +x /usr/local/bin/pcf && \
-    wget https://github.com/cf-platform-eng/tile-generator/releases/download/v${TILE_GENERATOR_VERSION}/tile_linux-64bit -O tile && \
+    chmod +x /usr/local/bin/pcf
+RUN wget https://github.com/cf-platform-eng/tile-generator/releases/download/v${TILE_GENERATOR_VERSION}/tile_linux-64bit -O tile && \
     mv tile /usr/local/bin/tile && \
-    chmod +x /usr/local/bin/tile && \
-    wget https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz -P /tmp && \
+    chmod +x /usr/local/bin/tile
+RUN wget https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz -P /tmp && \
     tar xzf /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz -C /usr/local && \
     mkdir $GOPATH && \
-    go get -u github.com/onsi/ginkgo/... && \
-    wget https://github.com/cloudfoundry/bosh-bootloader/releases/download/v${BBL_VERSION}/bbl-v${BBL_VERSION}_linux_x86-64 -O bbl && \
+    go get -u github.com/onsi/ginkgo/...
+RUN wget https://github.com/cloudfoundry/bosh-bootloader/releases/download/v${BBL_VERSION}/bbl-v${BBL_VERSION}_linux_x86-64 -O bbl && \
     mv bbl /usr/local/bin/bbl && \
-    chmod +x /usr/local/bin/bbl 
+    chmod +x /usr/local/bin/bbl
     # wget https://github.com/Yelp/dumb-init/releases/download/v${DUMB_INIT_VERSION}/dumb-init_${DUMB_INIT_VERSION}_amd64 -O dumb-init && \
     # mv dumb-init /usr/local/bin/dumb-init && \
     # chmod +x /usr/local/bin/dumb-init && \
+RUN wget https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz -O helm.tar.gz && \
+    tar xzf helm.tar.gz && \
+    mv linux-amd64/helm /usr/local/bin/helm && \
+    chmod +x /usr/local/bin/helm
+RUN wget https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -O awscliv2.zip && \
+    unzip awscliv2.zip && \
+    chmod +x ./aws/install  && \
+    ./aws/install
 CMD ["/bin/bash"]

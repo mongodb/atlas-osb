@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 func (c *Client) RealmAppInputFromString(value string) (*RealmAppInput, error) {
@@ -72,7 +72,7 @@ type RealmAppInput struct {
 }
 
 // RealmApp represents MongoDB API Key.
-//{"_id":"5f12de8c15049be9464eb269","client_app_id":"mad-elion-arays","name":"mad-elion","location":"US-VA","deployment_model":"GLOBAL","domain_id":"5f12de8c15049be9464eb26a","group_id":"5f12d8cc6c2bfd1e0c670f4a","last_used":1595072140,"last_modified":1595072140,"product":"standard"}
+// {"_id":"5f12de8c15049be9464eb269","client_app_id":"mad-elion-arays","name":"mad-elion","location":"US-VA","deployment_model":"GLOBAL","domain_id":"5f12de8c15049be9464eb26a","group_id":"5f12d8cc6c2bfd1e0c670f4a","last_used":1595072140,"last_modified":1595072140,"product":"standard"}
 type RealmApp struct {
 	Name            string `json:"name,omitempty"`
 	ID              string `json:"_id,omitempty"`
@@ -100,7 +100,7 @@ func (s *RealmAppsServiceOp) List(ctx context.Context, groupID string, listOptio
 		return nil, nil, err
 	}
 
-	//root := new(realmAppsResponse)
+	// root := new(realmAppsResponse)
 	root := make([]RealmApp, 0)
 	resp, err := s.Client.Do(ctx, req, &root)
 	if err != nil {

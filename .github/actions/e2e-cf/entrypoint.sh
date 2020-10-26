@@ -1,5 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1091,SC2034
+set -e
+
 source ".github/base-dockerfile/helpers/tmp-helper.sh"
 source ".github/base-dockerfile/helpers/cf-helper.sh"
 source ".github/base-dockerfile/helpers/params.sh"
@@ -10,7 +12,7 @@ echo "init"
 make_multikey_config samples/apikeys-config.json
 
 echo "Login. Create ORG and SPACE depended on the branch name"
-cf_login "$ORG_NAME" "$SPACE_NAME"
+cf_login "" ""
 cf create-org "$ORG_NAME" && cf target -o "$ORG_NAME"
 cf create-space "$SPACE_NAME" && cf target -s "$SPACE_NAME"
 
@@ -23,7 +25,7 @@ cf create-service-broker "$BROKER" "admin" "admin" http://"$app_url" --space-sco
 
 cf marketplace
 BROKER_OSB_SERVICE_NAME=$(echo "${BROKER_OSB_SERVICE_NAME}" | tr "." "-")
-cf create-service "$BROKER_OSB_SERVICE_NAME" "override-bind-db-plan" "$SERVICE_ATLAS" -c '{"org_id":"'"${INPUT_ATLAS_ORG_ID}"'"}' #'{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
+cf create-service "$BROKER_OSB_SERVICE_NAME" "basic-overrides-plan" "$SERVICE_ATLAS" -c '{"org_id":"'"${INPUT_ATLAS_ORG_ID}"'"}' #'{"cluster":  {"providerSettings":  {"regionName": "EU_CENTRAL_1"} } }'
 check_service_creation "$SERVICE_ATLAS"
 
 echo "Simple app"

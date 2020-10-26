@@ -25,6 +25,8 @@ Active workflows for operating.
 - `deploy-broker.yml` deploy broker to CF
 - `reaper.yml` delete clusters from Atlas
 - `create-release-package.yml` create a release
+- `eks-demo.yml` demo (2 jobs: create, clean)
+- `test-org-user.yml` copy of `deploy-broker.yml` additionally, it includes a check to create org users by broker
 
 # Using GitHub Actions locally
 Tools for successfully running pipeline locally:
@@ -42,6 +44,10 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s CF_PASSWORD=<password>
 -s CF_API=api.something
 -s CF_USER=<user>
+-s DOCKERHUB_USERNAME=<...>
+-s DOCKERHUB_TOKEN=<...>
+-s AWS_ACCESS_KEY=<...>
+-s AWS_SECRET_KEY=<...>
 ```
 
 Now simply call:
@@ -58,4 +64,30 @@ Also, `act` can use [event payload](https://developer.github.com/webhooks/event-
 
 ```
 act delete -e delete.json
+```
+
+for running pipeline `test-org-user.yml` we can run a separate job
+
+```
+act -j check-users
+```
+
+## Demo
+eks-demo workflow has 2 jobs:
+1) `eksdemo` deploys broker into k8s cluster, creates service instance, deploys test application. In the end prints out test application URL
+2) `eksdemo-clean`
+
+Usage example:
+
+```
+echo '{"action":"workflow_dispatch", "inputs": {"service_name":"sky-service","namespace":"atlas-osb"}}' > event.json
+act -j eksdemo-broker -e event.json
+act -j eksdemo-instance -e event.json
+act -j eksdemo-test -e event.json
+```
+
+or without event.json (it will use default values)
+
+```
+act -j eksdemo-broker
 ```

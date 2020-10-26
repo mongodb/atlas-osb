@@ -5,7 +5,8 @@
 on:
   push:
     branches:
-      - '*'
+      - "*"
+  workflow_dispatch:
 
 name: e2e VMware TAS
 
@@ -24,8 +25,8 @@ jobs:
 
           # Optional: working directory, useful for monorepos
           # working-directory:
-          # Optional: golangci-lint command line arguments.
-          # args: -issues-exit-code=0
+
+          args: --timeout 10m
           # Optional: show only new issues if it's a pull request. The default value is `false`.
           # only-new-issues: true
 
@@ -43,13 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.3.1
-
-      - name: Wait for other CI to finish
-        uses: softprops/turnstyle@v1
-        with:
-          poll-interval-seconds: 10
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create CF org, space, broker, service and push app
         id: prepare

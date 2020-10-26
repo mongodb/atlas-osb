@@ -1,0 +1,16 @@
+apiVersion: servicecatalog.k8s.io/v1beta1
+kind: ServiceInstance
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    region: {{ .Values.cluster.region }}
+    product: {{ .Chart.Name }}
+spec:
+  serviceClassExternalName: {{ .Values.broker.deployment.serviceName }}
+  servicePlanExternalName: {{ .Values.cluster.planName }}
+  externalID: {{ .Release.Name }}
+  parameters:
+    cluster:
+      providerSettings:
+        regionName: {{ .Values.cluster.region }}

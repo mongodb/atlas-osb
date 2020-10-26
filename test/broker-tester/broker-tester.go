@@ -25,7 +25,7 @@ import (
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/mongodb/go-client-mongodb-atlas/mongodbatlas"
+	"go.mongodb.org/atlas/mongodbatlas"
 	"gopkg.in/yaml.v2"
 	osb "sigs.k8s.io/go-open-service-broker-client/v2"
 )
@@ -35,7 +35,7 @@ const (
 	privateKeyAPIEnv          = "ATLAS_PRIVATE_KEY"
 	brokerHTTPAuthUsernameEnv = "ATLAS_BROKER_HTTP_AUTH_USERNAME"
 	brokerHTTPAuthPasswordEnv = "ATLAS_BROKER_HTTP_AUTH_PASSWORD" // nolint
-	//projectIDEnv  = "ATLAS_PROJECT_ID"
+	// projectIDEnv  = "ATLAS_PROJECT_ID"
 	brokerHostportEnv = "ATLAS_BROKER_HOSTPORT"
 )
 
@@ -93,14 +93,14 @@ func main() {
 
 	flag.Parse()
 
-	//if !verbose {
+	// if !verbose {
 	//    log.SetOutput(ioutil.Discard)
-	//}
+	// }
 
 	// if flag.NArg() == 0 {
 	//    flag.Usage()
 	//    os.Exit(1)
-	//}
+	// }
 
 	otherArgs = flag.Args()
 	log.Printf("other args: %+v\n", otherArgs)
@@ -141,7 +141,7 @@ func main() {
 		if err2 != nil {
 			log.Fatalf("error: %v", err2)
 		}
-		//d, err := yaml.Marshal(&catalog)
+		// d, err := yaml.Marshal(&catalog)
 		d, err := json.Marshal(&catalog)
 		if err != nil {
 			log.Fatalf("error: %v", err)

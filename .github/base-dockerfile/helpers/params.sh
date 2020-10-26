@@ -22,3 +22,20 @@ SERVICE_ATLAS=instance-$postfix
 SERVICE_ATLAS_RENAME=$SERVICE_ATLAS-rnm
 
 BROKER_OSB_SERVICE_NAME="atlas"
+
+#k8s default demo names
+K_NAMESPACE="atlas-$postfix"
+K_BROKER="atlas-osb-$commit_id"
+K_SERVICE="aosbs-$postfix"
+K_TEST_APP="test-app-$commit_id"
+K_DEFAULT_USER="admin"
+K_DEFAULT_PASS="admin"
+
+#override, if service/namespace presented in pipeline workflow
+if [[ $INPUT_SERVICE ]]; then
+    K_SERVICE=$INPUT_SERVICE
+    K_TEST_APP="test-app-${K_SERVICE}"
+fi
+if [[ $INPUT_NAMESPACE ]]; then
+    K_NAMESPACE=$INPUT_NAMESPACE
+fi

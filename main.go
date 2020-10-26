@@ -36,18 +36,19 @@ var releaseVersion = "0.0.0+devbuild." + time.Now().UTC().Format("20060102T15040
 
 // command-line arguments and env variables with default values
 type Args struct {
-	LogLevel zapcore.Level `arg:"-l,env:BROKER_TLS_KEY_FILE" default:"INFO"`
+	LogLevel zapcore.Level `arg:"-l,env:BROKER_LOG_LEVEL" default:"INFO"`
 
 	BrokerConfig
 }
 
 type BrokerConfig struct {
-	AtlasURL            string `arg:"-a,env:ATLAS_BASE_URL" default:"https://cloud.mongodb.com/api/atlas/v1.0/"`
-	RealmURL            string `arg:"-r,env:REALM_BASE_URL" default:"https://realm.mongodb.com/api/admin/v3.0/"`
-	Host                string `arg:"-h,env:BROKER_HOST" default:"127.0.0.1"`
-	Port                uint16 `arg:"-p,env:BROKER_PORT" default:"4000"`
-	CertPath            string `arg:"-c,env:BROKER_TLS_CERT_FILE"`
-	KeyPath             string `arg:"-k,env:BROKER_TLS_KEY_FILE"`
+	AtlasURL string `arg:"-a,env:ATLAS_BASE_URL" default:"https://cloud.mongodb.com/api/atlas/v1.0/"`
+	RealmURL string `arg:"-r,env:REALM_BASE_URL" default:"https://realm.mongodb.com/api/admin/v3.0/"`
+	Host     string `arg:"-h,env:BROKER_HOST" default:"127.0.0.1"`
+	Port     uint16 `arg:"-p,env:BROKER_PORT" default:"4000"`
+	CertPath string `arg:"-c,env:BROKER_TLS_CERT_FILE"`
+	KeyPath  string `arg:"-k,env:BROKER_TLS_KEY_FILE"`
+
 	ServiceName         string `arg:"env:BROKER_OSB_SERVICE_NAME" default:"atlas"`
 	ServiceDisplayName  string `arg:"env:BROKER_OSB_SERVICE_DISPLAY_NAME" default:"Template Services"`
 	ServiceDesc         string `arg:"env:BROKER_OSB_SERVICE_DESC" default:"MongoDB Atlas Plan Template Deployments"`
@@ -55,7 +56,7 @@ type BrokerConfig struct {
 	ImageURL            string `arg:"env:BROKER_OSB_IMAGE_URL" default:"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"`
 	DocumentationURL    string `arg:"env:BROKER_OSB_DOCS_URL" default:"https://support.mongodb.com/welcome"`
 	ProviderDisplayName string `arg:"env:BROKER_OSB_PROVIDER_DISPLAY_NAME" default:"MongoDB"`
-	LongDescription     string `arg:"env:BROKER_OSB_PROVIDER_DESC" default:"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/mongodb/atlas-osb"`
+	LongDescription     string `arg:"env:BROKER_OSB_LONG_DESC" default:"Complete MongoDB Atlas deployments managed through resource templates. See https://github.com/mongodb/atlas-osb"`
 }
 
 // FIXME: update links
@@ -65,9 +66,9 @@ in MongoDB Atlas. It conforms to the Open Service Broker specification and can
 be used with any compatible platform, for example the Kubernetes Service Catalog.
 
 For instructions on how to install and use the Service Broker please refer to
-the documentation: https://TBD
+the documentation: https://github.com/mongodb/atlas-osb/blob/master/README.md
 
-Github: https://TBD
+Github: https://github.com/mongodb/atlas-osb
 Docker Image: https://TBD
 `
 

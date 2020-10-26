@@ -1,0 +1,20 @@
+#demo: install service catalog using Helm
+
+on:
+  workflow_dispatch:
+
+name: K8s Demo.
+
+jobs:
+  eksdemo-catalog:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: install service catalog
+        uses: ./.github/actions/eks-helm-catalog
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          AWS_DEFAULT_REGION: "us-east-2"
