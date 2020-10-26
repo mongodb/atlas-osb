@@ -9,9 +9,9 @@ Actions available right now:
 - clean-failed - triggered by deleting the branch, `purge` failed services and clean test-organization
 - cleanup-cf - clean Cloud Foundry space after testing
 - e2e-cf - deploy atlas broker with provided templates
-- reaper - delete clusters/project from Atlas 
+- reaper - delete clusters/project from Atlas
 
-"e2e-cf" action have commented parts in case spring-music are more preferiable as a test application 
+"e2e-cf" action have commented parts in case spring-music are more preferiable as a test application
 
 ## base-dockerfile
 The Dockerfile included here is used for actions and also contains helper functions for actions
@@ -20,12 +20,12 @@ The Dockerfile included here is used for actions and also contains helper functi
 All disabled/cancelled/saved for future use workflows are placed in here. For example, workflow "Deploy to Amazon ECS" we plan to use it later.
 
 ## workflows
-Active workflows for operating. 
+Active workflows for operating.
 - `clean-cf.yml` clean Cloud Foundry from previous usage
 - `deploy-broker.yml` deploy broker to CF
 - `reaper.yml` delete clusters from Atlas
 - `create-release-package.yml` create a release
-- `k8s-demo-*` demo 
+- `k8s-demo-*` demo
 - `test-org-user.yml` copy of `deploy-broker.yml` additionally, it includes a check to create org users by broker
 
 # Using GitHub Actions locally
@@ -46,8 +46,6 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s CF_USER=<user>
 -s DOCKERHUB_USERNAME=<...>
 -s DOCKERHUB_TOKEN=<...>
--s AWS_ACCESS_KEY_ID=<...>
--s AWS_SECRET_ACCESS_KEY=<...>
 -s KUBE_CONFIG_DATA=<...one line json kubeconfig...>
 ```
 
@@ -82,7 +80,11 @@ demo workflows:
 3) `k8s-demo-test-app` deploy test application for demonstration
 4) `k8s-demo-clean` clean k8s cluster
 
-These jobs accept the `KUBE_CONFIG_DATA` secret, which is a copy of `kubectl config view -o json --raw | jq -c`
+These jobs accept the `KUBE_CONFIG_DATA` secret, for example:
+
+```
+KUBE_CONFIG_DATA=$(kubectl config view -o json --raw | jq -c '.')
+```
 
 ```
 #sample if `.actrc` file doesn't have `KUBE_CONFIG_DATA` secret or there are many different k8s clusters to use:

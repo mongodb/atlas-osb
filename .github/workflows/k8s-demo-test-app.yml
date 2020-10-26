@@ -20,7 +20,6 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v2
       - name: Deploy test application
-        uses: ./.github/actions/k8s-demo-test-app
         with:
           KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
           NAMESPACE: ${{ github.event.inputs.namespace }}
