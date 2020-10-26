@@ -143,6 +143,13 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 	}
 
 	for _, u := range dp.DatabaseUsers {
+		if len(u.Scopes) == 0 {
+			u.Scopes = append(u.Scopes, mongodbatlas.Scope{
+				Name: dp.Cluster.Name,
+				Type: "CLUSTER",
+			})
+		}
+
 		_, _, err := client.DatabaseUsers.Create(ctx, p.ID, u)
 		if err != nil {
 			return nil, err
