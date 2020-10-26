@@ -30,6 +30,11 @@ import (
 )
 
 const (
+	operationBind   = "bind"
+	operationUnbind = "unbind"
+)
+
+const (
 	overrideBindDB     = "overrideBindDB"
 	overrideBindDBRole = "overrideBindDBRole"
 )
@@ -118,7 +123,9 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	connDetails.URI = cs.String()
 
 	spec = domain.Binding{
-		Credentials: connDetails,
+		IsAsync:       true,
+		Credentials:   connDetails,
+		OperationData: operationBind,
 	}
 
 	ss, err := b.stateStorage(ctx, p.Project.OrgID)
@@ -143,6 +150,18 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 		return spec, errors.Wrap(err, "cannot get Atlas client")
 	}
 
+	ss, err := b.stateStorage(ctx, p.Project.OrgID)
+	if err != nil {
+		return spec, errors.Wrapf(err, "cannot get state storage for org %s", p.Project.OrgID)
+	}
+
+	// Find binding details by binding ID
+	binding := BindingSpec{}
+	err = ss.FindOne(ctx, bindingID, &binding)
+	if err != nil {
+		return
+	}
+
 	// Fetch the cluster from Atlas to ensure it exists.
 	_, _, err = client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
@@ -150,26 +169,14 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 		return spec, errors.Wrap(err, "cannot get existing cluster")
 	}
 
-	// Delete database user which has the binding ID as its username.
-	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
+	// Delete database user.
+	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, binding.Credentials.Username)
 	if err != nil {
 		logger.Errorw("Failed to delete Atlas database user", "error", err)
 		return spec, errors.Wrap(err, "cannot delete Atlas Database User")
 	}
 
 	logger.Infow("Successfully deleted Atlas database user")
-
-	ss, err := b.stateStorage(ctx, p.Project.OrgID)
-	if err != nil {
-		return spec, errors.Wrapf(err, "cannot get state storage for org %s", p.Project.OrgID)
-	}
-
-	s := BindingSpec{}
-
-	err = ss.FindOne(ctx, bindingID, &s)
-	if err != nil {
-		return
-	}
 
 	err = ss.DeleteOne(ctx, bindingID)
 	return
@@ -209,13 +216,48 @@ func (b Broker) LastBindingOperation(ctx context.Context, instanceID string, bin
 		return
 	}
 
-	_, r, err := client.DatabaseUsers.Get(ctx, "admin", p.Project.ID, bindingID)
-	switch r.StatusCode {
-	case http.StatusNotFound:
-	default:
-		err = errors.Wrap(err, "cannot get binding")
-		logger.Errorw("Failed to get binding", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+	ss, err := b.stateStorage(ctx, p.Project.OrgID)
+	if err != nil {
+		return resp, errors.Wrapf(err, "cannot get state storage for org %s", p.Project.OrgID)
+	}
+
+	// Find binding details by binding ID
+	binding := BindingSpec{}
+	err = ss.FindOne(ctx, bindingID, &binding)
+	if err != nil {
 		return
+	}
+
+	_, r, err := client.DatabaseUsers.Get(ctx, "admin", p.Project.ID, binding.Credentials.Username)
+	if err != nil && r.StatusCode != http.StatusNotFound {
+		err = errors.Wrap(err, "cannot get binding")
+		logger.Errorw("Failed to get binding", "error", err)
+		return
+	}
+
+	switch details.OperationData {
+	case operationBind:
+		switch r.StatusCode {
+		case http.StatusOK:
+			resp.State = domain.Succeeded
+		case http.StatusNotFound:
+			resp.State = domain.InProgress
+		default:
+			err = errors.Wrap(err, "cannot get binding")
+			logger.Errorw("Failed to get binding", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+			return
+		}
+
+	case operationUnbind:
+		switch r.StatusCode {
+		case http.StatusOK:
+			resp.State = domain.InProgress
+		case http.StatusNotFound:
+			resp.State = domain.Succeeded
+		default:
+			logger.Errorw("Failed to get binding", "error", err, "instance_id", instanceID, "binding_id", bindingID)
+			return
+		}
 	}
 
 	return resp, err
