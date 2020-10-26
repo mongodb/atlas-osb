@@ -137,7 +137,7 @@ databaseUsers:
   - roleName: "readWrite"
     collectionName: {{ .CollectionName }}
     databaseName: {{ .DatabaseName }}
-ipWhitelists:
+ipAccessLists:
 - ipAddress: "192.168.1.1"
   comment: "test-ip"
   groupId: {{  .Plan.Project.ID }}
@@ -217,7 +217,7 @@ type Plan struct {
     Project         *Project                            `json:"project,omitempty"`
     Clusters        []*mongodbatlas.Cluster             `json:"clusters,omitempty"`
     DatabaseUsers   []*mongodbatlas.DatabaseUser        `json:"databaseUsers,omitempty" yaml:"databaseUsers,omitempty"`
-    IPWhitelists    []*mongodbatlas.ProjectIPWhitelist  `json:"ipWhitelists,omitempty" yaml:"ipWhitelists,omitempty"`
+    IPAccessLists    []*mongodbatlas.ProjectIPWhitelist  `json:"ipWhitelists,omitempty" yaml:"ipWhitelists,omitempty"`
     DefaultBindingRoles  *[]mongodbatlas.Role           `json:"defaultBindingRoles"`
     Bindings        []*Bindings                   // READ ONLY! Populated by bind()
 }

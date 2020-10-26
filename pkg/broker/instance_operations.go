@@ -149,8 +149,16 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 		}
 	}
 
-	if len(dp.IPWhitelists) > 0 {
-		_, _, err := client.ProjectIPWhitelist.Create(ctx, p.ID, dp.IPWhitelists)
+	// keep support for the deprecated IPWhitelists
+	if len(dp.IPWhitelists) > 0 { // nolint
+		_, _, err := client.ProjectIPWhitelist.Create(ctx, p.ID, dp.IPWhitelists) // nolint
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(dp.IPAccessLists) > 0 {
+		_, _, err := client.ProjectIPAccessList.Create(ctx, p.ID, dp.IPAccessLists)
 		if err != nil {
 			return nil, err
 		}
