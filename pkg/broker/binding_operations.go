@@ -230,7 +230,7 @@ func generatePassword() (string, error) {
 
 func (b *Broker) userFromParams(bindingID string, password string, rawParams []byte, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
 	logger := b.funcLogger().With("binding_id", bindingID)
-	// Set up a params object which will be used for deserialiation.
+	// Set up a params object which will be used for deserialization.
 	params := struct {
 		User *mongodbatlas.DatabaseUser `json:"user"`
 	}{

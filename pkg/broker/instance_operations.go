@@ -16,11 +16,9 @@ package broker
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/mongodb/atlas-osb/pkg/broker/statestorage"
@@ -352,8 +350,7 @@ func (b Broker) getState(ctx context.Context, id string, out interface{}) error 
 			continue
 		}
 
-		var value string
-		err = ss.FindOne(ctx, id, &value)
+		err = ss.FindOne(ctx, id, out)
 		if err != nil {
 			if err != statestorage.ErrInstanceNotFound {
 				logger.Errorw("Cannot find instance in maintenance DB", "error", err)
@@ -361,9 +358,7 @@ func (b Broker) getState(ctx context.Context, id string, out interface{}) error 
 			continue
 		}
 
-		b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(value))
-		err = json.NewDecoder(b64).Decode(out)
-		return err
+		return nil
 	}
 
 	return errors.New("cannot find state in maintenance DB(s): no state found")
