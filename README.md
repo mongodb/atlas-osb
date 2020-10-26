@@ -10,7 +10,7 @@ Extensible Enterprise Production Deployments for MongoDB Atlas
 
 Table of Contents
 =====
-  * [Intoduction](#introduction)
+  * [Introduction](#introduction)
   * [Getting Started](#getting-started)
   * [Specifications](#specifications)
     * [Configuration Reference](#configuration-reference)
@@ -22,7 +22,7 @@ Table of Contents
   * [License](#license)
   * [Development](#development)
 
-This project is a new version of the original [MongoDB Atlas Serivce Broker](https://github.com/mongodb/mongodb-atlas-service-broker) called "atlas-osb"
+This project is a new version of the original [MongoDB Atlas Service Broker](https://github.com/mongodb/mongodb-atlas-service-broker) called "atlas-osb"
 
 Atlas-osb adds the ability to define your own plans from Atlas resource templates. This new and powerful feature brings the broker to a new level of production-readiness. One simple *"create service"* command is all you need to provision a complete Atlas deployment including a Project, Cluster, Database user, firewall access, and more.
 
@@ -235,7 +235,7 @@ Configuration is handled with environment variables. Logs are written to
 | `ATLAS_BROKER_TEMPLATEDIR` | | Path to folder containing plans e.g. ./samples/plans |
 
 The values for the OSB "Service" for a given atlas-osb instance can be customized with a set of
-additional environement variables. Each of these are optional, and has default content.
+additional environment variables. Each of these are optional, and has default content.
 Here are the settings for the `domain.Service` returned for each plan:
 
 ### OSB Service Metadata Configuration Reference
@@ -245,7 +245,7 @@ domain.Service:
 | ----- | ------------- | --------- |
 | `ID` | NONE | `"aosb-cluster-service-template"` |
 | `Name` | `BROKER_OSB_SERVICE_NAME` | `"atlas"` |
-| `Description` | `BROKER_OSB_SERVICE_DESC` | `"MonogoDB Atlas Plan Template Deployments"` |
+| `Description` | `BROKER_OSB_SERVICE_DESC` | `"MongoDB Atlas Plan Template Deployments"` |
 | `Metadata.DisplayName` | `BROKER_OSB_SERVICE_DISPLAY_NAME` | `"MongoDB Atlas - %s"` with `"Template Services"` |
 | `Metadata.ImageUrl` | `BROKER_OSB_IMAGE_URL` | `"https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg"` |
 | `DocumentationUrl` | `BROKER_OSB_DOCS_URL` | `"https://support.mongodb.com/welcome"` |
@@ -367,7 +367,7 @@ In this section we describe the relationship between a Plan's OSB operations and
 
 ## Provisioning & Deprovisioning
 
-When the broker gets a call to provision a plan, it will iterate through the various Atlas resources in the plan can call the corresponding service `Create` method. Similarily, when deprovisioning, the broker will delegate calls to the Atlas Go-client corresponding service `Delete` function.
+When the broker gets a call to provision a plan, it will iterate through the various Atlas resources in the plan can call the corresponding service `Create` method. Similarly, when deprovisioning, the broker will delegate calls to the Atlas Go-client corresponding service `Delete` function.
 
 Plans are loaded at startup and first validated before being made available in the Marketplace.
 
@@ -385,10 +385,10 @@ This section describes how the state of plan definitions and service instance me
 
 atlas-osb introduces the use of MongoDB Realm applications to manage the state of your deployed service instances. This happens automatically, directly through the Atlas and Realm APIs.
 
-The atlas-osb will create special project called "Atlas Service Broker Maintenance" for each Atlas Organization. Here, the broker will create a Realm App called "Broker State" :constuction: and use Realm Values to store reference data for the serivce instances you have deployed across your environments. This approach has several advantages:
+The atlas-osb will create special project called "Atlas Service Broker Maintenance" for each Atlas Organization. Here, the broker will create a Realm App called "Broker State" :construction: and use Realm Values to store reference data for the service instances you have deployed across your environments. This approach has several advantages:
 
 * zero-footprint on OSB-marketplace environment
-* single location for all serivce instance metadata
+* single location for all service instance metadata
 * follows the Atlas organization boundaries, allows support for multi-tenancy scenarios
 * automatically encrypted via Realm
 
@@ -523,7 +523,7 @@ TODO: MARK WHICH FIELDS ARE READ-ONLY? ie. users need to understand what can be 
 The following badges provide version and version-support information about Atlas-OSB for VMware Tanzu.
 
 ![Last Released Version](https://img.shields.io/github/v/release/mongodb/atlas-osb)
-![Realease version](https://img.shields.io/github/release-date/mongodb/atlas-osb)
+![Release version](https://img.shields.io/github/release-date/mongodb/atlas-osb)
 
 ![Compatible TAS versions](https://img.shields.io/badge/tested%20on%20TAS-2.9.0-important)
 ![Credhubversion](https://img.shields.io/badge/CredHub%20version-1.4.7-important)
