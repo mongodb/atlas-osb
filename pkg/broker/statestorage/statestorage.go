@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	maintenanceProjectName = "Atlas Service Broker Mainentance"
+	maintenanceProjectName = "Atlas Service Broker Maintenance"
 	realmAppName           = "broker-state"
 )
 
@@ -75,12 +75,12 @@ func Get(key credentials.APIKey, atlasURL string, realmURL string, logger *zap.S
 		return nil, errors.Wrap(err, "cannot create Atlas client")
 	}
 
-	mainPrj, err := getOrCreateBrokerMaintentaceGroup(key.OrgID, client, logger)
+	mainPrj, err := getOrCreateBrokerMaintenanceGroup(key.OrgID, client, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infow("Found mainteneance project", "mainPrj", mainPrj)
+	logger.Infow("Found maintenance project", "mainPrj", mainPrj)
 	realmApp, err := getOrCreateRealmAppForOrg(mainPrj.ID, realmClient, logger)
 	if err != nil {
 		logger.Errorw("Error getOrCreateRealmAppForOrg", "err", err)
@@ -97,10 +97,10 @@ func Get(key credentials.APIKey, atlasURL string, realmURL string, logger *zap.S
 	return rss, nil
 }
 
-func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client, logger *zap.SugaredLogger) (*mongodbatlas.Project, error) {
+func getOrCreateBrokerMaintenanceGroup(orgID string, client *mongodbatlas.Client, logger *zap.SugaredLogger) (*mongodbatlas.Project, error) {
 	project, _, err := client.Projects.GetOneProjectByName(context.Background(), maintenanceProjectName)
 	if err != nil {
-		logger.Infow("getOrCreateBrokerMaintentaceGroup", "err", err)
+		logger.Infow("getOrCreateBrokerMaintenanceGroup", "err", err)
 		prj := mongodbatlas.Project{
 			Name:  maintenanceProjectName,
 			OrgID: orgID,
@@ -111,9 +111,9 @@ func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client
 			return nil, errors.Wrap(err, "cannot create project")
 		}
 
-		logger.Infow("getOrCreateBrokerMaintentaceGroup CREATED", "project", project)
+		logger.Debugw("getOrCreateBrokerMaintenanceGroup CREATED", "project", project)
 	}
-	logger.Infow("getOrCreateBrokerMaintentaceGroup FOUND", "project", project)
+	logger.Debugw("getOrCreateBrokerMaintenanceGroup FOUND", "project", project)
 	return project, nil
 }
 
