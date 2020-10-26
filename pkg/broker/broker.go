@@ -138,17 +138,14 @@ func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, 
 	spec := domain.GetInstanceDetailsSpec{}
 	err = b.getState(ctx, instanceID, &spec)
 	if err == nil {
-		return
-	}
+		planEnc, ok := spec.Parameters.(string)
+		if !ok {
+			return nil, fmt.Errorf("state.Parameters should be string, got %T", spec.Parameters)
+		}
 
-	planEnc, ok := spec.Parameters.(string)
-	if !ok {
-		return nil, fmt.Errorf("state.Parameters should be string, got %T", spec.Parameters)
-	}
-
-	b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(planEnc))
-	err = json.NewDecoder(b64).Decode(dp)
-	if err != nil {
+		dp = &dynamicplans.Plan{}
+		b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(planEnc))
+		err = json.NewDecoder(b64).Decode(dp)
 		return
 	}
 
