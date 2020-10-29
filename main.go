@@ -15,11 +15,15 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"runtime"
-	"time"
 
+	"github.com/TheZeroSlave/zapsentry"
 	"github.com/alexflint/go-arg"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/atlas-osb/pkg/broker"
@@ -32,11 +36,13 @@ import (
 const toolName = "atlas-aosb"
 
 // releaseVersion should be set by the linker at compile time.
-var releaseVersion = "0.0.0+devbuild." + time.Now().UTC().Format("20060102T150405")
+var releaseVersion = "0.0.0+devbuild." + getBinaryFootprint()
 
 // command-line arguments and env variables with default values
 type Args struct {
-	LogLevel zapcore.Level `arg:"-l,env:BROKER_LOG_LEVEL" default:"INFO"`
+	LogLevel    zapcore.Level `arg:"-l,env:BROKER_LOG_LEVEL" default:"INFO"`
+	SentryDSN   string        `arg:"env:SENTRY_DSN"`
+	SentryLevel zapcore.Level `arg:"env:SENTRY_LEVEL" default:"ERROR"`
 
 	BrokerConfig
 }
@@ -177,6 +183,22 @@ func startBrokerServer() {
 	}
 }
 
+func addSentryLogger(log *zap.Logger) *zap.Logger {
+	cfg := zapsentry.Configuration{
+		Level: args.SentryLevel,
+		Tags: map[string]string{
+			"component":      "system",
+			"releaseVersion": releaseVersion,
+		},
+	}
+
+	core, err := zapsentry.NewCore(cfg, zapsentry.NewSentryClientFromDSN(args.SentryDSN))
+	if err != nil {
+		log.Fatal("failed to init zap", zap.Error(err))
+	}
+	return zapsentry.AttachCoreToLogger(core, log)
+}
+
 // createLogger will create a zap sugared logger with the specified log level.
 func createLogger() (*zap.SugaredLogger, error) {
 	config := zap.NewProductionConfig()
@@ -189,5 +211,21 @@ func createLogger() (*zap.SugaredLogger, error) {
 		return nil, err
 	}
 
+	if args.SentryDSN != "" {
+		logger = addSentryLogger(logger)
+	}
+
 	return logger.Sugar(), nil
+}
+
+func getBinaryFootprint() string {
+	fname := os.Args[0]
+	f, err := ioutil.ReadFile(fname)
+	if err != nil {
+		return "unknown"
+	}
+
+	cs := sha256.Sum256(f)
+	bcs := hex.EncodeToString(cs[:])
+	return bcs[:16]
 }
