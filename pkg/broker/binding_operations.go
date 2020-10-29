@@ -232,6 +232,13 @@ func (b *Broker) userFromParams(bindingID string, password string, rawParams []b
 		params.User.DatabaseName = "admin"
 	}
 
+	if len(params.User.Scopes) == 0 {
+		params.User.Scopes = append(params.User.Scopes, mongodbatlas.Scope{
+			Name: plan.Cluster.Name,
+			Type: "CLUSTER",
+		})
+	}
+
 	logger.Debugw("userFromParams", "params", params)
 
 	// If no role is specified we default to read/write on any database.
