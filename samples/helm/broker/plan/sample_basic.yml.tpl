@@ -22,7 +22,7 @@ databaseUsers:
   roles:
   - roleName: {{ default "readWrite" .role }}
     databaseName: {{ default "default" .role_db }}
-ipWhitelists:
+ipAccessLists:
 - ipAddress: "0.0.0.0/1"
   comment: "everything"
 - ipAddress: "128.0.0.0/1"
