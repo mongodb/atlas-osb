@@ -12,7 +12,7 @@ require (
 	github.com/alexflint/go-arg v1.3.1-0.20200806235247-96c756c382ed
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drewolson/testflight v1.0.0 // indirect
-	github.com/goccy/go-yaml v1.8.1
+	github.com/goccy/go-yaml v1.8.3
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/mux v1.8.0
