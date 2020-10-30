@@ -10,7 +10,7 @@ atlas:
 #brokers enviromet variables and keys
 broker:
   auth:
-    username: "admin" 
+    username: "admin"
     password: "admin"
   deployment:
     logLevel: "DEBUG"
@@ -20,5 +20,3 @@ broker:
 
 cluster:
   planName: override-bind-db-plan
-  region: US_EAST_1
-  provider: AWS
