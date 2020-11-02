@@ -13,6 +13,8 @@ broker:
     username: "admin"
     password: "admin"
   deployment:
+    atlasBaseURL: "https://cloud.mongodb.com/api/atlas/v1.0/"
+    realmBaseURL: "https://realm.mongodb.com/api/admin/v3.0/"
     logLevel: "DEBUG"
     host: "0.0.0.0"
     port: "4000"
