@@ -298,7 +298,7 @@ func (b *Broker) userFromParams(bindingID string, rawParams []byte, plan *dynami
 		params.User.Username = bindingID
 	}
 
-	if params.User.Password == "" {
+	if params.User.Password == "" && params.User.DatabaseName != "$external" {
 		// Generate a cryptographically secure random password.
 		password, err := generatePassword()
 		if err != nil {
