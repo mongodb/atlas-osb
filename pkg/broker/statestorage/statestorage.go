@@ -17,7 +17,6 @@ package statestorage
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
@@ -152,10 +151,6 @@ func (ss *RealmStateStorage) idByName(ctx context.Context, name string) (id stri
 	// Need to find the one value whose "name" = key
 	values, _, err := ss.RealmClient.RealmValues.List(ctx, ss.RealmProject.ID, ss.RealmApp.ID, nil)
 	if err != nil {
-		// return proper InstanceNotFound, if error is realm
-		if strings.Contains(err.Error(), "value not found") {
-			err = ErrInstanceNotFound
-		}
 		return
 	}
 
@@ -166,7 +161,7 @@ func (ss *RealmStateStorage) idByName(ctx context.Context, name string) (id stri
 		}
 	}
 
-	return "", fmt.Errorf("value with name %q not found", name)
+	return "", ErrInstanceNotFound
 }
 
 func (ss *RealmStateStorage) FindOne(ctx context.Context, name string, out interface{}) (err error) {

@@ -20,9 +20,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
+	"github.com/mongodb/atlas-osb/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
@@ -156,10 +158,18 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	binding := BindingSpec{}
 	err = ss.FindOne(ctx, bindingID, &binding)
 	if err != nil {
-		// try and remove by bindingID (legacy bindings)
-		logger.Warnw("Could not find binding in State Storage - trying to remove by binding ID...")
-		_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
-		return spec, errors.Wrap(err, "could not fetch binding from State Storage; could not remove user by bindingID")
+		if err != statestorage.ErrInstanceNotFound {
+			return spec, errors.Wrap(err, "cannot fetch binding from state storage")
+		}
+
+		// handle legacy bindings
+		logger.Warnw("Could not find binding in state storage - trying to delete by binding ID")
+
+		r, err := client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
+		if r.StatusCode == http.StatusNotFound {
+			return spec, nil
+		}
+		return spec, errors.Wrap(err, "cannot find binding in state storage; cannot remove user by bindingID")
 	}
 
 	// Fetch the cluster from Atlas to ensure it exists.
