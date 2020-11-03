@@ -20,18 +20,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
-)
-
-const (
-	operationBind   = "bind"
-	operationUnbind = "unbind"
 )
 
 const (
@@ -123,9 +117,8 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	connDetails.URI = cs.String()
 
 	spec = domain.Binding{
-		IsAsync:       true,
-		Credentials:   connDetails,
-		OperationData: operationBind,
+		IsAsync:     false,
+		Credentials: connDetails,
 	}
 
 	ss, err := b.stateStorage(ctx, p.Project.OrgID)
@@ -145,6 +138,10 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	logger := b.funcLogger().With("instance_id", instanceID, "binding_id", bindingID)
 	logger.Infow("Releasing binding", "details", details)
 
+	spec = domain.UnbindSpec{
+		IsAsync: false,
+	}
+
 	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return spec, errors.Wrap(err, "cannot get Atlas client")
@@ -159,7 +156,10 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	binding := BindingSpec{}
 	err = ss.FindOne(ctx, bindingID, &binding)
 	if err != nil {
-		return
+		// try and remove by bindingID (legacy bindings)
+		logger.Warnw("Could not find binding in State Storage - trying to remove by binding ID...")
+		_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
+		return spec, errors.Wrap(err, "could not fetch binding from State Storage; could not remove user by bindingID")
 	}
 
 	// Fetch the cluster from Atlas to ensure it exists.
@@ -170,7 +170,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	}
 
 	// Delete database user.
-	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, binding.Credentials.Username)
+	_, err = client.DatabaseUsers.Delete(ctx, binding.Credentials.Database, p.Project.ID, binding.Credentials.Username)
 	if err != nil {
 		logger.Errorw("Failed to delete Atlas database user", "error", err)
 		return spec, errors.Wrap(err, "cannot delete Atlas Database User")
@@ -197,70 +197,7 @@ func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID str
 // LastBindingOperation should fetch the status of the last creation/deletion
 // of a database user.
 func (b Broker) LastBindingOperation(ctx context.Context, instanceID string, bindingID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
-	logger := b.funcLogger()
-	logger.Infow("Fetching state of last binding operation", "instance_id", instanceID, "details", details)
-
-	resp.State = domain.Failed
-
-	// brokerapi will NOT update service state if we return any error, so... we won't?
-	defer func() {
-		if err != nil {
-			resp.State = domain.Failed
-			resp.Description = err.Error()
-			err = nil
-		}
-	}()
-
-	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
-	if err != nil {
-		return
-	}
-
-	ss, err := b.stateStorage(ctx, p.Project.OrgID)
-	if err != nil {
-		return resp, errors.Wrapf(err, "cannot get state storage for org %s", p.Project.OrgID)
-	}
-
-	// Find binding details by binding ID
-	binding := BindingSpec{}
-	err = ss.FindOne(ctx, bindingID, &binding)
-	if err != nil {
-		return
-	}
-
-	_, r, err := client.DatabaseUsers.Get(ctx, "admin", p.Project.ID, binding.Credentials.Username)
-	if err != nil && r.StatusCode != http.StatusNotFound {
-		err = errors.Wrap(err, "cannot get binding")
-		logger.Errorw("Failed to get binding", "error", err)
-		return
-	}
-
-	switch details.OperationData {
-	case operationBind:
-		switch r.StatusCode {
-		case http.StatusOK:
-			resp.State = domain.Succeeded
-		case http.StatusNotFound:
-			resp.State = domain.InProgress
-		default:
-			err = errors.Wrap(err, "cannot get binding")
-			logger.Errorw("Failed to get binding", "error", err, "instance_id", instanceID, "binding_id", bindingID)
-			return
-		}
-
-	case operationUnbind:
-		switch r.StatusCode {
-		case http.StatusOK:
-			resp.State = domain.InProgress
-		case http.StatusNotFound:
-			resp.State = domain.Succeeded
-		default:
-			logger.Errorw("Failed to get binding", "error", err, "instance_id", instanceID, "binding_id", bindingID)
-			return
-		}
-	}
-
-	return resp, err
+	panic("not implemented")
 }
 
 // generatePassword will generate a cryptographically secure password.

@@ -407,6 +407,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		// Provision has succeeded if the cluster is in state "idle".
 		case "IDLE":
 			resp.State = domain.Succeeded
+			resp.Description = ""
 		case "CREATING", "UPDATING", "REPAIRING":
 			resp.State = domain.InProgress
 			resp.Description = cluster.StateName
