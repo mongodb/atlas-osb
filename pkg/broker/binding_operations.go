@@ -180,7 +180,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	}
 
 	// Delete database user.
-	_, err = client.DatabaseUsers.Delete(ctx, binding.Credentials.Database, p.Project.ID, binding.Credentials.Username)
+	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, binding.Credentials.Username)
 	if err != nil {
 		logger.Errorw("Failed to delete Atlas database user", "error", err)
 		return spec, errors.Wrap(err, "cannot delete Atlas Database User")
