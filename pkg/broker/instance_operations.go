@@ -98,12 +98,12 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(dp.Project.OrgID)
+	state, err := b.getState(ctx, dp.Project.OrgID)
 	if err != nil {
 		return
 	}
 
-	v, err := state.Put(context.Background(), instanceID, &s)
+	v, err := state.Put(ctx, instanceID, &s)
 	if err != nil {
 		logger.Errorw("Error during provision, broker maintenance:", "err", err)
 		return
@@ -275,7 +275,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(oldPlan.Project.OrgID)
+	state, err := b.getState(ctx, oldPlan.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -359,7 +359,7 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 	for k, v := range b.credentials.Keys() {
 		logger = logger.With("orgID", k)
 
-		state, err := statestorage.Get(v, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+		state, err := statestorage.Get(ctx, v, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 		if err != nil {
 			logger.Errorw("Cannot get state storage for org", "error", err)
 			continue
@@ -457,7 +457,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				err = nil
 			}
 
-			state, errDel := b.getState(p.Project.OrgID)
+			state, errDel := b.getState(ctx, p.Project.OrgID)
 			if errDel != nil {
 				logger.Errorw("Failed to get state storage", "error", errDel)
 				break

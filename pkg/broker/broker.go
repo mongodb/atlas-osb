@@ -223,13 +223,13 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 	return
 }
 
-func (b *Broker) getState(orgID string) (*statestorage.RealmStateStorage, error) {
+func (b *Broker) getState(ctx context.Context, orgID string) (*statestorage.RealmStateStorage, error) {
 	key, err := b.credentials.ByOrg(orgID)
 	if err != nil {
 		return nil, err
 	}
 
-	return statestorage.Get(key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+	return statestorage.Get(ctx, key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {

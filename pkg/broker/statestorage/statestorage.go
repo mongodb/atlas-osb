@@ -55,12 +55,12 @@ func client(baseURL string, k credentials.APIKey) (*mongodbatlas.Client, error) 
 	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
 }
 
-func Get(key credentials.APIKey, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
+func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
-		context.TODO(),
+		ctx,
 		nil,
 		mongodbrealm.SetBaseURL(realmURL),
-		mongodbrealm.SetAPIAuth(context.TODO(), key.PublicKey, key.PrivateKey),
+		mongodbrealm.SetAPIAuth(ctx, key.PublicKey, key.PrivateKey),
 	)
 	if err != nil {
 		return nil, err
@@ -75,16 +75,16 @@ func Get(key credentials.APIKey, atlasURL string, realmURL string, logger *zap.S
 		return nil, errors.Wrap(err, "cannot create Atlas client")
 	}
 
-	mainPrj, err := getOrCreateBrokerMaintentaceGroup(key.OrgID, client, logger)
+	mainPrj, err := getOrCreateBrokerMaintentaceGroup(ctx, key.OrgID, client, logger)
 	if err != nil {
 		return nil, err
 	}
 
 	logger.Infow("Found mainteneance project", "mainPrj", mainPrj)
-	realmApp, err := getOrCreateRealmAppForOrg(mainPrj.ID, realmClient, logger)
+	realmApp, err := getOrCreateRealmAppForOrg(ctx, mainPrj.ID, realmClient, logger)
 	if err != nil {
 		logger.Errorw("Error getOrCreateRealmAppForOrg", "err", err)
-		return nil, err
+		return nil, errors.Wrap(err, "cannot get/create Realm app")
 	}
 
 	rss := &RealmStateStorage{
@@ -97,8 +97,8 @@ func Get(key credentials.APIKey, atlasURL string, realmURL string, logger *zap.S
 	return rss, nil
 }
 
-func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client, logger *zap.SugaredLogger) (*mongodbatlas.Project, error) {
-	project, _, err := client.Projects.GetOneProjectByName(context.Background(), maintenanceProjectName)
+func getOrCreateBrokerMaintentaceGroup(ctx context.Context, orgID string, client *mongodbatlas.Client, logger *zap.SugaredLogger) (*mongodbatlas.Project, error) {
+	project, _, err := client.Projects.GetOneProjectByName(ctx, maintenanceProjectName)
 	if err != nil {
 		logger.Infow("getOrCreateBrokerMaintentaceGroup", "err", err)
 		prj := mongodbatlas.Project{
@@ -106,7 +106,7 @@ func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client
 			OrgID: orgID,
 		}
 
-		project, _, err = client.Projects.Create(context.Background(), &prj)
+		project, _, err = client.Projects.Create(ctx, &prj)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot create project")
 		}
@@ -117,7 +117,7 @@ func getOrCreateBrokerMaintentaceGroup(orgID string, client *mongodbatlas.Client
 	return project, nil
 }
 
-func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client, logger *zap.SugaredLogger) (*mongodbrealm.RealmApp, error) {
+func getOrCreateRealmAppForOrg(ctx context.Context, groupID string, realmClient *mongodbrealm.Client, logger *zap.SugaredLogger) (*mongodbrealm.RealmApp, error) {
 	app := mongodbrealm.RealmAppInput{
 		Name:        realmAppName,
 		ClientAppID: "atlas-osb",
@@ -125,21 +125,27 @@ func getOrCreateRealmAppForOrg(groupID string, realmClient *mongodbrealm.Client,
 		/* [US-VA, AU, US-OR, IE] */
 	}
 
-	apps, _, err := realmClient.RealmApps.List(context.Background(), groupID, nil)
-	var realmApp *mongodbrealm.RealmApp
+	apps, _, err := realmClient.RealmApps.List(ctx, groupID, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot list Realm apps for project %s", groupID)
+	}
 
+	var realmApp *mongodbrealm.RealmApp
 	for _, ra := range apps {
 		ra := ra
 		logger.Infow("Found realm app", "ra", ra)
 		if ra.Name == app.Name {
+			if realmApp != nil {
+				// for existing issue: don't start up until it's fixed - also helps to catch this in future
+				return nil, fmt.Errorf("multiple %q apps found in maintenance project %s - not supported", realmAppName, groupID)
+			}
 			realmApp = &ra
 		}
 	}
 
 	if realmApp == nil {
-		logger.Infow("Error fetching maintenance realm app", "err", err)
-		logger.Infow("Attempt create", "app", app)
-		realmApp, _, err := realmClient.RealmApps.Create(context.Background(), groupID, &app)
+		logger.Infow("Could not find Realm app for State Storage. Creating...", "app", app)
+		realmApp, _, err := realmClient.RealmApps.Create(ctx, groupID, &app)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot create Realm app")
 		}
