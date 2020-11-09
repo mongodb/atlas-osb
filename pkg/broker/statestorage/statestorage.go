@@ -57,7 +57,6 @@ func client(baseURL string, k credentials.APIKey) (*mongodbatlas.Client, error) 
 
 func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
-		ctx,
 		nil,
 		mongodbrealm.SetBaseURL(realmURL),
 		mongodbrealm.SetAPIAuth(ctx, key.PublicKey, key.PrivateKey),

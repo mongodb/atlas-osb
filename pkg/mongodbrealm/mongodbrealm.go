@@ -175,7 +175,7 @@ func NewClient(httpClient *http.Client) *Client {
 type ClientOpt func(*Client) error
 
 // New returns a new mongodbrealm API client instance.
-func New(ctx context.Context, httpClient *http.Client, opts ...ClientOpt) (*Client, error) {
+func New(httpClient *http.Client, opts ...ClientOpt) (*Client, error) {
 	c := NewClient(httpClient)
 
 	for _, opt := range opts {
