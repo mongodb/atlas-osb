@@ -6,12 +6,14 @@ linters:
     - dogsled
     - dupl
     - errcheck
+    - errorlint
+    - exportloopref
     - gochecknoinits
+    - gochecknoglobals
     - gocritic
     - gocyclo
-    - gofmt
+    - gofumpt
     - goimports
-    - golint
     - goprintffuncname
     - gosec
     - gosimple
@@ -19,7 +21,10 @@ linters:
     - ineffassign
     - interfacer
     - misspell
+    - nlreturn
     - nolintlint
+    - noctx
+    - prealloc
     - rowserrcheck
     - scopelint
     - staticcheck
@@ -31,11 +36,21 @@ linters:
     - unused
     - varcheck
     - whitespace
+    - wrapcheck
 issues:
   exclude-rules:
-    - path: test/
+    - path: test
       linters:
         - whitespace
         - golint
         - stylecheck
         - gocyclo
+        - gochecknoglobals
+        - wrapcheck
+        - nlreturn
+    - path: main.go
+      linters:
+        - gochecknoglobals
+        - wrapcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0

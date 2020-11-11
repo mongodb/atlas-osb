@@ -154,7 +154,6 @@ func deployBroker(namespace string) error {
 	})
 
 	_, err := kubeClient.AppsV1().Deployments(namespace).Create(deploy)
-
 	if err != nil {
 		return err
 	}

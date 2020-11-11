@@ -34,9 +34,7 @@ const (
 	realmAppName           = "broker-state"
 )
 
-var (
-	ErrInstanceNotFound = errors.New("unable to find instance in state storage")
-)
+var ErrInstanceNotFound = errors.New("unable to find instance in state storage")
 
 type RealmStateStorage struct {
 	OrgID        string `json:"orgId,omitempty"`
@@ -83,6 +81,7 @@ func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL 
 	realmApp, err := getOrCreateRealmAppForOrg(ctx, mainPrj.ID, realmClient, logger)
 	if err != nil {
 		logger.Errorw("Error getOrCreateRealmAppForOrg", "err", err)
+
 		return nil, errors.Wrap(err, "cannot get/create Realm app")
 	}
 
@@ -93,6 +92,7 @@ func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL 
 		RealmProject: mainPrj,
 		Logger:       logger,
 	}
+
 	return rss, nil
 }
 
@@ -113,6 +113,7 @@ func getOrCreateBrokerMaintentaceGroup(ctx context.Context, orgID string, client
 		logger.Infow("getOrCreateBrokerMaintentaceGroup CREATED", "project", project)
 	}
 	logger.Infow("getOrCreateBrokerMaintentaceGroup FOUND", "project", project)
+
 	return project, nil
 }
 
@@ -149,10 +150,12 @@ func getOrCreateRealmAppForOrg(ctx context.Context, groupID string, realmClient 
 			return nil, errors.Wrap(err, "cannot create Realm app")
 		}
 		logger.Infow("Created realm app", "realmApp", realmApp)
+
 		return realmApp, nil
 	}
 
 	logger.Infow("Found existing realm app", "realmApp", realmApp)
+
 	return realmApp, nil
 }
 
@@ -164,12 +167,14 @@ func (ss *RealmStateStorage) idByName(ctx context.Context, name string) (id stri
 		if strings.Contains(err.Error(), "value not found") {
 			err = ErrInstanceNotFound
 		}
+
 		return
 	}
 
 	for _, v := range values {
 		if v.Name == name {
 			id = v.ID
+
 			return
 		}
 	}
@@ -189,6 +194,7 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, name string) (spec *do
 		if strings.Contains(err.Error(), "value not found") {
 			err = ErrInstanceNotFound
 		}
+
 		return
 	}
 
@@ -198,6 +204,7 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, name string) (spec *do
 
 	spec = &domain.GetInstanceDetailsSpec{}
 	err = json.Unmarshal(val.Value, &spec)
+
 	return
 }
 
@@ -208,24 +215,28 @@ func (ss *RealmStateStorage) DeleteOne(ctx context.Context, name string) error {
 	}
 
 	_, err = ss.RealmClient.RealmValues.Delete(ctx, ss.RealmProject.ID, ss.RealmApp.ID, id)
+
 	return err
 }
 
 func (ss *RealmStateStorage) Put(ctx context.Context, name string, value *domain.GetInstanceDetailsSpec) (*mongodbrealm.RealmValue, error) {
 	vv, err := json.Marshal(value)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot marshal value")
 	}
 
 	val := &mongodbrealm.RealmValue{
 		Name:  name,
 		Value: vv,
 	}
+
 	v, _, err := ss.RealmClient.RealmValues.Create(ctx, ss.RealmProject.ID, ss.RealmApp.ID, val)
+
 	return v, err
 }
 
 func (ss *RealmStateStorage) Get(ctx context.Context, key string) (*mongodbrealm.RealmValue, error) {
 	v, _, err := ss.RealmClient.RealmValues.Get(ctx, ss.RealmProject.ID, ss.RealmApp.ID, key)
+
 	return v, err
 }
