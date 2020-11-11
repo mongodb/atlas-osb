@@ -24,8 +24,8 @@ Active workflows for operating.
 - `clean-cf.yml` clean Cloud Foundry from previous usage
 - `deploy-broker.yml` deploy broker to CF
 - `reaper.yml` delete clusters from Atlas
-- `create-release-package.yml` create a release
-- `k8s-demo-*` demo
+- `create-release-package.yml` create a release package, Docker image and push it to the registry (defined by secrets)
+- `k8s-demo-*` for demonstrations/fast-start purposes/manual testing
 - `test-org-user.yml` copy of `deploy-broker.yml` additionally, it includes a check to create org users by broker
 
 # Using GitHub Actions locally
@@ -44,9 +44,12 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s CF_PASSWORD=<password>
 -s CF_API=api.something
 -s CF_USER=<user>
--s DOCKERHUB_USERNAME=<...>
--s DOCKERHUB_TOKEN=<...>
+-s REGISTRY=quay.io
+-s REGISTRY_USERNAME=<...>
+-s REGISTRY_PASSWORD=<...>
+-s REGISTRY_REPO=test/test
 -s KUBE_CONFIG_DATA=<...one line json kubeconfig...>
+-s SENTRY_DSN=http://setry.host
 ```
 
 Now simply call:
