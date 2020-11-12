@@ -8,20 +8,16 @@ The server is managed by a third-party library called [`brokerapi`](https://gith
 
 ## Testing
 
-The project contains both unit tests and integration tests against Atlas. The unit tests can be found inside each package in `pkg/` and can be run with `go test ./pkg/...`.
-
-The integration tests are also implemented as Go tests and are found in `test/`. Credentials for connecting to the Atlas API should be passed as environment variables `ATLAS_BASE_URL`, `ATLAS_GROUP_ID`, `ATLAS_PUBLIC_KEY`, and `ATLAS_PRIVATE_KEY`. These tests can be run with `go test -timeout 1h ./test`. Go test has a default timeout of 10 minutes which is normally too short for some of the tests, hence it's recommended to raise the timeout to 1 hour. As part of the integration tests a MongoDB connection is set up to test the generated credentials. For this test to not fail the testing host needs to be whitelisted in Atlas.
-
-Unit and integration tests can be run at once using `go test -timeout 1h ./...`. Remember to pass the necessary environment variables and raise the timeout limit.
+Please refer to the how-to documentation [action](https://github.com/mongodb/atlas-osb/blob/master/.github/HOWTO.md)
 
 ## Releasing
 
 The release process consists of publishing a new Github release with attached binaries as well as publishing a Docker image to [quay.io](https://quay.io). Evergreen can automatically build and publish the artifacts based on a tagged commit.
 
-1. Go to the GitHub actions [page](https://github.com/mongodb/atlas-osb/actions?query=workflow%3A%22Create+GitHub+Release+Package+Manually%22) 
+1. Go to the GitHub actions [page](https://github.com/mongodb/atlas-osb/actions?query=workflow%3A%22Create+GitHub+Release+Package+Manually%22)
 2. Open "Create GitHub Release Package Manually" workflow
 3. Press "Run workflow" and choose parameters.
-For example, our version is `v0.5.0-beta` and we want to update it to `v0.6.1-beta`. In that case we should write "-mp" in the "Version key" input field and "beta" in the "Add Postfix". 
+For example, our version is `v0.5.0-beta` and we want to update it to `v0.6.1-beta`. In that case we should write "-mp" in the "Version key" input field and "beta" in the "Add Postfix".
 
 ## Adding third-party dependencies
 
@@ -77,9 +73,13 @@ Follow these steps to test the broker in a Kubernetes cluster. For local testing
    daemon. Update the deployment resource in `samples/kubernetes/deployment.yaml` to have
    `imagePullPolicy: Never` and update the `ATLAS_BASE_URL` to whichever environment you're testing against.
 4. Create a new namespace `atlas` by running `kubectl create namespace atlas`.
-5. Create a secret called `atlas-service-broker-auth` containing the following keys:
-   - `username` should be the Atlas group ID and public key combined as `<PUBLIC_KEY>@<GROUP_ID>`.
-   - `password` should be the Atlas private key.
+5. Change a secret called `atlas-auth` containing the following keys:
+   - `orgId` should be the Atlas group ID
+   - `publicKey` should be the public key
+   - `privateKey` should be the Atlas private key.
+   run `kubectl apply -f samples/kubernetes/atlas-service-broker-auth.yaml -n atlas`
+6. Update plan inside config-map `samples/kubernetes/deployment.yaml`
+   and apply it to kubernetes `kubectl apply -f samples/kubernetes/config-map-plan.yaml -n atlas`
 6. Deploy the service broker by running `kubectl apply -f samples/kubernetes/deployment.yaml -n atlas`. This will create
    a new deployment and a service of the image from step 2.
 7. Register the service broker with the service catalog by running `kubectl apply -f samples/kubernetes/service-broker.yaml -n atlas`.

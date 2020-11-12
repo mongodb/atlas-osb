@@ -3,7 +3,7 @@ kind: ServiceBroker
 metadata:
   name: atlas-service-broker
 spec:
-  url: http://atlas-service-broker.atlas
+  url: http://atlas-service-broker.atlas:4000
   authInfo:
     basic:
       secretRef:
