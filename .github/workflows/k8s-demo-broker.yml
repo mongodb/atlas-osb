@@ -16,42 +16,36 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-      - name: Get Tag for the image
-        id: tag
+
+      - name: Prepare env
         run: |
-          branch=$(echo $GITHUB_REF | awk -F "/" '{print $3}')
-          echo "::set-output name=tag::demo-$branch"
+          ./.github/base-dockerfile/helpers/install_k8s_helm.sh
 
       - name: Push Atlas-osb to Registry
-        uses: docker/build-push-action@v1
-        with:
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-          registry: ${{ secrets.REGISTRY }}
-          repository: ${{ secrets.REGISTRY_REPO }}
-          tags: ${{ steps.tag.outputs.tag }}
+        id: registry
+        run: |
+          image="localhost:5000/demo:latest"
+          docker run -d -p 5000:5000 --name registry registry:2
+          docker build -t "${image}" .
+          docker push "${image}"
+          echo "::set-output name=image::$image"
 
-      - name: deploy Atlas-osb
+      - name: Deploy Atlas-osb
         with:
           KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
           NAMESPACE: ${{ github.event.inputs.namespace }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
-          image: ${{ secrets.REGISTRY }}/${{ secrets.REGISTRY_REPO }}:${{ steps.tag.outputs.tag }}
+          image: ${{ steps.registry.outputs.image }}
         run: |
-          set -e
-          ./.github/base-dockerfile/helpers/install_k8s_helm.sh
           source ".github/base-dockerfile/helpers/params.sh"
-
-          #prepare env
           echo "$INPUT_KUBE_CONFIG_DATA" >> ./kube.config
           export KUBECONFIG="./kube.config"
 
           helm version
           kubectl version
 
-          echo "leori/atlas-osb:${branch_name}"
           helm install "${K_BROKER}" \
               --set namespace="${K_NAMESPACE}" \
               --set image="${INPUT_IMAGE}" \
@@ -63,3 +57,13 @@ jobs:
               samples/helm/broker/ --namespace "${K_NAMESPACE}" --wait --timeout 10m --create-namespace
 
           kubectl get all -n "${K_NAMESPACE}"
+
+          echo "==================================================="
+          echo "Namespace: ${K_NAMESPACE}"
+          echo "Helm release name: ${K_BROKER}"
+          echo "==================================================="
+
+      - name: Remove Local Registry
+        run: |
+          echo "delete registry"
+          docker container stop registry && docker container rm -v registry
