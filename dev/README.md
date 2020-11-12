@@ -8,11 +8,7 @@ The server is managed by a third-party library called [`brokerapi`](https://gith
 
 ## Testing
 
-The project contains both unit tests and integration tests against Atlas. The unit tests can be found inside each package in `pkg/` and can be run with `go test ./pkg/...`.
-
-The integration tests are also implemented as Go tests and are found in `test/`. Credentials for connecting to the Atlas API should be passed as environment variables `ATLAS_BASE_URL`, `ATLAS_GROUP_ID`, `ATLAS_PUBLIC_KEY`, and `ATLAS_PRIVATE_KEY`. These tests can be run with `go test -timeout 1h ./test`. Go test has a default timeout of 10 minutes which is normally too short for some of the tests, hence it's recommended to raise the timeout to 1 hour. As part of the integration tests a MongoDB connection is set up to test the generated credentials. For this test to not fail the testing host needs to be whitelisted in Atlas.
-
-Unit and integration tests can be run at once using `go test -timeout 1h ./...`. Remember to pass the necessary environment variables and raise the timeout limit.
+Please refer to the how-to documentation [action](https://github.com/mongodb/atlas-osb/blob/master/.github/HOWTO.md)
 
 ## Releasing
 
@@ -41,7 +37,9 @@ To enable TLS, perform these steps before continuing with "Testing in Kubernetes
 
 ## Testing in Kubernetes
 
-Follow these steps to test the broker in a Kubernetes cluster. For local testing we recommend using [minikube](https://kubernetes.io/docs/setup/learning-environment/minikube/). We also recommend using the [service catalog CLI](https://github.com/kubernetes-sigs/service-catalog/blob/master/docs/cli.md) (`svcat`) to control the service catalog.
+Preferable way to [start](https://github.com/mongodb/atlas-osb/blob/master/.github/HOWTO.md#demo)
+
+Or use the following steps to test the broker in a Kubernetes cluster. For local testing we recommend using [minikube](https://kubernetes.io/docs/setup/learning-environment/minikube/). We also recommend using the [service catalog CLI](https://github.com/kubernetes-sigs/service-catalog/blob/master/docs/cli.md) (`svcat`) to control the service catalog.
 
 1. Run `dev/scripts/install-service-catalog.sh` to install the service catalog extension in Kubernetes.
    Make sure you have Helm installed and configured before running.
@@ -52,9 +50,13 @@ Follow these steps to test the broker in a Kubernetes cluster. For local testing
    daemon. Update the deployment resource in `samples/kubernetes/deployment.yaml` to have
    `imagePullPolicy: Never` and update the `ATLAS_BASE_URL` to whichever environment you're testing against.
 4. Create a new namespace `atlas` by running `kubectl create namespace atlas`.
-5. Create a secret called `atlas-service-broker-auth` containing the following keys:
-   - `username` should be the Atlas group ID and public key combined as `<PUBLIC_KEY>@<GROUP_ID>`.
-   - `password` should be the Atlas private key.
+5. Change a secret called `atlas-auth` containing the following keys:
+   - `orgId` should be the Atlas group ID
+   - `publicKey` should be the public key
+   - `privateKey` should be the Atlas private key.
+   run `kubectl apply -f samples/kubernetes/atlas-service-broker-auth.yaml -n atlas`
+6. Update plan inside config-map `samples/kubernetes/deployment.yaml`
+   and apply it to kubernetes `kubectl apply -f samples/kubernetes/config-map-plan.yaml -n atlas`
 6. Deploy the service broker by running `kubectl apply -f samples/kubernetes/deployment.yaml -n atlas`. This will create
    a new deployment and a service of the image from step 2.
 7. Register the service broker with the service catalog by running `kubectl apply -f samples/kubernetes/service-broker.yaml -n atlas`.
