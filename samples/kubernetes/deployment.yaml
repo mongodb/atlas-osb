@@ -18,12 +18,38 @@ spec:
     spec:
       containers:
         - name: atlas-service-broker
-          image: quay.io/mongodb/mongodb-atlas-service-broker:latest
+          image: "quay.io/mongodb/mongodb-atlas-service-broker:latest"
           ports:
             - containerPort: 4000
           env:
+            - name: ATLAS_BASE_URL
+              value: "https://cloud.mongodb.com/api/atlas/v1.0/"
+            - name: REALM_BASE_URL
+              value: "https://realm.mongodb.com/api/admin/v3.0/"
             - name: BROKER_HOST
               value: "0.0.0.0"
+            - name: BROKER_PORT
+              value: "4000"
+            - name: BROKER_LOG_LEVEL
+              value: "DEBUG"
+            - name: BROKER_OSB_SERVICE_NAME
+              value: "atlas"
+            - name: BROKER_APIKEYS
+              value: "/etc/data/keys/apikeys.json"
+            - name: ATLAS_BROKER_TEMPLATEDIR
+              value: "/etc/data/plans"
+          volumeMounts:
+            - name: apikeys
+              mountPath: "/etc/data/keys"
+            - name: plans
+              mountPath: "/etc/data/plans"
+      volumes:
+        - name: apikeys
+          secret:
+            secretName: atlas-auth
+        - name: plans
+          configMap:
+            name: plans
 
 ---
 # Service to expose the service broker inside the cluster.
@@ -39,5 +65,5 @@ spec:
     app: atlas-service-broker
   ports:
     - protocol: TCP
-      port: 80
+      port: 4000
       targetPort: 4000
