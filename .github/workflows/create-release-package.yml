@@ -19,7 +19,7 @@ on:
         default: "true"
         required: true
       postfix:
-        description: "Add Posfix (e.g. alpha/beta) will create PRERELEASE"
+        description: "Add Postfix (e.g. alpha/beta) will create PRE-RELEASE"
         required: false
         
 jobs:

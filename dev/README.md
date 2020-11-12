@@ -16,11 +16,12 @@ Unit and integration tests can be run at once using `go test -timeout 1h ./...`.
 
 ## Releasing
 
-The release process consists of publishing a new Github release with attached binaries as well as publishing a Docker image to [quay.io](https://quay.io). Evergreen can automatically build and publish the artifacts based on a tagged commit. To perform a release the [Evergreen CLI](https://github.com/evergreen-ci/evergreen/wiki/Using-the-Command-Line-Tool) needs to be installed.
+The release process consists of publishing a new Github release with attached binaries as well as publishing a Docker image to [quay.io](https://quay.io). Evergreen can automatically build and publish the artifacts based on a tagged commit.
 
-1. Add a new annotated tag using `git tag -a vX.X.X`. Git will prompt for a message which later will be used for the Github release message.
-2. Push the tag using `git push <remote> vX.X.X`.
-3. Run `evergreen patch -p atlas-service-broker --variants release --tasks all -y -f` and Evergreen will automatically complete the release.
+1. Go to the GitHub actions [page](https://github.com/mongodb/atlas-osb/actions?query=workflow%3A%22Create+GitHub+Release+Package+Manually%22) 
+2. Open "Create GitHub Release Package Manually" workflow
+3. Press "Run workflow" and choose parameters.
+For example, our version is `v0.5.0-beta` and we want to update it to `v0.6.1-beta`. In that case we should write "-mp" in the "Version key" input field and "beta" in the "Add Postfix". 
 
 ## Adding third-party dependencies
 
@@ -40,6 +41,30 @@ To enable TLS, perform these steps before continuing with "Testing in Kubernetes
    Run `base64 < cert` to get the base64 string. Also update the `url` field to use `https`.
 
 ## Testing in Kubernetes
+
+There are several ways to run Atlas-OSB in Kubernetes:
+
+- with GitHub Actions
+- with Helm
+- with kubectl
+
+### Run Atlas-OSB with GitHub Action
+
+It is as simple as running
+
+```bash
+act -j k8s-demo-broker
+act -j k8s-demo-instance
+act -j k8s-demo-test
+```
+
+For more information about GitHub Actions, please follow to [HOWTO](https://github.com/mongodb/atlas-osb/blob/master/.github/HOWTO.md)
+
+### Run Atlas-OSB with Helm
+
+
+
+### Run Atlas-OSB with kubectl
 
 Follow these steps to test the broker in a Kubernetes cluster. For local testing we recommend using [minikube](https://kubernetes.io/docs/setup/learning-environment/minikube/). We also recommend using the [service catalog CLI](https://github.com/kubernetes-sigs/service-catalog/blob/master/docs/cli.md) (`svcat`) to control the service catalog.
 
