@@ -8,7 +8,10 @@ The server is managed by a third-party library called [`brokerapi`](https://gith
 
 ## Testing
 
-Please refer to the how-to documentation [action](https://github.com/mongodb/atlas-osb/blob/master/.github/HOWTO.md)
+We are using GitHub Action for testing purposes.
+For testing in CF used: `.github/workflows/deploy-broker.yml`
+For testing in K8S: `.github/workflows/k8s-demo-*.yml`
+Please refer to the [HOWTO.md](https://github.com/mongodb/atlas-osb/blob/master/.github/HOWTO.md) documentation
 
 ## Releasing
 
