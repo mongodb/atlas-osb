@@ -1,10 +1,11 @@
-name: override-bind-db-plan
+name: basic-overrides-plan
 description: This is an extension of the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection. But it added the ability to override the bind db.
 free: true
 apiKey: {{ keyByAlias .credentials "testKey" }}
 settings:
   overrideBindDB: "OriginalMongoDBTileForPCFDBName"
-  overrideBindDBRole: "readWrite" 
+  overrideBindDBRole: "readWrite"
+  overrideAtlasUserRoles: [GROUP_OWNER]
 project:
   name: {{ .instance_name }}
   desc: Created from a template

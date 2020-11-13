@@ -1,7 +1,10 @@
+#act tool
 act/
 test-run/
-
 .env
 .actrc
 .secrets
 event.json
+
+#IDEs
+.idea/

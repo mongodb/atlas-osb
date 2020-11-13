@@ -86,4 +86,7 @@ RUN wget https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -O awscliv2.zi
     unzip awscliv2.zip && \
     chmod +x ./aws/install  && \
     ./aws/install
+RUN wget https://get.docker.com -O get-docker.sh && \
+    chmod +x ./get-docker.sh && \
+    ./get-docker.sh
 CMD ["/bin/bash"]
