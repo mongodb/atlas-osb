@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: atlas-service-broker
-          image: "quay.io/mongodb/mongodb-atlas-service-broker:latest"
+          image: "quay.io/mongodb/atlas-osb:latest"
           ports:
             - containerPort: 4000
           env:
