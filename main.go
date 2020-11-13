@@ -108,9 +108,12 @@ func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.
 	switch {
 	case err == nil && creds == nil:
 		logger.Infow("Rejected Multi-Project (env): no credentials in env")
+
 	case err == nil:
 		logger.Info("Selected Multi-Project (env)")
+
 		return creds
+
 	default:
 		logger.Fatalw("Error while loading env credentials", "error", err)
 	}
@@ -120,15 +123,19 @@ func deduceCredentials(logger *zap.SugaredLogger, atlasURL string) *credentials.
 	switch {
 	case err == nil && creds == nil:
 		logger.Infow("Rejected Multi-Project (CredHub): not in CF")
+
 	case err == nil:
 		logger.Info("Selected Multi-Project (CredHub)")
+
 		return creds
+
 	default:
 		logger.Fatalw("Error while loading CredHub credentials", "error", err)
 	}
 
 	logger.Info("Selected Basic Auth")
 	logger.Fatal("Basic Auth credentials are not implemented yet")
+
 	return nil
 }
 
@@ -196,6 +203,7 @@ func addSentryLogger(log *zap.Logger) *zap.Logger {
 	if err != nil {
 		log.Fatal("failed to init zap", zap.Error(err))
 	}
+
 	return zapsentry.AttachCoreToLogger(core, log)
 }
 
@@ -227,5 +235,6 @@ func getBinaryFootprint() string {
 
 	cs := sha256.Sum256(f)
 	bcs := hex.EncodeToString(cs[:])
+
 	return bcs[:16]
 }

@@ -22,5 +22,6 @@ func (c Context) With(key string, value interface{}) Context {
 		newCtx[k] = v
 	}
 	newCtx[key] = value
+
 	return newCtx
 }
