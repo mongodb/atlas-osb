@@ -18,9 +18,12 @@ Below there is an actual sample of `.actrc` with all required secrets:
 -s CF_PASSWORD=<password>
 -s CF_API=api.something
 -s CF_USER=<user>
--s DOCKERHUB_USERNAME=<...>
--s DOCKERHUB_TOKEN=<...>
+-s REGISTRY=quay.io
+-s REGISTRY_USERNAME=<...>
+-s REGISTRY_PASSWORD=<...>
+-s REGISTRY_REPO=test/test
 -s KUBE_CONFIG_DATA=<...one line json kubeconfig...>
+-s SENTRY_DSN=http://setry.host
 ```
 
 Now simply call:

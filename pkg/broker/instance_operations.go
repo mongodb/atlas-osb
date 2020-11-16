@@ -79,6 +79,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	// Async needs to be supported for provisioning to work.
 	if !asyncAllowed {
 		err = apiresponses.ErrAsyncRequired
+
 		return
 	}
 
@@ -98,14 +99,15 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(dp.Project.OrgID)
+	state, err := b.getState(ctx, dp.Project.OrgID)
 	if err != nil {
 		return
 	}
 
-	v, err := state.Put(context.Background(), instanceID, &s)
+	v, err := state.Put(ctx, instanceID, &s)
 	if err != nil {
 		logger.Errorw("Error during provision, broker maintenance:", "err", err)
+
 		return
 	}
 	logger.Infow("Inserted new state value", "v", v)
@@ -118,9 +120,9 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 
 	// Create a new Atlas cluster from the generated definition
 	resultingCluster, _, err := client.Clusters.Create(ctx, dp.Project.ID, dp.Cluster)
-
 	if err != nil {
 		logger.Errorw("Failed to create Atlas cluster", "error", err, "cluster", dp.Cluster)
+
 		return
 	}
 
@@ -139,7 +141,8 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 	p, _, err := client.Projects.Create(ctx, dp.Project)
 	if err != nil {
 		logger.Errorw("Cannot create project", "error", err, "project", dp.Project)
-		return nil, err
+
+		return nil, errors.Wrap(err, "cannot create Atlas project")
 	}
 
 	for _, u := range dp.DatabaseUsers {
@@ -152,7 +155,7 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 
 		_, _, err := client.DatabaseUsers.Create(ctx, p.ID, u)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot create Database User")
 		}
 	}
 
@@ -160,14 +163,14 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 	if len(dp.IPWhitelists) > 0 { // nolint
 		_, _, err := client.ProjectIPWhitelist.Create(ctx, p.ID, dp.IPWhitelists) // nolint
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot create IP Whitelist")
 		}
 	}
 
 	if len(dp.IPAccessLists) > 0 {
 		_, _, err := client.ProjectIPAccessList.Create(ctx, p.ID, dp.IPAccessLists)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot create IP Access List")
 		}
 	}
 
@@ -206,6 +209,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	// Async needs to be supported for provisioning to work.
 	if !asyncAllowed {
 		err = apiresponses.ErrAsyncRequired
+
 		return
 	}
 
@@ -216,16 +220,18 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}
 
 		_, _, err = client.Clusters.Update(ctx, oldPlan.Project.ID, oldPlan.Cluster.Name, request)
+
 		return domain.UpdateServiceSpec{
 			IsAsync:       true,
 			OperationData: operationUpdate,
 			DashboardURL:  b.GetDashboardURL(oldPlan.Project.ID, oldPlan.Cluster.Name),
-		}, err
+		}, errors.Wrap(err, "cannot update Cluster")
 	}
 
 	// special case: perform update operations
 	if op, ok := planContext["op"].(string); ok {
 		err = b.performOperation(ctx, client, planContext, oldPlan, op)
+
 		return domain.UpdateServiceSpec{
 			IsAsync:       false, // feature spec: "[the broker] will not maintain ANY state of the list of users in an Atlas project", so no "in progress" indicator
 			OperationData: operationUpdate,
@@ -253,6 +259,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	resultingCluster, _, err := client.Clusters.Update(ctx, oldPlan.Project.ID, existingCluster.Name, newPlan.Cluster)
 	if err != nil {
 		logger.Errorw("Failed to update Atlas cluster", "error", err, "new_cluster", newPlan.Cluster)
+
 		return
 	}
 
@@ -275,7 +282,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(oldPlan.Project.OrgID)
+	state, err := b.getState(ctx, oldPlan.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -284,12 +291,14 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	err = state.DeleteOne(ctx, instanceID)
 	if err != nil {
 		logger.Errorw("Error delete from state", "err", err)
+
 		return
 	}
 
 	obj, err := state.Put(ctx, instanceID, &s)
 	if err != nil {
 		logger.Errorw("Error insert one from state", "err", err, "s", s)
+
 		return
 	}
 
@@ -316,6 +325,7 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 	// Async needs to be supported for provisioning to work.
 	if !asyncAllowed {
 		err = apiresponses.ErrAsyncRequired
+
 		return
 	}
 
@@ -347,6 +357,7 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 	spec, err = b.getInstance(ctx, instanceID)
 	if err != nil {
 		logger.Errorw("Unable to fetch instance", "err", err)
+
 		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "get-instance")
 	}
 
@@ -359,19 +370,22 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 	for k, v := range b.credentials.Keys() {
 		logger = logger.With("orgID", k)
 
-		state, err := statestorage.Get(v, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+		state, err := statestorage.Get(ctx, v, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 		if err != nil {
 			logger.Errorw("Cannot get state storage for org", "error", err)
+
 			continue
 		}
 
 		instance, err := state.FindOne(ctx, instanceID)
 		if err != nil {
-			if err != statestorage.ErrInstanceNotFound {
+			if !errors.Is(err, statestorage.ErrInstanceNotFound) {
 				logger.Errorw("Cannot find instance in maintenance DB", "error", err)
 			}
+
 			continue
 		}
+
 		return *instance, nil
 	}
 
@@ -404,6 +418,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	if err != nil && r.StatusCode != http.StatusNotFound {
 		err = errors.Wrap(err, "cannot get existing cluster")
 		logger.Errorw("Failed to get existing cluster", "error", err)
+
 		return
 	}
 
@@ -414,6 +429,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		if r.StatusCode == http.StatusNotFound {
 			resp.State = domain.Failed
 			resp.Description = "cluster not found"
+
 			return
 		}
 
@@ -457,15 +473,17 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				err = nil
 			}
 
-			state, errDel := b.getState(p.Project.OrgID)
+			state, errDel := b.getState(ctx, p.Project.OrgID)
 			if errDel != nil {
 				logger.Errorw("Failed to get state storage", "error", errDel)
+
 				break
 			}
 
 			errDel = state.DeleteOne(ctx, instanceID)
 			if errDel != nil {
 				logger.Errorw("Failed to clean up instance from maintenance store", "error", errDel)
+
 				break
 			}
 

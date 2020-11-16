@@ -68,5 +68,6 @@ func (p Plan) String() string {
 	if err != nil {
 		panic(err)
 	}
+
 	return string(s)
 }

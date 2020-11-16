@@ -94,5 +94,6 @@ func createFields(data []lager.Data) []interface{} {
 			fields = append(fields, k, v)
 		}
 	}
+
 	return fields
 }

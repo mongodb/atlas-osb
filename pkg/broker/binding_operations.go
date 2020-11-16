@@ -19,13 +19,13 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
@@ -70,6 +70,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	cluster, _, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		logger.Errorw("Failed to get existing cluster", "error", err)
+
 		return
 	}
 
@@ -78,12 +79,14 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	if err != nil {
 		logger.Errorw("Failed to generate password", "error", err)
 		err = errors.New("failed to generate binding password")
+
 		return
 	}
 
 	user, err := b.userFromParams(bindingID, password, details.RawParameters, p)
 	if err != nil {
 		logger.Errorw("Couldn't create user from the passed parameters", "error", err, "details", details)
+
 		return
 	}
 
@@ -91,6 +94,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	_, _, err = client.DatabaseUsers.Create(ctx, p.Project.ID, user)
 	if err != nil {
 		logger.Errorw("Failed to create Atlas database user", "error", err)
+
 		return
 	}
 
@@ -99,6 +103,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
 	if err != nil {
 		logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
+
 		return
 	}
 
@@ -124,6 +129,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	spec = domain.Binding{
 		Credentials: connDetails,
 	}
+
 	return
 }
 
@@ -142,6 +148,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	_, _, err = client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		logger.Errorw("Failed to get existing cluster", "error", err)
+
 		return
 	}
 
@@ -149,12 +156,14 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
 	if err != nil {
 		logger.Errorw("Failed to delete Atlas database user", "error", err)
+
 		return
 	}
 
 	logger.Infow("Successfully deleted Atlas database user")
 
 	spec = domain.UnbindSpec{}
+
 	return
 }
 
@@ -165,6 +174,7 @@ func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID str
 	logger.Infow("Retrieving binding")
 
 	err = apiresponses.NewFailureResponse(fmt.Errorf("unknown binding ID %s", bindingID), 404, "get-binding")
+
 	return
 }
 
@@ -182,7 +192,7 @@ func generatePassword() (string, error) {
 
 	_, err := rand.Read(b)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "cannot read random bytes")
 	}
 
 	return base64.URLEncoding.EncodeToString(b), nil
@@ -201,7 +211,7 @@ func (b *Broker) userFromParams(bindingID string, password string, rawParams []b
 	if len(rawParams) > 0 {
 		err := json.Unmarshal(rawParams, &params)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot unmarshal raw parameters")
 		}
 	}
 

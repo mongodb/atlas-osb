@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
+	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
@@ -73,7 +74,7 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 
 	_, r, err := client.AtlasUsers.Create(ctx, u)
 	if err != nil && r.StatusCode != http.StatusConflict {
-		return err
+		return errors.Wrap(err, "cannot create Atlas user")
 	}
 
 	// user successfully invited
@@ -84,11 +85,12 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 	// 409 Conflict: user already exists in the system, need to add them to the project
 	u, _, err = client.AtlasUsers.GetByName(ctx, email)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot get Atlas user by name")
 	}
 
 	_, _, err = client.AtlasUsers.Update(ctx, u.ID, roles)
-	return err
+
+	return errors.Wrap(err, "cannot update Atlas user")
 }
 
 func (b *Broker) removeUserFromProject(ctx context.Context, client *mongodbatlas.Client, planContext dynamicplans.Context, p *dynamicplans.Plan) error {
@@ -99,11 +101,12 @@ func (b *Broker) removeUserFromProject(ctx context.Context, client *mongodbatlas
 
 	u, _, err := client.AtlasUsers.GetByName(ctx, email)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot get Atlas user by name")
 	}
 
 	_, err = client.Projects.RemoveUserFromProject(ctx, p.Project.ID, u.ID)
-	return err
+
+	return errors.Wrap(err, "cannot remove Atlas user from Project")
 }
 
 func (b *Broker) performOperation(ctx context.Context, client *mongodbatlas.Client, planContext dynamicplans.Context, p *dynamicplans.Plan, op string) error {
