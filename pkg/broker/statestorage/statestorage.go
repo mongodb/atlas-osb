@@ -17,6 +17,7 @@ package statestorage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
@@ -32,9 +33,7 @@ const (
 	realmAppName           = "broker-state"
 )
 
-var (
-	ErrInstanceNotFound = errors.New("unable to find instance in state storage")
-)
+var ErrInstanceNotFound = errors.New("unable to find instance in state storage")
 
 type RealmStateStorage struct {
 	RealmClient  *mongodbrealm.Client
@@ -54,7 +53,6 @@ func client(baseURL string, k credentials.APIKey) (*mongodbatlas.Client, error) 
 
 func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
-		ctx,
 		nil,
 		mongodbrealm.SetBaseURL(realmURL),
 		mongodbrealm.SetAPIAuth(ctx, key.PublicKey, key.PrivateKey),
@@ -81,7 +79,8 @@ func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL 
 	realmApp, err := getOrCreateRealmAppForOrg(ctx, mainPrj.ID, realmClient, logger)
 	if err != nil {
 		logger.Errorw("Error getOrCreateRealmAppForOrg", "err", err)
-		return nil, err
+
+		return nil, errors.Wrap(err, "cannot get/create Realm app")
 	}
 
 	rss := &RealmStateStorage{
@@ -90,6 +89,7 @@ func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL 
 		RealmProject: mainPrj,
 		Logger:       logger,
 	}
+
 	return rss, nil
 }
 
@@ -110,6 +110,7 @@ func getOrCreateBrokerMaintentaceGroup(ctx context.Context, orgID string, client
 		logger.Infow("getOrCreateBrokerMaintentaceGroup CREATED", "project", project)
 	}
 	logger.Infow("getOrCreateBrokerMaintentaceGroup FOUND", "project", project)
+
 	return project, nil
 }
 
@@ -122,28 +123,36 @@ func getOrCreateRealmAppForOrg(ctx context.Context, groupID string, realmClient 
 	}
 
 	apps, _, err := realmClient.RealmApps.List(ctx, groupID, nil)
-	var realmApp *mongodbrealm.RealmApp
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot list Realm apps for project %s", groupID)
+	}
 
+	var realmApp *mongodbrealm.RealmApp
 	for _, ra := range apps {
 		ra := ra
 		logger.Infow("Found realm app", "ra", ra)
 		if ra.Name == app.Name {
+			if realmApp != nil {
+				// for existing issue: don't start up until it's fixed - also helps to catch this in future
+				return nil, fmt.Errorf("multiple %q apps found in maintenance project %s - not supported", realmAppName, groupID)
+			}
 			realmApp = &ra
 		}
 	}
 
 	if realmApp == nil {
-		logger.Infow("Error fetching maintenance realm app", "err", err)
-		logger.Infow("Attempt create", "app", app)
+		logger.Infow("Could not find Realm app for State Storage. Creating...", "app", app)
 		realmApp, _, err := realmClient.RealmApps.Create(ctx, groupID, &app)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot create Realm app")
 		}
 		logger.Infow("Created realm app", "realmApp", realmApp)
+
 		return realmApp, nil
 	}
 
 	logger.Infow("Found existing realm app", "realmApp", realmApp)
+
 	return realmApp, nil
 }
 
@@ -157,6 +166,7 @@ func (ss *RealmStateStorage) idByName(ctx context.Context, name string) (id stri
 	for _, v := range values {
 		if v.Name == name {
 			id = v.ID
+
 			return
 		}
 	}
@@ -176,6 +186,7 @@ func (ss *RealmStateStorage) FindOne(ctx context.Context, name string, out inter
 		if strings.Contains(err.Error(), "value not found") {
 			err = ErrInstanceNotFound
 		}
+
 		return
 	}
 
@@ -194,24 +205,28 @@ func (ss *RealmStateStorage) DeleteOne(ctx context.Context, name string) error {
 	}
 
 	_, err = ss.RealmClient.RealmValues.Delete(ctx, ss.RealmProject.ID, ss.RealmApp.ID, id)
+
 	return err
 }
 
 func (ss *RealmStateStorage) Put(ctx context.Context, name string, value interface{}) (*mongodbrealm.RealmValue, error) {
 	vv, err := json.Marshal(value)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot marshal value")
 	}
 
 	val := &mongodbrealm.RealmValue{
 		Name:  name,
 		Value: vv,
 	}
+
 	v, _, err := ss.RealmClient.RealmValues.Create(ctx, ss.RealmProject.ID, ss.RealmApp.ID, val)
+
 	return v, err
 }
 
 func (ss *RealmStateStorage) Get(ctx context.Context, key string) (*mongodbrealm.RealmValue, error) {
 	v, _, err := ss.RealmClient.RealmValues.Get(ctx, ss.RealmProject.ID, ss.RealmApp.ID, key)
+
 	return v, err
 }

@@ -8,10 +8,11 @@ require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/Masterminds/sprig/v3 v3.1.0
 	github.com/Sectorbob/mlab-ns2 v0.0.0-20171030222938-d3aa0c295a8a
+	github.com/TheZeroSlave/zapsentry v1.5.0
 	github.com/alexflint/go-arg v1.3.1-0.20200806235247-96c756c382ed
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drewolson/testflight v1.0.0 // indirect
-	github.com/goccy/go-yaml v1.8.1
+	github.com/goccy/go-yaml v1.8.3
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/mux v1.8.0
@@ -24,7 +25,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/atlas v0.5.0
-	go.mongodb.org/mongo-driver v1.4.2
+	go.mongodb.org/mongo-driver v1.4.3
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect

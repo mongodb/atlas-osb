@@ -78,7 +78,7 @@ func FromCredHub(baseURL string) (*Credentials, error) {
 
 	services := &services{}
 	if err := json.Unmarshal([]byte(env), services); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal VCAP_SERVICES: %v", err)
+		return nil, fmt.Errorf("cannot unmarshal VCAP_SERVICES: %w", err)
 	}
 
 	result := Credentials{
@@ -98,7 +98,7 @@ func FromCredHub(baseURL string) (*Credentials, error) {
 	}
 
 	if err := result.validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate credentials: %v", err)
+		return nil, fmt.Errorf("failed to validate credentials: %w", err)
 	}
 
 	return &result, nil
@@ -118,16 +118,16 @@ func FromEnv(baseURL string) (*Credentials, error) {
 	if err := json.Unmarshal([]byte(env), &keys); err != nil {
 		file, err := os.Open(env)
 		if err != nil {
-			return nil, fmt.Errorf("cannot find BROKER_APIKEYS: %v", err)
+			return nil, fmt.Errorf("cannot find BROKER_APIKEYS: %w", err)
 		}
 		defer file.Close()
 
 		fileData, err := ioutil.ReadAll(file)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read BROKER_APIKEYS: %v", err)
+			return nil, fmt.Errorf("cannot read BROKER_APIKEYS: %w", err)
 		}
 		if err := json.Unmarshal(fileData, &keys); err != nil {
-			return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
+			return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %w", err)
 		}
 	}
 
@@ -143,7 +143,7 @@ func FromEnv(baseURL string) (*Credentials, error) {
 	}
 
 	if err := result.validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate credentials: %v", err)
+		return nil, fmt.Errorf("failed to validate credentials: %w", err)
 	}
 
 	return &result, nil
@@ -171,6 +171,7 @@ func (c *Credentials) ByAlias(alias string) (APIKey, error) {
 	if !ok {
 		return k, fmt.Errorf("no API key for organization %s", id)
 	}
+
 	return k, nil
 }
 
@@ -179,6 +180,7 @@ func (c *Credentials) ByOrg(id string) (APIKey, error) {
 	if !ok {
 		return k, fmt.Errorf("no API key for organization %s", id)
 	}
+
 	return k, nil
 }
 

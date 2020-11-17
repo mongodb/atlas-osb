@@ -75,12 +75,14 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	cluster, _, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		logger.Errorw("Failed to get existing cluster", "error", err)
+
 		return
 	}
 
 	user, err := b.userFromParams(bindingID, details.RawParameters, p)
 	if err != nil {
 		logger.Errorw("Couldn't create user from the passed parameters", "error", err, "details", details)
+
 		return
 	}
 
@@ -88,6 +90,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	_, _, err = client.DatabaseUsers.Create(ctx, p.Project.ID, user)
 	if err != nil {
 		logger.Errorw("Failed to create Atlas database user", "error", err)
+
 		return
 	}
 
@@ -96,6 +99,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
 	if err != nil {
 		logger.Errorw("Failed to parse connection string", "error", err, "connString", cluster.ConnectionStrings.StandardSrv)
+
 		return
 	}
 
@@ -131,6 +135,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	_, err = ss.Put(ctx, bindingID, BindingSpec{
 		Credentials: connDetails,
 	})
+
 	return
 }
 
@@ -158,7 +163,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	binding := BindingSpec{}
 	err = ss.FindOne(ctx, bindingID, &binding)
 	if err != nil {
-		if err != statestorage.ErrInstanceNotFound {
+		if !errors.Is(err, statestorage.ErrInstanceNotFound) {
 			return spec, errors.Wrap(err, "cannot fetch binding from state storage")
 		}
 
@@ -169,6 +174,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 		if r.StatusCode == http.StatusNotFound {
 			return spec, nil
 		}
+
 		return spec, errors.Wrap(err, "cannot find binding in state storage; cannot remove user by bindingID")
 	}
 
@@ -176,6 +182,7 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	_, _, err = client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		logger.Errorw("Failed to get existing cluster", "error", err)
+
 		return spec, errors.Wrap(err, "cannot get existing cluster")
 	}
 
@@ -183,12 +190,14 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, binding.Credentials.Username)
 	if err != nil {
 		logger.Errorw("Failed to delete Atlas database user", "error", err)
+
 		return spec, errors.Wrap(err, "cannot delete Atlas Database User")
 	}
 
 	logger.Infow("Successfully deleted Atlas database user")
 
 	err = ss.DeleteOne(ctx, bindingID)
+
 	return
 }
 
@@ -199,6 +208,7 @@ func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID str
 	logger.Infow("Retrieving binding")
 	s := BindingSpec{}
 	err = b.getState(ctx, bindingID, &s)
+
 	return domain.GetBindingSpec{
 		Credentials: s.Credentials,
 	}, err
@@ -218,7 +228,7 @@ func generatePassword() (string, error) {
 
 	_, err := rand.Read(b)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "cannot read random bytes")
 	}
 
 	return base64.URLEncoding.EncodeToString(b), nil
@@ -237,7 +247,7 @@ func (b *Broker) userFromParams(bindingID string, rawParams []byte, plan *dynami
 	if len(rawParams) > 0 {
 		err := json.Unmarshal(rawParams, &params)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot unmarshal raw parameters")
 		}
 	}
 
@@ -250,8 +260,8 @@ func (b *Broker) userFromParams(bindingID string, rawParams []byte, plan *dynami
 		password, err := generatePassword()
 		if err != nil {
 			logger.Errorw("Failed to generate password", "error", err)
-			err = errors.Wrap(err, "failed to generate binding password")
-			return nil, err
+
+			return nil, errors.Wrap(err, "failed to generate binding password")
 		}
 
 		params.User.Password = password
@@ -279,6 +289,13 @@ func (b *Broker) userFromParams(bindingID string, rawParams []byte, plan *dynami
 
 	if len(params.User.DatabaseName) == 0 {
 		params.User.DatabaseName = "admin"
+	}
+
+	if len(params.User.Scopes) == 0 {
+		params.User.Scopes = append(params.User.Scopes, mongodbatlas.Scope{
+			Name: plan.Cluster.Name,
+			Type: "CLUSTER",
+		})
 	}
 
 	logger.Debugw("userFromParams", "params", params)

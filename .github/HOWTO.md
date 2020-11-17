@@ -9,9 +9,9 @@ Actions available right now:
 - clean-failed - triggered by deleting the branch, `purge` failed services and clean test-organization
 - cleanup-cf - clean Cloud Foundry space after testing
 - e2e-cf - deploy atlas broker with provided templates
-- reaper - delete clusters/project from Atlas 
+- reaper - delete clusters/project from Atlas
 
-"e2e-cf" action have commented parts in case spring-music are more preferiable as a test application 
+"e2e-cf" action have commented parts in case spring-music are more preferiable as a test application
 
 ## base-dockerfile
 The Dockerfile included here is used for actions and also contains helper functions for actions
@@ -20,12 +20,12 @@ The Dockerfile included here is used for actions and also contains helper functi
 All disabled/cancelled/saved for future use workflows are placed in here. For example, workflow "Deploy to Amazon ECS" we plan to use it later.
 
 ## workflows
-Active workflows for operating. 
+Active workflows for operating.
 - `clean-cf.yml` clean Cloud Foundry from previous usage
 - `deploy-broker.yml` deploy broker to CF
 - `reaper.yml` delete clusters from Atlas
-- `create-release-package.yml` create a release
-- `eks-demo.yml` demo (2 jobs: create, clean)
+- `create-release-package.yml` create a release package, Docker image and push it to the registry (defined by secrets)
+- `k8s-demo-*` for demonstrations/fast-start purposes/manual testing
 - `test-org-user.yml` copy of `deploy-broker.yml` additionally, it includes a check to create org users by broker
 
 # Using GitHub Actions locally
@@ -44,10 +44,12 @@ Put the file `.actrc` to the root project folder with used secrets in GitHub
 -s CF_PASSWORD=<password>
 -s CF_API=api.something
 -s CF_USER=<user>
--s DOCKERHUB_USERNAME=<...>
--s DOCKERHUB_TOKEN=<...>
--s AWS_ACCESS_KEY=<...>
--s AWS_SECRET_KEY=<...>
+-s REGISTRY=quay.io
+-s REGISTRY_USERNAME=<...>
+-s REGISTRY_PASSWORD=<...>
+-s REGISTRY_REPO=test/test
+-s KUBE_CONFIG_DATA=<...one line json kubeconfig...>
+-s SENTRY_DSN=http://setry.host
 ```
 
 Now simply call:
@@ -73,21 +75,31 @@ act -j check-users
 ```
 
 ## Demo
-eks-demo workflow has 2 jobs:
-1) `eksdemo` deploys broker into k8s cluster, creates service instance, deploys test application. In the end prints out test application URL
-2) `eksdemo-clean`
+demo workflows:
 
-Usage example:
+0) `k8s-demo-catalog` install service catalog to k8s cluster to `catalog` namespace, run only if k8s doesn't have a service catalog installed
+1) `k8s-demo-broker` deploys broker into k8s cluster, creates service instance, deploys test application. In the end, prints out test application URL
+2) `k8s-demo-instance` deploy service instance
+3) `k8s-demo-test-app` deploy test application for demonstration
+4) `k8s-demo-clean` clean k8s cluster
+
+These jobs accept the `KUBE_CONFIG_DATA` secret, for example:
+
+```
+KUBE_CONFIG_DATA=$(kubectl config view -o json --raw | jq -c '.')
+```
+
+```
+#sample if `.actrc` file doesn't have `KUBE_CONFIG_DATA` secret or there are many different k8s clusters to use:
+act -s KUBE_CONFIG_DATA="$(cat ./kubeconfigoneline.json)" -j k8s-demo-broker
+```
+
+Workflows work with default [parameters](https://github.com/mongodb/atlas-osb/blob/master/.github/base-dockerfile/helpers/params.sh), if it is necessary to work with another namespace then a better way is to create an event file with inputs: `service_name` and `namespace`. Samples:
 
 ```
 echo '{"action":"workflow_dispatch", "inputs": {"service_name":"sky-service","namespace":"atlas-osb"}}' > event.json
 act -j eksdemo-broker -e event.json
 act -j eksdemo-instance -e event.json
 act -j eksdemo-test -e event.json
-```
-
-or without event.json (it will use default values)
-
-```
-act -j eksdemo-broker
+#NOTE `.actrc` file should include `KUBE_CONFIG_DATA` secret
 ```

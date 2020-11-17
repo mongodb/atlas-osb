@@ -1,5 +1,0 @@
-name: 'Create service instance'
-description: 'Create service instance'
-runs:
-  using: 'docker'
-  image: 'Dockerfile'

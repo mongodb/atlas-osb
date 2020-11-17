@@ -16,7 +16,6 @@ package dynamicplans
 
 import (
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
+	"github.com/pkg/errors"
 )
 
 func FromEnv() ([]*template.Template, error) {
@@ -36,7 +36,7 @@ func FromEnv() ([]*template.Template, error) {
 
 	files, err := ioutil.ReadDir(planPath)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot read directory")
 	}
 
 	templates := []*template.Template{}
@@ -52,7 +52,7 @@ func FromEnv() ([]*template.Template, error) {
 
 		text, err := ioutil.ReadFile(filepath.Join(planPath, f.Name()))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot read file")
 		}
 
 		// trim .tpl
@@ -70,9 +70,8 @@ func FromEnv() ([]*template.Template, error) {
 				"orgIDByAlias": orgIDByAlias,
 			}).
 			Parse(string(text))
-
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot parse template")
 		}
 		templates = append(templates, t)
 	}
@@ -89,6 +88,7 @@ func dfault(d interface{}, given ...interface{}) interface{} {
 	if empty(given) || empty(given[0]) {
 		return d
 	}
+
 	return given[0]
 }
 
@@ -124,12 +124,12 @@ func empty(given interface{}) bool {
 func keyByOrg(c *credentials.Credentials, orgID string) (string, error) {
 	key, err := c.ByOrg(orgID)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "cannot get API key by org")
 	}
 
 	out, err := json.Marshal(key)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "cannot marshal API key")
 	}
 
 	return string(out), nil
@@ -138,12 +138,12 @@ func keyByOrg(c *credentials.Credentials, orgID string) (string, error) {
 func keyByAlias(c *credentials.Credentials, alias string) (string, error) {
 	key, err := c.ByAlias(alias)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "cannot get API key by alias")
 	}
 
 	out, err := json.Marshal(key)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "cannot marshal API key")
 	}
 
 	return string(out), nil
@@ -152,7 +152,7 @@ func keyByAlias(c *credentials.Credentials, alias string) (string, error) {
 func orgIDByAlias(c *credentials.Credentials, alias string) (string, error) {
 	key, err := c.ByAlias(alias)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "cannot get API key by alias")
 	}
 
 	return key.OrgID, nil

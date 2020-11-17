@@ -1,6 +1,6 @@
 # action.yml
-name: 'Atlas broker testing'
-description: 'uses for preparing environments for testing'
+name: "Atlas broker testing"
+description: "uses for preparing environments for testing"
 inputs:
   cf_api:
     description: "PCF url uses for pcf command"
@@ -29,12 +29,15 @@ inputs:
   atlas_org_id:
     description: "atlas org id"
     required: true
+  sentry_dsn:
+    description: "sentry DSN for telemetry"
+    required: true
 outputs:
   app_url:
-    description: 'Application url'
+    description: "Application url"
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: "docker"
+  image: "Dockerfile"
   args:
     - ${{ inputs.cf_user }}
     - ${{ inputs.cf_password }}
@@ -43,5 +46,6 @@ runs:
     - ${{ inputs.atlas_project_id_bay }}
     - ${{ inputs.atlas_public_key }}
     - ${{ inputs.atlas_private_key }}
-    - ${{ inputs.credhub_file}}
-    - ${{ inputs.atlas_org_id}}
+    - ${{ inputs.credhub_file }}
+    - ${{ inputs.atlas_org_id }}
+    - ${{ inputs.sentry_dsn }}

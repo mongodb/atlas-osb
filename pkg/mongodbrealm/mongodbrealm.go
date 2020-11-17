@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-
 	"net/http"
 	"net/url"
 	"reflect"
@@ -123,6 +122,7 @@ func (resp *Response) getLinkByRef(ref string) *mongodbatlas.Link {
 			return resp.Links[i]
 		}
 	}
+
 	return nil
 }
 
@@ -145,7 +145,7 @@ func (resp *Response) CurrentPage() (int, error) {
 	pageNumStr := "0"
 	pageNum, err := strconv.Atoi(pageNumStr)
 	if err != nil {
-		return 0, fmt.Errorf("error getting current page: %s", err)
+		return 0, fmt.Errorf("error getting current page: %w", err)
 	}
 
 	return pageNum, nil
@@ -159,7 +159,8 @@ func NewClient(httpClient *http.Client) *Client {
 
 	baseURL, _ := url.Parse(realmDefaultBaseURL)
 
-	c := &Client{client: httpClient,
+	c := &Client{
+		client:    httpClient,
 		BaseURL:   baseURL,
 		UserAgent: userAgent,
 		auth:      &RealmAuth{},
@@ -175,7 +176,7 @@ func NewClient(httpClient *http.Client) *Client {
 type ClientOpt func(*Client) error
 
 // New returns a new mongodbrealm API client instance.
-func New(ctx context.Context, httpClient *http.Client, opts ...ClientOpt) (*Client, error) {
+func New(httpClient *http.Client, opts ...ClientOpt) (*Client, error) {
 	c := NewClient(httpClient)
 
 	for _, opt := range opts {
@@ -196,10 +197,11 @@ func SetBaseURL(bu string) ClientOpt {
 	return func(c *Client) error {
 		u, err := url.Parse(bu)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "cannot parse URL")
 		}
 
 		c.BaseURL = u
+
 		return nil
 	}
 }
@@ -208,6 +210,7 @@ func SetBaseURL(bu string) ClientOpt {
 func SetUserAgent(ua string) ClientOpt {
 	return func(c *Client) error {
 		c.UserAgent = fmt.Sprintf("%s %s", ua, c.UserAgent)
+
 		return nil
 	}
 }
@@ -262,18 +265,18 @@ func (c *Client) NewRequest(ctx context.Context, method, urlStr string, body int
 	}
 	u, err := c.BaseURL.Parse(urlStr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot parse URL")
 	}
 	var buf io.Reader
 	if body != nil {
 		if buf, err = c.newEncodedBody(body); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot create encoded request body")
 		}
 	}
 
-	req, err := http.NewRequest(method, u.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create HTTP request")
 	}
 
 	if body != nil {
@@ -284,6 +287,7 @@ func (c *Client) NewRequest(ctx context.Context, method, urlStr string, body int
 	if c.UserAgent != "" {
 		req.Header.Set("User-Agent", c.UserAgent)
 	}
+
 	return req, nil
 }
 
@@ -293,7 +297,8 @@ func (c *Client) newEncodedBody(body interface{}) (io.Reader, error) {
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	err := enc.Encode(body)
-	return buf, err
+
+	return buf, errors.Wrap(err, "cannot marshal body")
 }
 
 // NewGZipRequest creates an API request that accepts gzip. A relative URL can be provided in urlStr, which will be resolved to the
@@ -301,20 +306,21 @@ func (c *Client) newEncodedBody(body interface{}) (io.Reader, error) {
 func (c *Client) NewGZipRequest(ctx context.Context, method, urlStr string) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot parse URL")
 	}
 
 	u := c.BaseURL.ResolveReference(rel)
 
-	req, err := http.NewRequest(method, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create HTTP request")
 	}
 
 	req.Header.Add("Accept", gzipMediaType)
 	if c.UserAgent != "" {
 		req.Header.Set("User-Agent", c.UserAgent)
 	}
+
 	return req, nil
 }
 
@@ -336,6 +342,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*Res
 			}
 
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.auth.AccessToken))
+
 			return c.do(ctx, req, v)
 		}
 
@@ -359,7 +366,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) (*Res
 		default:
 		}
 
-		return nil, err
+		return nil, errors.Wrap(err, "cannot do HTTP request")
 	}
 
 	if c.onRequestCompleted != nil {
@@ -383,20 +390,20 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) (*Res
 		if w, ok := v.(io.Writer); ok {
 			_, err = io.Copy(w, resp.Body)
 			if err != nil {
-				return nil, err
+				return response, errors.Wrap(err, "cannot write body")
 			}
 		} else {
 			decErr := json.NewDecoder(resp.Body).Decode(v)
-			if decErr == io.EOF {
+			if errors.Is(decErr, io.EOF) {
 				decErr = nil // ignore EOF errors caused by empty response body
 			}
 			if decErr != nil {
-				err = decErr
+				return response, errors.Wrap(decErr, "cannot decode body")
 			}
 		}
 	}
 
-	return response, err
+	return response, nil
 }
 
 func (r *ErrorResponse) Error() string {
@@ -429,14 +436,14 @@ func setListOptions(s string, opt interface{}) (string, error) {
 
 	origURL, err := url.Parse(s)
 	if err != nil {
-		return s, err
+		return s, errors.Wrap(err, "cannot parse URL")
 	}
 
 	origValues := origURL.Query()
 
 	newValues, err := query.Values(opt)
 	if err != nil {
-		return s, err
+		return s, errors.Wrap(err, "cannot get query values")
 	}
 
 	for k, v := range newValues {
@@ -444,5 +451,6 @@ func setListOptions(s string, opt interface{}) (string, error) {
 	}
 
 	origURL.RawQuery = origValues.Encode()
+
 	return origURL.String(), nil
 }

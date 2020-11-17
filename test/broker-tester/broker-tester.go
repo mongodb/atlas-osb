@@ -113,7 +113,6 @@ func main() {
 		if err != nil {
 			log.Printf("yamlFile.Get err   #%v ", err)
 			yamlFile = []byte(params)
-
 		}
 		log.Println("yamlFile:", yamlFile)
 		err = json.Unmarshal(yamlFile, &parameters)
@@ -135,7 +134,6 @@ func main() {
 		log.Fatalf("Error: %v", err)
 	}
 	if operation == "catalog" {
-
 		catalog, err2 := broker.GetCatalog()
 		log.Println("catalog", catalog)
 		if err2 != nil {
@@ -149,16 +147,15 @@ func main() {
 		fmt.Printf("%s", string(d))
 	}
 	if operation == "services" {
-
-		var groupId string
+		var groupID string
 		if len(otherArgs) > 0 {
-			groupId = otherArgs[0]
+			groupID = otherArgs[0]
 		} else {
-			groupId = os.Getenv("ATLAS_GROUP_ID")
+			groupID = os.Getenv("ATLAS_GROUP_ID")
 		}
-		log.Println("services groupId:", groupId)
+		log.Println("services groupId:", groupID)
 		var err2 error
-		clusters, _, err2 := client.Clusters.List(context.Background(), groupId, nil)
+		clusters, _, err2 := client.Clusters.List(context.Background(), groupID, nil)
 		if err2 != nil {
 			log.Fatalf("error: %v", err2)
 		}
@@ -167,7 +164,7 @@ func main() {
 			log.Fatalf("error: %v", err)
 		}
 		fmt.Printf("%s", string(d))
-		users, _, err2 := client.DatabaseUsers.List(context.Background(), groupId, nil)
+		users, _, err2 := client.DatabaseUsers.List(context.Background(), groupID, nil)
 		if err2 != nil {
 			log.Fatalf("error: %v", err2)
 		}
@@ -177,7 +174,7 @@ func main() {
 		}
 		log.Printf("%s", string(e))
 
-		ips, _, err2 := client.ProjectIPWhitelist.List(context.Background(), groupId, nil)
+		ips, _, err2 := client.ProjectIPWhitelist.List(context.Background(), groupID, nil)
 		if err2 != nil {
 			log.Fatalf("error: %v", err2)
 		}
@@ -186,7 +183,6 @@ func main() {
 			log.Fatalf("error: %v", err2)
 		}
 		log.Printf("%s", string(f))
-
 	}
 	if operation == "create-service" {
 		log.Printf("create-service")
@@ -194,7 +190,7 @@ func main() {
 		if len(plan) == 0 || len(name) == 0 {
 			log.Fatalln("missing --plan or --name")
 		}
-		serviceId := "aosb-cluster-service-template"
+		serviceID := "aosb-cluster-service-template"
 		servicePlan := fmt.Sprintf("%s-%s", "aosb-cluster-plan-template", plan)
 		serviceInstanceName := name
 
@@ -203,7 +199,7 @@ func main() {
 
 		request := &osb.ProvisionRequest{
 			InstanceID:        serviceInstanceName,
-			ServiceID:         serviceId,
+			ServiceID:         serviceID,
 			PlanID:            servicePlan,
 			Parameters:        parameters,
 			OrganizationGUID:  "fake",
@@ -215,10 +211,10 @@ func main() {
 		resp, err := broker.ProvisionInstance(request)
 		if err != nil {
 			fmt.Println(">>>>>>>", err)
-			errHttp, isError := osb.IsHTTPError(err)
+			errHTTP, isError := osb.IsHTTPError(err)
 			if isError {
 				// handle error response from broker
-				fmt.Println("errHttp:", errHttp)
+				fmt.Println("errHttp:", errHTTP)
 			} else {
 				// handle errors communicating with the broker
 				fmt.Println("error provision:", err)
@@ -234,10 +230,10 @@ func main() {
 		resp, err := broker.GetInstance(req)
 		if err != nil {
 			fmt.Println(">>>>>>>", err)
-			errHttp, isError := osb.IsHTTPError(err)
+			errHTTP, isError := osb.IsHTTPError(err)
 			if isError {
 				// handle error response from broker
-				fmt.Println("errHttp:", errHttp)
+				fmt.Println("errHttp:", errHTTP)
 			} else {
 				// handle errors communicating with the broker
 				fmt.Println("error provision:", err)
@@ -245,32 +241,30 @@ func main() {
 		}
 
 		log.Println("resp:", resp)
-
 	}
 	if operation == "bind" || operation == "unbind" {
-
 		if len(otherArgs) < 2 {
 			log.Fatalln("Missing <SERVICE_INSTANCE_NAME> <BINDING_ID>")
 		}
 		serviceInstanceName := otherArgs[0]
 		log.Println("serviceInstanceName:", serviceInstanceName)
-		bindingId := otherArgs[1]
-		log.Println("bindingId:", bindingId)
+		bindingID := otherArgs[1]
+		log.Println("bindingId:", bindingID)
 		spew.Dump(parameters)
 		if operation == "bind" {
 			request := &osb.BindRequest{
 				InstanceID: serviceInstanceName,
 				Parameters: parameters,
-				BindingID:  bindingId,
+				BindingID:  bindingID,
 				ServiceID:  "aosb-cluster-service-aws",
 				PlanID:     "aosb-cluster-plan-aws-m10",
 			}
 			log.Println("bind request:", request)
 			resp, err := broker.Bind(request)
 			if err != nil {
-				errHttp, isError := osb.IsHTTPError(err)
+				errHTTP, isError := osb.IsHTTPError(err)
 				if isError {
-					fmt.Println("errHttp:", errHttp)
+					fmt.Println("errHttp:", errHTTP)
 				} else {
 					fmt.Println("error bind:", err)
 					fmt.Println("resp:", resp)
@@ -285,16 +279,16 @@ func main() {
 		if operation == "unbind" {
 			request := &osb.UnbindRequest{
 				InstanceID: serviceInstanceName,
-				BindingID:  bindingId,
+				BindingID:  bindingID,
 				ServiceID:  "aosb-cluster-service-aws",
 				PlanID:     "aosb-cluster-plan-aws-m10",
 			}
 			log.Println("unbind request:", request)
 			resp, err := broker.Unbind(request)
 			if err != nil {
-				errHttp, isError := osb.IsHTTPError(err)
+				errHTTP, isError := osb.IsHTTPError(err)
 				if isError {
-					fmt.Println("errHttp:", errHttp)
+					fmt.Println("errHttp:", errHTTP)
 				} else {
 					fmt.Println("error provision:", err)
 				}

@@ -17,7 +17,10 @@ cf create-org "$ORG_NAME" && cf target -o "$ORG_NAME"
 cf create-space "$SPACE_NAME" && cf target -s "$SPACE_NAME"
 
 echo "Create service-broker"
-cf push "$BROKER_APP"
+cf push "$BROKER_APP" --no-start
+cf set-env "$BROKER_APP" "SENTRY_DSN" "$INPUT_SENTRY_DSN"
+cf restart "$BROKER_APP"
+
 check_app_started "$BROKER_APP"
 app_url=$(cf app "$BROKER_APP" | awk '/routes:/{print $2}')
 

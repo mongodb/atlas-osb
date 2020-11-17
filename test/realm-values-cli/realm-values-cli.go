@@ -69,7 +69,6 @@ func main() {
 	}
 
 	atlasclient, err := mongodbrealm.New(
-		context.Background(),
 		nil,
 		mongodbrealm.SetAPIAuth(context.Background(), *publicAPIKey, *privateAPIKey),
 	)

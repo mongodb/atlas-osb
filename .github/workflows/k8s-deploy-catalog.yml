@@ -1,0 +1,25 @@
+#demo: install service catalog using Helm
+
+on:
+  workflow_dispatch:
+
+name: K8s Demo.
+
+jobs:
+  k8s-demo-catalog:
+    name: Deploy to K8s
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: install service catalog
+        with:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+        run: |
+          #prepare env
+          ./.github/base-dockerfile/helpers/install_k8s_helm.sh
+          echo "$INPUT_KUBE_CONFIG_DATA" >> ./kube.config
+          export KUBECONFIG="./kube.config"
+
+          helm repo add svc-cat https://svc-catalog-charts.storage.googleapis.com
+          helm install catalog svc-cat/catalog --namespace catalog --create-namespace

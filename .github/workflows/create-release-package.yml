@@ -1,4 +1,4 @@
-# Manually triggered using GitHub UI. 
+# Manually triggered using GitHub UI.
 # Please, open Actions tab, choose workflow "Create GitHub Package Manually" and press "Run workflow"
 # Tags must be Major.minor.patch, e.g. v0.0.1/v0.0.1-alpha
 name: Create GitHub Release Package Manually
@@ -6,7 +6,7 @@ name: Create GitHub Release Package Manually
 on:
   workflow_dispatch:
     inputs:
-      release: 
+      release:
         description: "Release name. String"
         default: "atlas-osb beta"
         required: true
@@ -21,7 +21,7 @@ on:
       postfix:
         description: "Add Posfix (e.g. alpha/beta) will create PRERELEASE"
         required: false
-        
+
 jobs:
 
   build:
@@ -60,7 +60,7 @@ jobs:
     - name: Make archive
       run: |
         git archive --format=tar.gz -o ./atlas-osb.${{ steps.semver.outputs.version }}.tar.gz --prefix=atlas-osb/ master
-          
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
@@ -78,7 +78,16 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
         asset_path: ./atlas-osb.${{ steps.semver.outputs.version }}.tar.gz
         asset_name: atlas-osb.${{ steps.semver.outputs.version }}.tar.gz
         asset_content_type: application/tgz
+        
+    - name: Push Atlas-osb to Registry
+      uses: docker/build-push-action@v1
+      with:
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+        registry: ${{ secrets.REGISTRY }}
+        repository: ${{ secrets.REGISTRY_REPO }}
+        tags: ${{ steps.semver.outputs.version }}, latest

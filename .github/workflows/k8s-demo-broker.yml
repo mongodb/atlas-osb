@@ -1,0 +1,69 @@
+#demo: deploy atlas-osb to kubernetis cluster
+
+on:
+  workflow_dispatch:
+    input:
+      namespace:
+        description: "k8s Namespace"
+        required: false
+
+name: K8s Demo.
+
+jobs:
+  k8s-demo-broker:
+    name: Build image, push to DockerHub and deploy to k8s cluster
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Prepare env
+        run: |
+          ./.github/base-dockerfile/helpers/install_k8s_helm.sh
+
+      - name: Push Atlas-osb to Registry
+        id: registry
+        run: |
+          image="localhost:5000/demo:latest"
+          docker run -d -p 5000:5000 --name registry registry:2
+          docker build -t "${image}" .
+          docker push "${image}"
+          echo "::set-output name=image::$image"
+
+      - name: Deploy Atlas-osb
+        with:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          NAMESPACE: ${{ github.event.inputs.namespace }}
+          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
+          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+          image: ${{ steps.registry.outputs.image }}
+        run: |
+          source ".github/base-dockerfile/helpers/params.sh"
+          echo "$INPUT_KUBE_CONFIG_DATA" >> ./kube.config
+          export KUBECONFIG="./kube.config"
+
+          helm version
+          kubectl version
+
+          helm install "${K_BROKER}" \
+              --set namespace="${K_NAMESPACE}" \
+              --set image="${INPUT_IMAGE}" \
+              --set atlas.orgId="${INPUT_ATLAS_ORG_ID}" \
+              --set atlas.publicKey="${INPUT_ATLAS_PUBLIC_KEY}" \
+              --set atlas.privateKey="${INPUT_ATLAS_PRIVATE_KEY}" \
+              --set broker.auth.username="${K_DEFAULT_USER}" \
+              --set broker.auth.password="${K_DEFAULT_PASS}" \
+              samples/helm/broker/ --namespace "${K_NAMESPACE}" --wait --timeout 10m --create-namespace
+
+          kubectl get all -n "${K_NAMESPACE}"
+
+          echo "==================================================="
+          echo "Namespace: ${K_NAMESPACE}"
+          echo "Helm release name: ${K_BROKER}"
+          echo "==================================================="
+
+      - name: Remove Local Registry
+        run: |
+          echo "delete registry"
+          docker container stop registry && docker container rm -v registry

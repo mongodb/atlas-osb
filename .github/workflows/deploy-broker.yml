@@ -5,7 +5,6 @@
 on:
   push:
     branches:
-      - "*"
   workflow_dispatch:
 
 name: e2e VMware TAS
@@ -21,7 +20,7 @@ jobs:
         uses: golangci/golangci-lint-action@v1
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.28
+          version: v1.32
 
           # Optional: working directory, useful for monorepos
           # working-directory:
@@ -58,6 +57,7 @@ jobs:
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
           credhub_file: ${{ secrets.CREDHUB_FILE }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+          sentry_dsn: ${{ secrets.SENTRY_DSN }}
 
       - name: Cleanup ENV for current branch
         uses: ./.github/actions/cleanup-cf

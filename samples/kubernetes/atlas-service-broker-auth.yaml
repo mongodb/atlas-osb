@@ -4,5 +4,27 @@ metadata:
   name: atlas-service-broker-auth
 type: Opaque
 stringData:
-  username: "wwkzdiwj@5ea0477597999053a5f9cbec"
-  password: 62bff0f6-ff2e-471d-9e36-6efd5fa24239
+  username: "username"
+  password: "password"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: atlas-auth
+type: Opaque
+stringData:
+  apikeys.json: "
+  {
+    \"broker\": {
+      \"username\": \"username\",
+      \"password\": \"password\"
+    },
+    \"keys\": {
+      \"testKey\": {
+        \"orgID\" :\"OrgID\",
+        \"publicKey\": \"publicKey\",
+        \"privateKey\":\"privateKey\"
+      }
+    }
+  }"

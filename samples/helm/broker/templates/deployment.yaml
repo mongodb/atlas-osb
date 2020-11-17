@@ -22,12 +22,16 @@ spec:
           ports:
             - containerPort: 4000
           env:
+            - name: ATLAS_BASE_URL
+              value: {{ .Values.broker.deployment.atlasBaseURL | quote }}
+            - name: REALM_BASE_URL
+              value: {{ .Values.broker.deployment.realmBaseURL | quote }}
             - name: BROKER_HOST
-              value: "0.0.0.0"
+              value: {{ .Values.broker.deployment.host | quote }}
             - name: BROKER_PORT
-              value: "4000"
+              value: {{ .Values.broker.deployment.port | quote }}
             - name: BROKER_OSB_SERVICE_NAME
-              value: {{ .Values.broker.deployment.serviceName }}
+              value: {{ .Values.broker.deployment.serviceName | quote }}
             - name: BROKER_APIKEYS
               value: "/etc/data/keys/apikeys.json"
             - name: ATLAS_BROKER_TEMPLATEDIR
