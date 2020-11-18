@@ -15,7 +15,7 @@ Please refer to the [HOWTO.md](https://github.com/mongodb/atlas-osb/blob/master/
 
 ## Releasing
 
-The release process consists of publishing a new Github release with attached binaries as well as publishing a Docker image to [quay.io](https://quay.io). Evergreen can automatically build and publish the artifacts based on a tagged commit.
+The release process consists of publishing a new Github release with attached binaries as well as publishing a Docker image to [quay.io](https://quay.io). 
 
 1. Go to the GitHub actions [page](https://github.com/mongodb/atlas-osb/actions?query=workflow%3A%22Create+GitHub+Release+Package+Manually%22)
 2. Open "Create GitHub Release Package Manually" workflow.
