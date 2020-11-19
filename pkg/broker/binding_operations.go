@@ -159,23 +159,19 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 		return spec, errors.Wrapf(err, "cannot get state storage for org %s", p.Project.OrgID)
 	}
 
-	// Find binding details by binding ID
+	// Find binding details by binding ID.
 	binding := BindingSpec{}
+	legacy := false
 	err = ss.FindOne(ctx, bindingID, &binding)
 	if err != nil {
 		if !errors.Is(err, statestorage.ErrInstanceNotFound) {
 			return spec, errors.Wrap(err, "cannot fetch binding from state storage")
 		}
 
-		// handle legacy bindings
+		// Handle legacy bindings.
 		logger.Warnw("Could not find binding in state storage - trying to delete by binding ID")
-
-		r, err := client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
-		if r.StatusCode == http.StatusNotFound {
-			return spec, nil
-		}
-
-		return spec, errors.Wrap(err, "cannot find binding in state storage; cannot remove user by bindingID")
+		binding.Credentials.Username = bindingID
+		legacy = true
 	}
 
 	// Fetch the cluster from Atlas to ensure it exists.
@@ -187,22 +183,29 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	}
 
 	// Delete database user.
-	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, binding.Credentials.Username)
+	r, err := client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, binding.Credentials.Username)
 	if err != nil {
-		logger.Errorw("Failed to delete Atlas database user", "error", err)
+		if r.StatusCode == http.StatusNotFound {
+			// Don't fail in case user already deleted - avoids hanging bindings.
+			logger.Errorw("Binding User does not exist in Atlas", "username", binding.Credentials.Username)
+			err = nil
+		} else {
+			logger.Errorw("Failed to delete Atlas database user", "error", err)
 
-		return spec, errors.Wrap(err, "cannot delete Atlas Database User")
+			return spec, errors.Wrap(err, "cannot delete Atlas Database User")
+		}
 	}
 
 	logger.Infow("Successfully deleted Atlas database user")
 
-	err = ss.DeleteOne(ctx, bindingID)
+	if !legacy {
+		err = ss.DeleteOne(ctx, bindingID)
+	}
 
 	return
 }
 
-// GetBinding is currently not supported as specified by the
-// BindingsRetrievable setting in the service catalog.
+// GetBinding will retrieve the binding info.
 func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec domain.GetBindingSpec, err error) {
 	logger := b.funcLogger().With("instance_id", instanceID, "binding_id", bindingID)
 	logger.Infow("Retrieving binding")
