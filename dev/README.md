@@ -15,7 +15,7 @@ Please refer to the [HOWTO.md](https://github.com/mongodb/atlas-osb/blob/master/
 
 ## Releasing
 
-The release process consists of publishing a new Github release with attached binaries as well as publishing a Docker image to [quay.io](https://quay.io). 
+The release process consists of publishing a new Github release with attached binaries as well as publishing a Docker image to [quay.io](https://quay.io).
 
 1. Go to the GitHub actions [page](https://github.com/mongodb/atlas-osb/actions?query=workflow%3A%22Create+GitHub+Release+Package+Manually%22)
 2. Open "Create GitHub Release Package Manually" workflow.
@@ -93,6 +93,7 @@ Helm charts are located in `samples/helm/` folder
    helm install "${K_SERVICE}" samples/helm/sample-service/ \
       --set broker.auth.username="${K_DEFAULT_USER}" \
       --set broker.auth.password="${K_DEFAULT_PASS}" \
+      --set cluster.planName="basic-overrides-plan" \
       --namespace "${K_NAMESPACE}" --wait --timeout 60m
    ```
 

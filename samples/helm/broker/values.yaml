@@ -21,4 +21,4 @@ broker:
     serviceName: "atlas"
 
 cluster:
-  planName: override-bind-db-plan
+  planName: basic-overrides-plan
