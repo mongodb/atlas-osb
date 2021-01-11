@@ -1,6 +1,9 @@
-# Destroy clusters from organization
+# Destroy clusters from organization (except M0, and "ValleyOfTesting")
+# Scheduled: Every Friday at 10am.
 
 on:
+  schedule:
+    - cron: '0 10 * * 5'
   workflow_dispatch:
 
 name: Cluster Reaper
