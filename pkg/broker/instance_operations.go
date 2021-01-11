@@ -361,6 +361,14 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 		return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "get-instance")
 	}
 
+	if enc, ok := spec.Parameters.(string); ok {
+		p, err := decodePlan(enc)
+		if err != nil {
+			return spec, apiresponses.NewFailureResponse(err, http.StatusInternalServerError, "get-instance")
+		}
+		spec.Parameters = p.SafeCopy()
+	}
+
 	return spec, nil
 }
 
