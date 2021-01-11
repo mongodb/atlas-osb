@@ -408,15 +408,6 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 
 	resp.State = domain.Failed
 
-	// brokerapi will NOT update service state if we return any error, so... we won't?
-	defer func() {
-		if err != nil {
-			resp.State = domain.Failed
-			resp.Description = "got error: " + err.Error()
-			err = nil
-		}
-	}()
-
 	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
 		return
@@ -431,6 +422,15 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	}
 
 	logger.Infow("Found existing cluster", "cluster", cluster)
+
+	// brokerapi will NOT update service state if we return any error, so... we won't?
+	defer func() {
+		if err != nil {
+			resp.State = domain.Failed
+			resp.Description = "got error: " + err.Error()
+			err = nil
+		}
+	}()
 
 	switch details.OperationData {
 	case operationProvision, operationUpdate:
