@@ -20,11 +20,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
+	"github.com/mongodb/atlas-osb/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
-	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
@@ -41,6 +42,10 @@ type ConnectionDetails struct {
 	URI              string `json:"uri"`
 	ConnectionString string `json:"connectionString"`
 	Database         string `json:"database"`
+}
+
+type BindingSpec struct {
+	Credentials ConnectionDetails `json:"credentials"`
 }
 
 // Bind will create a new database user with a username matching the binding ID
@@ -74,16 +79,7 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 		return
 	}
 
-	// Generate a cryptographically secure random password.
-	password, err := generatePassword()
-	if err != nil {
-		logger.Errorw("Failed to generate password", "error", err)
-		err = errors.New("failed to generate binding password")
-
-		return
-	}
-
-	user, err := b.userFromParams(bindingID, password, details.RawParameters, p)
+	user, err := b.userFromParams(bindingID, details.RawParameters, p)
 	if err != nil {
 		logger.Errorw("Couldn't create user from the passed parameters", "error", err, "details", details)
 
@@ -110,8 +106,8 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	cs.Path = user.DatabaseName
 
 	connDetails := ConnectionDetails{
-		Username: bindingID,
-		Password: password,
+		Username: user.Username,
+		Password: user.Password,
 	}
 
 	if len(user.Roles) > 0 {
@@ -127,8 +123,18 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	connDetails.URI = cs.String()
 
 	spec = domain.Binding{
+		IsAsync:     false,
 		Credentials: connDetails,
 	}
+
+	ss, err := b.stateStorage(ctx, p.Project.OrgID)
+	if err != nil {
+		return spec, err
+	}
+
+	_, err = ss.Put(ctx, bindingID, BindingSpec{
+		Credentials: connDetails,
+	})
 
 	return
 }
@@ -139,9 +145,33 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	logger := b.funcLogger().With("instance_id", instanceID, "binding_id", bindingID)
 	logger.Infow("Releasing binding", "details", details)
 
+	spec = domain.UnbindSpec{
+		IsAsync: false,
+	}
+
 	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
-		return
+		return spec, errors.Wrap(err, "cannot get Atlas client")
+	}
+
+	ss, err := b.stateStorage(ctx, p.Project.OrgID)
+	if err != nil {
+		return spec, errors.Wrapf(err, "cannot get state storage for org %s", p.Project.OrgID)
+	}
+
+	// Find binding details by binding ID.
+	binding := BindingSpec{}
+	legacy := false
+	err = ss.FindOne(ctx, bindingID, &binding)
+	if err != nil {
+		if !errors.Is(err, statestorage.ErrInstanceNotFound) {
+			return spec, errors.Wrap(err, "cannot fetch binding from state storage")
+		}
+
+		// Handle legacy bindings.
+		logger.Warnw("Could not find binding in state storage - trying to delete by binding ID")
+		binding.Credentials.Username = bindingID
+		legacy = true
 	}
 
 	// Fetch the cluster from Atlas to ensure it exists.
@@ -149,38 +179,47 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 	if err != nil {
 		logger.Errorw("Failed to get existing cluster", "error", err)
 
-		return
+		return spec, errors.Wrap(err, "cannot get existing cluster")
 	}
 
-	// Delete database user which has the binding ID as its username.
-	_, err = client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, bindingID)
+	// Delete database user.
+	r, err := client.DatabaseUsers.Delete(ctx, "admin", p.Project.ID, binding.Credentials.Username)
 	if err != nil {
-		logger.Errorw("Failed to delete Atlas database user", "error", err)
+		if r.StatusCode == http.StatusNotFound {
+			// Don't fail in case user already deleted - avoids hanging bindings.
+			logger.Errorw("Binding User does not exist in Atlas", "username", binding.Credentials.Username)
+			err = nil
+		} else {
+			logger.Errorw("Failed to delete Atlas database user", "error", err)
 
-		return
+			return spec, errors.Wrap(err, "cannot delete Atlas Database User")
+		}
 	}
 
 	logger.Infow("Successfully deleted Atlas database user")
 
-	spec = domain.UnbindSpec{}
+	if !legacy {
+		err = ss.DeleteOne(ctx, bindingID)
+	}
 
 	return
 }
 
-// GetBinding is currently not supported as specified by the
-// BindingsRetrievable setting in the service catalog.
+// GetBinding will retrieve the binding info.
 func (b Broker) GetBinding(ctx context.Context, instanceID string, bindingID string) (spec domain.GetBindingSpec, err error) {
 	logger := b.funcLogger().With("instance_id", instanceID, "binding_id", bindingID)
 	logger.Infow("Retrieving binding")
+	s := BindingSpec{}
+	err = b.getState(ctx, bindingID, &s)
 
-	err = apiresponses.NewFailureResponse(fmt.Errorf("unknown binding ID %s", bindingID), 404, "get-binding")
-
-	return
+	return domain.GetBindingSpec{
+		Credentials: s.Credentials,
+	}, err
 }
 
 // LastBindingOperation should fetch the status of the last creation/deletion
 // of a database user.
-func (b Broker) LastBindingOperation(ctx context.Context, instanceID string, bindingID string, details domain.PollDetails) (domain.LastOperation, error) {
+func (b Broker) LastBindingOperation(ctx context.Context, instanceID string, bindingID string, details domain.PollDetails) (resp domain.LastOperation, err error) {
 	panic("not implemented")
 }
 
@@ -198,9 +237,9 @@ func generatePassword() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func (b *Broker) userFromParams(bindingID string, password string, rawParams []byte, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
+func (b *Broker) userFromParams(bindingID string, rawParams []byte, plan *dynamicplans.Plan) (*mongodbatlas.DatabaseUser, error) {
 	logger := b.funcLogger().With("binding_id", bindingID)
-	// Set up a params object which will be used for deserialiation.
+	// Set up a params object which will be used for deserialization.
 	params := struct {
 		User *mongodbatlas.DatabaseUser `json:"user"`
 	}{
@@ -215,10 +254,23 @@ func (b *Broker) userFromParams(bindingID string, password string, rawParams []b
 		}
 	}
 
-	// Set binding ID as username and add password.
-	params.User.Username = bindingID
-	params.User.Password = password
-	if len(params.User.DatabaseName) == 0 {
+	if params.User.Username == "" {
+		params.User.Username = bindingID
+	}
+
+	if params.User.Password == "" && params.User.DatabaseName != "$external" {
+		// Generate a cryptographically secure random password.
+		password, err := generatePassword()
+		if err != nil {
+			logger.Errorw("Failed to generate password", "error", err)
+
+			return nil, errors.Wrap(err, "failed to generate binding password")
+		}
+
+		params.User.Password = password
+	}
+
+	if params.User.DatabaseName == "" {
 		logger.Warn(`No "databaseName" in User, setting to "admin" for Atlas.`)
 		params.User.DatabaseName = "admin"
 	}

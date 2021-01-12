@@ -99,7 +99,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(ctx, dp.Project.OrgID)
+	state, err := b.stateStorage(ctx, dp.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -282,7 +282,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(ctx, oldPlan.Project.OrgID)
+	state, err := b.stateStorage(ctx, oldPlan.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -295,7 +295,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
-	obj, err := state.Put(ctx, instanceID, &s)
+	obj, err := state.Put(ctx, instanceID, s)
 	if err != nil {
 		logger.Errorw("Error insert one from state", "err", err, "s", s)
 
@@ -354,7 +354,7 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 	logger := b.funcLogger().With("instanceID", instanceID)
 	logger.Info("Fetching instance")
 
-	spec, err = b.getInstance(ctx, instanceID)
+	err = b.getState(ctx, instanceID, &spec)
 	if err != nil {
 		logger.Errorw("Unable to fetch instance", "err", err)
 
@@ -372,8 +372,8 @@ func (b Broker) GetInstance(ctx context.Context, instanceID string) (spec domain
 	return spec, nil
 }
 
-func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain.GetInstanceDetailsSpec, err error) {
-	logger := b.funcLogger().With("instanceID", instanceID)
+func (b Broker) getState(ctx context.Context, id string, out interface{}) error {
+	logger := b.funcLogger().With("id", id)
 
 	for k, v := range b.credentials.Keys() {
 		logger = logger.With("orgID", k)
@@ -385,7 +385,7 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 			continue
 		}
 
-		instance, err := state.FindOne(ctx, instanceID)
+		err = state.FindOne(ctx, id, out)
 		if err != nil {
 			if !errors.Is(err, statestorage.ErrInstanceNotFound) {
 				logger.Errorw("Cannot find instance in maintenance DB", "error", err)
@@ -394,10 +394,10 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 			continue
 		}
 
-		return *instance, nil
+		return nil
 	}
 
-	return domain.GetInstanceDetailsSpec{}, errors.New("cannot find instance in maintenance DB(s): no instances found")
+	return errors.New("cannot find state in maintenance DB(s): no state found")
 }
 
 // LastOperation should fetch the state of the provision/deprovision
@@ -445,6 +445,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		// Provision has succeeded if the cluster is in state "idle".
 		case "IDLE":
 			resp.State = domain.Succeeded
+			resp.Description = ""
 		case "CREATING", "UPDATING", "REPAIRING":
 			resp.State = domain.InProgress
 			resp.Description = cluster.StateName
@@ -481,7 +482,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				err = nil
 			}
 
-			state, errDel := b.getState(ctx, p.Project.OrgID)
+			state, errDel := b.stateStorage(ctx, p.Project.OrgID)
 			if errDel != nil {
 				logger.Errorw("Failed to get state storage", "error", errDel)
 

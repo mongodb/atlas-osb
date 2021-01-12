@@ -138,25 +138,19 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 	return dp, nil
 }
 
-func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynamicplans.Plan, error) {
-	i, err := b.getInstance(ctx, instanceID)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot fetch instance")
-	}
-
-	params, ok := i.Parameters.(string)
-	if !ok {
-		return nil, fmt.Errorf("instance metadata has the wrong type %T", i.Parameters)
-	}
-
-	plan, err := decodePlan(params)
-
-	return &plan, err
-}
-
 func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, planCtx dynamicplans.Context) (dp *dynamicplans.Plan, err error) {
-	dp, err = b.getInstancePlan(ctx, instanceID)
+	spec := domain.GetInstanceDetailsSpec{}
+	err = b.getState(ctx, instanceID, &spec)
 	if err == nil {
+		planEnc, ok := spec.Parameters.(string)
+		if !ok {
+			return nil, fmt.Errorf("state.Parameters should be string, got %T", spec.Parameters)
+		}
+
+		dp = &dynamicplans.Plan{}
+		b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(planEnc))
+		err = json.NewDecoder(b64).Decode(dp)
+
 		return
 	}
 
@@ -235,13 +229,15 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 	return
 }
 
-func (b *Broker) getState(ctx context.Context, orgID string) (*statestorage.RealmStateStorage, error) {
+func (b *Broker) stateStorage(ctx context.Context, orgID string) (*statestorage.RealmStateStorage, error) {
 	key, err := b.credentials.ByOrg(orgID)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get API Key by org")
 	}
 
-	return statestorage.Get(ctx, key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+	ss, err := statestorage.Get(ctx, key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+
+	return ss, errors.Wrap(err, "cannot create State Storage")
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
@@ -273,12 +269,4 @@ func encodePlan(v dynamicplans.Plan) (string, error) {
 	err = b64.Close()
 
 	return b.String(), errors.Wrap(err, "cannot finalize base64")
-}
-
-func decodePlan(enc string) (dynamicplans.Plan, error) {
-	b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(enc))
-	dp := dynamicplans.Plan{}
-	err := json.NewDecoder(b64).Decode(&dp)
-
-	return dp, errors.Wrap(err, "cannot unmarshal plan")
 }
