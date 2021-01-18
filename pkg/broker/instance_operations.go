@@ -378,7 +378,7 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 	for k, v := range b.credentials.Keys() {
 		logger = logger.With("orgID", k)
 
-		state, err := statestorage.Get(ctx, v, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+		state, err := statestorage.Get(ctx, v, b.userAgent, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 		if err != nil {
 			logger.Errorw("Cannot get state storage for org", "error", err)
 

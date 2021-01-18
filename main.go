@@ -165,13 +165,10 @@ func startBrokerServer() {
 	router := mux.NewRouter()
 	brokerapi.AttachRoutes(router, b, NewLagerZapLogger(logger))
 
-	// The auth middleware will convert basic auth credentials into an Atlas
-	// client.
 	router.Use(b.AuthMiddleware())
 
 	tlsEnabled := args.CertPath != ""
 
-	// Replace with NONE if not set
 	logger.Infow("Starting API server", "releaseVersion", releaseVersion, "host", args.Host, "port", args.Port, "tls", tlsEnabled)
 
 	// Start broker HTTP server.
