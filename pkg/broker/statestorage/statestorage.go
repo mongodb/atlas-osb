@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	maintenanceProjectName = "Atlas Service Broker Maintenance"
+	maintenanceProjectName = "Atlas Service Broker Mainentance"
 	realmAppName           = "broker-state"
 )
 
