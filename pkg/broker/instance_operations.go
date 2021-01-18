@@ -414,11 +414,13 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	}
 
 	cluster, r, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
-	if err != nil && r.StatusCode != http.StatusNotFound {
-		err = errors.Wrap(err, "cannot get existing cluster")
-		logger.Errorw("Failed to get existing cluster", "error", err)
+	if err != nil {
+		if r == nil || r.StatusCode != http.StatusNotFound {
+			err = errors.Wrap(err, "cannot get existing cluster")
+			logger.Errorw("Failed to get existing cluster", "error", err)
 
-		return
+			return
+		}
 	}
 
 	logger.Infow("Found existing cluster", "cluster", cluster)

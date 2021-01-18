@@ -73,8 +73,10 @@ func (b *Broker) addUserToProject(ctx context.Context, client *mongodbatlas.Clie
 	}
 
 	_, r, err := client.AtlasUsers.Create(ctx, u)
-	if err != nil && r.StatusCode != http.StatusConflict {
-		return errors.Wrap(err, "cannot create Atlas user")
+	if err != nil {
+		if r == nil || r.StatusCode != http.StatusConflict {
+			return errors.Wrap(err, "cannot create Atlas user")
+		}
 	}
 
 	// user successfully invited
