@@ -333,7 +333,7 @@ databaseUsers:
   roles:
   - roleName: {{ default "readWrite" .role }}
     databaseName: {{ default "default" .role_db }}
-ipWhitelists:
+ipAccessLists:
 - ipAddress: "0.0.0.0/1"
   comment: "everything"
 - ipAddress: "128.0.0.0/1"
@@ -463,7 +463,7 @@ The officially supported Atlas Resources are:
 * [Project](#project)
 * [Cluster](#cluster)
 * [DatabaseUser](#databaseuser)
-* [ProjectIPWhitelist](#projectipwhitelist)
+* [ProjectIPAccessList](#projectipaccesslist)
 
 ### Plan
 
@@ -474,16 +474,16 @@ Please see the [basic sample template](samples/plans/sample_basic.yml.tpl) for a
 ```go
 // Plan represents a set of MongoDB Atlas resources
 type Plan struct {
-    Version       string                             `json:"version,omitempty"`
-    Name          string                             `json:"name,omitempty"`
-    Description   string                             `json:"description,omitempty"`
-    Free          *bool                              `json:"free,omitempty"`
-    APIKey        *credentials.APIKey                `json:"apiKey,omitempty"`
-    Project       *mongodbatlas.Project              `json:"project,omitempty"`
-    Cluster       *mongodbatlas.Cluster              `json:"cluster,omitempty"`
-    DatabaseUsers []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
-    IPWhitelists  []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
-    Settings      map[string]string                  `json:"settings,omitempty"`
+	Version       string                              `json:"version,omitempty"`
+	Name          string                              `json:"name,omitempty"`
+	Description   string                              `json:"description,omitempty"`
+	Free          *bool                               `json:"free,omitempty"`
+	APIKey        *credentials.APIKey                 `json:"apiKey,omitempty"`
+	Project       *mongodbatlas.Project               `json:"project,omitempty"`
+	Cluster       *mongodbatlas.Cluster               `json:"cluster,omitempty"`
+	DatabaseUsers []*mongodbatlas.DatabaseUser        `json:"databaseUsers,omitempty"`
+	IPAccessLists []*mongodbatlas.ProjectIPAccessList `json:"ipAccessLists,omitempty"`
+	Settings      map[string]interface{}              `json:"settings,omitempty"`
 }
 ```
 
@@ -507,9 +507,9 @@ TODO: MARK WHICH FIELDS ARE READ-ONLY? ie. users need to understand what can be 
 
 [Database_Users](https://github.com/mongodb/go-client-mongodb-atlas/blob/master/mongodbatlas/database_users.go)
 
-* #### Project IP Whitelist
+* #### Project IP Access List
 
-[Project_IP_Whitelist](https://github.com/mongodb/go-client-mongodb-atlas/blob/master/mongodbatlas/project_ip_whitelist.go)
+[Project_IP_Access_List](https://github.com/mongodb/go-client-mongodb-atlas/blob/master/mongodbatlas/project_ip_access_list.go)
 
 
 # VMWare Tanzu Application Service

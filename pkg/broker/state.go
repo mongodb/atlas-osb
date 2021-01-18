@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -46,7 +47,8 @@ func (m mongoStorage) Put(ctx context.Context, key string, value *domain.GetInst
 		Database("atlas-broker").
 		Collection("instances").
 		InsertOne(ctx, mongoData{ID: key, Value: value})
-	return err
+
+	return errors.Wrap(err, "cannot insert value")
 }
 
 func (m mongoStorage) Update(ctx context.Context, key string, value *domain.GetInstanceDetailsSpec) error {
@@ -54,7 +56,8 @@ func (m mongoStorage) Update(ctx context.Context, key string, value *domain.GetI
 		Database("atlas-broker").
 		Collection("instances").
 		UpdateOne(ctx, mongoData{ID: key}, mongoData{ID: key, Value: value})
-	return err
+
+	return errors.Wrap(err, "cannot update value")
 }
 
 func (m mongoStorage) Get(ctx context.Context, key string) (s *domain.GetInstanceDetailsSpec, err error) {
@@ -65,7 +68,7 @@ func (m mongoStorage) Get(ctx context.Context, key string) (s *domain.GetInstanc
 		FindOne(ctx, mongoData{ID: key}).
 		Decode(&result)
 
-	return result.Value, err
+	return result.Value, errors.Wrap(err, "cannot find/decode value")
 }
 
 func (m mongoStorage) Delete(ctx context.Context, key string) error {
@@ -73,5 +76,6 @@ func (m mongoStorage) Delete(ctx context.Context, key string) error {
 		Database("atlas-broker").
 		Collection("instances").
 		DeleteOne(ctx, mongoData{ID: key})
-	return err
+
+	return errors.Wrap(err, "cannot delete value")
 }

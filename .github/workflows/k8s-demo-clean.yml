@@ -1,0 +1,44 @@
+#demo: Clean k8s namespace
+
+on:
+  workflow_dispatch:
+    input:
+      namespace:
+        description: "k8s Namespace"
+        required: false
+      service_name:
+        description: "Service instance name"
+        required: false
+
+name: K8s Demo. Clean
+
+jobs:
+  k8s-demo-clean:
+    name: Clean K8s
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: clean
+        with:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          NAMESPACE: ${{ github.event.inputs.namespace }}
+          SERVICE: ${{ github.event.inputs.service_name }}
+          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
+          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
+          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
+        run: |
+          set -e
+          ./.github/base-dockerfile/helpers/install_k8s_helm.sh
+          source ".github/base-dockerfile/helpers/params.sh"
+
+          #prepare env
+          echo "$INPUT_KUBE_CONFIG_DATA" >> ./kube.config
+          export KUBECONFIG="./kube.config"
+
+          #delete instances first
+          output=$(kubectl get all -n "${K_NAMESPACE}")
+          echo "${output}" | awk '/servicebinding.servicecatalog.k8s.io/{system("kubectl delete " $1 " -n  '"${K_NAMESPACE}"'")}'
+          echo "${output}" | awk '/ServiceClass\/atlas/{system("kubectl delete " $1 " -n  '"${K_NAMESPACE}"'")}'
+
+          kubectl delete namespace "${K_NAMESPACE}"

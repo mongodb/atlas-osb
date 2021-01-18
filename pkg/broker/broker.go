@@ -82,6 +82,7 @@ func New(
 	}
 
 	b.buildCatalog()
+
 	return b
 }
 
@@ -91,6 +92,7 @@ func (b *Broker) funcLogger() *zap.SugaredLogger {
 	frames := runtime.CallersFrames(pc)
 	f, _ := frames.Next()
 	split := strings.Split(f.Function, ".")
+
 	return b.logger.With("func", split[len(split)-1])
 }
 
@@ -99,12 +101,14 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 	sp, ok := b.catalog.plans[planID]
 	if !ok {
 		err = fmt.Errorf("plan ID %q not found in catalog", planID)
+
 		return
 	}
 
 	tpl, ok := sp.Metadata.AdditionalMetadata["template"].(dynamicplans.TemplateContainer)
 	if !ok {
 		err = fmt.Errorf("plan ID %q does not contain a valid plan template", planID)
+
 		return
 	}
 
@@ -146,6 +150,7 @@ func (b *Broker) getInstancePlan(ctx context.Context, instanceID string) (*dynam
 	}
 
 	plan, err := decodePlan(params)
+
 	return &plan, err
 }
 
@@ -158,6 +163,7 @@ func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, 
 	// planCtx == nil means the instance should exist
 	if planCtx == nil {
 		err = errors.Wrapf(err, "cannot find plan for instance %q", instanceID)
+
 		return
 	}
 
@@ -169,6 +175,7 @@ func (b *Broker) getPlan(ctx context.Context, instanceID string, planID string, 
 
 	if dp.Project == nil {
 		err = fmt.Errorf("missing Project in plan definition")
+
 		return
 	}
 
@@ -196,18 +203,21 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 
 	default:
 		err = errors.New("template must contain either APIKey or Project.OrgID")
+
 		return
 	}
 
 	hc, err := digest.NewTransport(key.PublicKey, key.PrivateKey).Client()
 	if err != nil {
 		err = errors.Wrap(err, "cannot create Digest client")
+
 		return
 	}
 
 	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.cfg.AtlasURL))
 	if err != nil {
 		err = errors.Wrap(err, "cannot create Atlas client")
+
 		return
 	}
 
@@ -216,20 +226,22 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 	existing, _, err = client.Projects.GetOneProjectByName(ctx, dp.Project.Name)
 	if err == nil {
 		dp.Project = existing
+
 		return
 	}
 
 	err = nil
+
 	return
 }
 
-func (b *Broker) getState(orgID string) (*statestorage.RealmStateStorage, error) {
+func (b *Broker) getState(ctx context.Context, orgID string) (*statestorage.RealmStateStorage, error) {
 	key, err := b.credentials.ByOrg(orgID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot get API Key by org")
 	}
 
-	return statestorage.Get(key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+	return statestorage.Get(ctx, key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
@@ -246,6 +258,7 @@ func (b *Broker) GetDashboardURL(groupID, clusterName string) string {
 		return err.Error()
 	}
 	apiURL.Path = fmt.Sprintf("/v2/%s", groupID)
+
 	return apiURL.String() + fmt.Sprintf("#clusters/detail/%s", clusterName)
 }
 
@@ -254,16 +267,18 @@ func encodePlan(v dynamicplans.Plan) (string, error) {
 	b64 := base64.NewEncoder(base64.StdEncoding, b)
 	err := json.NewEncoder(b64).Encode(v)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "cannot marshal plan")
 	}
 
 	err = b64.Close()
-	return b.String(), err
+
+	return b.String(), errors.Wrap(err, "cannot finalize base64")
 }
 
 func decodePlan(enc string) (dynamicplans.Plan, error) {
 	b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(enc))
 	dp := dynamicplans.Plan{}
 	err := json.NewDecoder(b64).Decode(&dp)
-	return dp, err
+
+	return dp, errors.Wrap(err, "cannot unmarshal plan")
 }

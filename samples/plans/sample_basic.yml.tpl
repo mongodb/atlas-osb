@@ -46,11 +46,10 @@ databaseUsers:
   - roleName: {{ default "readWrite" .role }}
     databaseName: {{ default "default" .role_db }}
 
-# Atlas IP Whitelist definitions to create during provision
-# https://docs.atlas.mongodb.com/reference/api/whitelist-add-one/#request-body-parameters
+# Atlas IP Access List definitions to create during provision
 # https://docs.atlas.mongodb.com/reference/api/ip-access-list/add-entries-to-access-list/#request-body-parameters
 # optional
-ipWhitelists:
+ipAccessLists:
 - ipAddress: "0.0.0.0/1"
   comment: "everything"
 - ipAddress: "128.0.0.0/1"

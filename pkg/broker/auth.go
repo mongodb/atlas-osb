@@ -31,11 +31,13 @@ func authMiddleware(auth credentials.BrokerAuth) mux.MiddlewareFunc {
 			username, password, ok := r.BasicAuth()
 			if !ok {
 				w.WriteHeader(http.StatusUnauthorized)
+
 				return
 			}
 
 			if auth.Username != username || auth.Password != password {
 				w.WriteHeader(http.StatusUnauthorized)
+
 				return
 			}
 
@@ -64,6 +66,7 @@ func simpleAuthMiddleware(baseURL string) mux.MiddlewareFunc {
 			validPassword := privKey != ""
 			if !(ok && validUsername && validPassword) {
 				w.WriteHeader(http.StatusUnauthorized)
+
 				return
 			}
 
