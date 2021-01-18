@@ -23,16 +23,18 @@ import (
 
 // Plan represents a set of MongoDB Atlas resources
 type Plan struct {
-	Version       string                              `json:"version,omitempty"`
-	Name          string                              `json:"name,omitempty"`
-	Description   string                              `json:"description,omitempty"`
-	Free          *bool                               `json:"free,omitempty"`
-	APIKey        *credentials.APIKey                 `json:"apiKey,omitempty"`
-	Project       *mongodbatlas.Project               `json:"project,omitempty"`
-	Cluster       *mongodbatlas.Cluster               `json:"cluster,omitempty"`
-	DatabaseUsers []*mongodbatlas.DatabaseUser        `json:"databaseUsers,omitempty"`
-	IPAccessLists []*mongodbatlas.ProjectIPAccessList `json:"ipAccessLists,omitempty"`
-	Settings      map[string]interface{}              `json:"settings,omitempty"`
+	Version       string                                `json:"version,omitempty"`
+	Name          string                                `json:"name,omitempty"`
+	Description   string                                `json:"description,omitempty"`
+	Free          *bool                                 `json:"free,omitempty"`
+	APIKey        *credentials.APIKey                   `json:"apiKey,omitempty"`
+	Project       *mongodbatlas.Project                 `json:"project,omitempty"`
+	Cluster       *mongodbatlas.Cluster                 `json:"cluster,omitempty"`
+	DatabaseUsers []*mongodbatlas.DatabaseUser          `json:"databaseUsers,omitempty"`
+	IPAccessLists []*mongodbatlas.ProjectIPAccessList   `json:"ipAccessLists,omitempty"`
+	Integrations  []*mongodbatlas.ThirdPartyIntegration `json:"integrations,omitempty"`
+
+	Settings map[string]interface{} `json:"settings,omitempty"`
 
 	// Deprecated: Use IPAccessLists instead!
 	IPWhitelists []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
