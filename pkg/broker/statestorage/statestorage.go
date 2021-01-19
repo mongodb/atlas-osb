@@ -72,12 +72,12 @@ func Get(ctx context.Context, key credentials.APIKey, userAgent string, atlasURL
 		return nil, errors.Wrap(err, "cannot create Atlas client")
 	}
 
-	mainPrj, err := getOrCreateBrokerMaintentaceGroup(ctx, key.OrgID, client, logger)
+	mainPrj, err := getOrCreateBrokerMaintenanceGroup(ctx, key.OrgID, client, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infow("Found mainteneance project", "mainPrj", mainPrj)
+	logger.Infow("Found maintenance project", "mainPrj", mainPrj)
 	realmApp, err := getOrCreateRealmAppForOrg(ctx, mainPrj.ID, realmClient, logger)
 	if err != nil {
 		logger.Errorw("Error getOrCreateRealmAppForOrg", "err", err)
@@ -96,10 +96,10 @@ func Get(ctx context.Context, key credentials.APIKey, userAgent string, atlasURL
 	return rss, nil
 }
 
-func getOrCreateBrokerMaintentaceGroup(ctx context.Context, orgID string, client *mongodbatlas.Client, logger *zap.SugaredLogger) (*mongodbatlas.Project, error) {
+func getOrCreateBrokerMaintenanceGroup(ctx context.Context, orgID string, client *mongodbatlas.Client, logger *zap.SugaredLogger) (*mongodbatlas.Project, error) {
 	project, _, err := client.Projects.GetOneProjectByName(ctx, maintenanceProjectName)
 	if err != nil {
-		logger.Infow("getOrCreateBrokerMaintentaceGroup", "err", err)
+		logger.Infow("getOrCreateBrokerMaintenanceGroup", "err", err)
 		prj := mongodbatlas.Project{
 			Name:  maintenanceProjectName,
 			OrgID: orgID,
@@ -110,10 +110,9 @@ func getOrCreateBrokerMaintentaceGroup(ctx context.Context, orgID string, client
 			return nil, errors.Wrap(err, "cannot create project")
 		}
 
-		logger.Infow("getOrCreateBrokerMaintentaceGroup CREATED", "project", project)
+		logger.Debugw("getOrCreateBrokerMaintenanceGroup CREATED", "project", project)
 	}
-	logger.Infow("getOrCreateBrokerMaintentaceGroup FOUND", "project", project)
-
+	logger.Debugw("getOrCreateBrokerMaintenanceGroup FOUND", "project", project)
 	return project, nil
 }
 
