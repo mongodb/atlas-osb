@@ -174,6 +174,13 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 		}
 	}
 
+	for _, i := range dp.Integrations {
+		_, _, err := client.Integrations.Create(ctx, p.ID, i.Type, i)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot create Third-Party Integration")
+		}
+	}
+
 	return p, nil
 }
 
