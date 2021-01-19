@@ -44,16 +44,16 @@ type RealmStateStorage struct {
 	Logger       *zap.SugaredLogger
 }
 
-func client(baseURL string, k credentials.APIKey) (*mongodbatlas.Client, error) {
+func client(baseURL string, userAgent string, k credentials.APIKey) (*mongodbatlas.Client, error) {
 	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create Digest client")
 	}
 
-	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL))
+	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL), mongodbatlas.SetUserAgent(userAgent))
 }
 
-func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
+func Get(ctx context.Context, key credentials.APIKey, userAgent string, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
 		nil,
 		mongodbrealm.SetBaseURL(realmURL),
@@ -67,7 +67,7 @@ func Get(ctx context.Context, key credentials.APIKey, atlasURL string, realmURL 
 	// Each Organization using the broker will have 1 special
 	// Atlas Group - called "Atlas Service Broker"
 	//
-	client, err := client(atlasURL, key)
+	client, err := client(atlasURL, userAgent, key)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create Atlas client")
 	}

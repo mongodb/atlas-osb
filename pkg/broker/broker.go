@@ -214,7 +214,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.cfg.AtlasURL))
+	client, err = mongodbatlas.New(hc, mongodbatlas.SetBaseURL(b.cfg.AtlasURL), mongodbatlas.SetUserAgent(b.userAgent))
 	if err != nil {
 		err = errors.Wrap(err, "cannot create Atlas client")
 
@@ -241,7 +241,7 @@ func (b *Broker) getState(ctx context.Context, orgID string) (*statestorage.Real
 		return nil, errors.Wrap(err, "cannot get API Key by org")
 	}
 
-	return statestorage.Get(ctx, key, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+	return statestorage.Get(ctx, key, b.userAgent, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 }
 
 func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
@@ -249,7 +249,7 @@ func (b *Broker) AuthMiddleware() mux.MiddlewareFunc {
 		return authMiddleware(*b.credentials.Broker)
 	}
 
-	return simpleAuthMiddleware(b.cfg.AtlasURL)
+	return nil
 }
 
 func (b *Broker) GetDashboardURL(groupID, clusterName string) string {

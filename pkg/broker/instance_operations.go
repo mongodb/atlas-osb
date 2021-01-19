@@ -385,7 +385,7 @@ func (b Broker) getInstance(ctx context.Context, instanceID string) (spec domain
 	for k, v := range b.credentials.Keys() {
 		logger = logger.With("orgID", k)
 
-		state, err := statestorage.Get(ctx, v, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
+		state, err := statestorage.Get(ctx, v, b.userAgent, b.cfg.AtlasURL, b.cfg.RealmURL, b.logger)
 		if err != nil {
 			logger.Errorw("Cannot get state storage for org", "error", err)
 
@@ -421,11 +421,13 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	}
 
 	cluster, r, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
-	if err != nil && r.StatusCode != http.StatusNotFound {
-		err = errors.Wrap(err, "cannot get existing cluster")
-		logger.Errorw("Failed to get existing cluster", "error", err)
+	if err != nil {
+		if r == nil || r.StatusCode != http.StatusNotFound {
+			err = errors.Wrap(err, "cannot get existing cluster")
+			logger.Errorw("Failed to get existing cluster", "error", err)
 
-		return
+			return
+		}
 	}
 
 	logger.Infow("Found existing cluster", "cluster", cluster)
