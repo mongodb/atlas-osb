@@ -22,7 +22,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/xdg/stringprep v1.0.0 // indirect
 	go.mongodb.org/atlas v0.7.0
-	go.mongodb.org/mongo-driver v1.4.4
+	go.mongodb.org/mongo-driver v1.4.6
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
