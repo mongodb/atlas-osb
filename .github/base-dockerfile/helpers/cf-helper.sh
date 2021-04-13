@@ -3,15 +3,21 @@
 
 cf_login() {
   local org=$1
-  local sys=$2
+  local space=$2
 
   if [[ -z $org ]]; then
     org="system"
   fi
-  if [[ -z $sys ]]; then
-    sys="system"
+  if [[ -z $space ]]; then
+    space="system"
   fi
-  cf login -a "$INPUT_CF_API" -u "$INPUT_CF_USER" -p "$INPUT_CF_PASSWORD" --skip-ssl-validation -o ${org} -s ${sys}
+
+  cf login -a "$INPUT_CF_API" -u "$INPUT_CF_USER" -p "$INPUT_CF_PASSWORD" --skip-ssl-validation -o $org
+  if [[ $org == "system" && $space == "system" ]]; then
+    cf create-space ${space} -o ${org}
+  fi
+
+  cf target -o ${org} -s ${space}
 }
 
 #cf.helper. wait for particular service status
