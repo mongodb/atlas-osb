@@ -151,16 +151,16 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 			})
 		}
 
-		_, r, err := client.DatabaseUsers.Update(ctx, p.ID, u.Username, u)
+		_, r, err := client.DatabaseUsers.Create(ctx, p.ID, u)
 		if err != nil {
 			if r.StatusCode != http.StatusConflict {
 				return errors.Wrap(err, "cannot create Database User")
 			}
 
-			// _, _, err = client.DatabaseUsers.Update(ctx, p.ID, u.Username, u)
-			// if err != nil {
-			// 	return nil, errors.Wrap(err, "cannot update Database User")
-			// }
+			_, _, err = client.DatabaseUsers.Update(ctx, p.ID, u.Username, u)
+			if err != nil {
+				return errors.Wrap(err, "cannot update Database User")
+			}
 		}
 	}
 
