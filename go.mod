@@ -14,7 +14,7 @@ require (
 	github.com/drewolson/testflight v1.0.0 // indirect
 	github.com/goccy/go-yaml v1.8.4
 	github.com/golang/protobuf v1.4.2 // indirect
-	github.com/google/go-querystring v1.0.0
+	github.com/google/go-querystring v1.1.0
 	github.com/gorilla/mux v1.8.0
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/pborman/uuid v1.2.0 // indirect
