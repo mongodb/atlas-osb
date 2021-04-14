@@ -188,7 +188,70 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		}
 	}
 
+	for provider, regions := range dp.PrivateEndpoints {
+		for region, service := range regions {
+			if service.ServiceID != "" {
+				// endpoint service already created
+				continue
+			}
+
+			conn, _, err := client.PrivateEndpoints.Create(ctx, p.ID, &mongodbatlas.PrivateEndpointConnection{
+				ProviderName: provider,
+				Region:       region,
+			})
+			if err != nil {
+				return errors.Wrap(err, "cannot create Private Endpoint Service")
+			}
+
+			service.ServiceID = conn.ID
+		}
+	}
+
 	return nil
+}
+
+func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan) (retry bool, err error) {
+	for provider, regions := range dp.PrivateEndpoints {
+		for _, service := range regions {
+			if service.ServiceID == "" {
+				return false, fmt.Errorf("endpoint descriptor has an empty service ID")
+			}
+
+			for _, e := range service.Endpoints {
+				existing, r, err := client.PrivateEndpoints.GetOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ServiceID, e.ID)
+				if err != nil {
+					if r == nil || r.StatusCode != http.StatusNotFound {
+						return false, errors.Wrap(err, "cannot get Private Endpoint")
+					}
+				}
+
+				if existing == nil {
+					_, _, err = client.PrivateEndpoints.AddOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ServiceID, &mongodbatlas.InterfaceEndpointConnection{
+						ID:                       e.ID,
+						PrivateEndpointIPAddress: e.PrivateEndpointIPAddress,
+					})
+					if err != nil {
+						return false, errors.Wrap(err, "cannot add Private Endpoint to Endpoint Service")
+					}
+
+					continue
+				}
+
+				if existing.PrivateEndpointIPAddress == e.PrivateEndpointIPAddress {
+					continue
+				}
+
+				_, err = client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ServiceID, e.ID)
+				if err != nil {
+					return false, errors.Wrap(err, "cannot delete Private Endpoint")
+				}
+
+				retry = true
+			}
+		}
+	}
+
+	return
 }
 
 // Update will change the configuration of an existing Atlas cluster asynchronously.
@@ -462,6 +525,19 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 			return
 		}
 
+		retry := false
+		retry, err = b.postCreateResources(ctx, client, p)
+		if err != nil {
+			break
+		}
+
+		if retry {
+			resp.State = domain.InProgress
+			resp.Description = "resources are being created"
+
+			break
+		}
+
 		switch cluster.StateName {
 		// Provision has succeeded if the cluster is in state "idle".
 		case "IDLE":
@@ -486,7 +562,6 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 			var r *mongodbatlas.Response
 			r, err = client.Projects.Delete(ctx, p.Project.ID)
 			if err != nil {
-				err = errors.Wrap(err, "cannot delete Atlas project")
 				logger.Errorw(
 					"Cannot delete Atlas Project",
 					"error", err,
@@ -495,6 +570,8 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 				)
 
 				if r.StatusCode != http.StatusNotFound {
+					err = errors.Wrap(err, "cannot delete Atlas project")
+
 					break
 				}
 

@@ -2,7 +2,7 @@ module github.com/mongodb/atlas-osb
 
 go 1.11
 
-replace go.mongodb.org/atlas => github.com/vasilevp/go-client-mongodb-atlas v0.5.1-0.20201009105654-f85e9007703e
+replace go.mongodb.org/atlas => github.com/vasilevp/go-client-mongodb-atlas v0.7.3-0.20210413111111-8bb5160e00a2
 
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
