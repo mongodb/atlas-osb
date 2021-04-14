@@ -1,6 +1,6 @@
 # plan ID used when creating services
 # required
-name: basic-plan
+name: basic-plan-pe
 # plan description for Service Catalog
 description: This is the `Basic Plan` template for 1 project, 1 cluster, 1 dbuser, and 1 secure connection.
 # whether plan should be listed as free or paid (default: false)
@@ -28,9 +28,9 @@ cluster:
   # default is a builtin helper for substituting defaults instead of nil-values & empty strings
   providerBackupEnabled: {{ default "true" .backups }}
   providerSettings:
-    providerName: {{ default "AWS" .provider }}
+    providerName: {{ default "AZURE" .provider }}
     instanceSizeName: {{ default "M10" .instance_size }}
-    regionName: {{ default "US_EAST_1" .region }}
+    regionName: {{ default "US_WEST_2" .region }}
   labels:
     - key: Infrastructure Tool
       value: MongoDB Atlas Service Broker
@@ -49,18 +49,18 @@ databaseUsers:
 # Atlas IP Access List definitions to create during provision
 # https://docs.atlas.mongodb.com/reference/api/ip-access-list/add-entries-to-access-list/#request-body-parameters
 # optional
-ipAccessLists:
-- ipAddress: "0.0.0.0/1"
-  comment: "everything"
-- ipAddress: "128.0.0.0/1"
-  comment: "everything"
+# ipAccessLists:
+# - ipAddress: "0.0.0.0/1"
+#   comment: "everything"
+# - ipAddress: "128.0.0.0/1"
+#   comment: "everything"
 
-# privateEndpoints:
-# - provider: "AZURE"
-#   subscriptionID: AZURE_SUB_ID_HERE
-#   region: "US_WEST_2"
-#   location: "westus"
-#   resourceGroup: test-group
-#   virtualNetworkName: test-vnet
-#   subnetName: default
-#   endpointName: test-endpoint
+privateEndpoints:
+- provider: "AZURE"
+  subscriptionID: AZURE_SUB_ID_HERE
+  region: "US_WEST_2"
+  location: "westus"
+  resourceGroup: test-group
+  virtualNetworkName: test-vnet
+  subnetName: default
+  endpointName: test-endpoint
