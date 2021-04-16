@@ -68,7 +68,14 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 
 	if dp.Project.ID == "" {
 		var newp *mongodbatlas.Project
-		newp, err = b.createResources(ctx, client, dp)
+		newp, _, err = client.Projects.Create(ctx, dp.Project)
+		if err != nil {
+			logger.Errorw("Cannot create project", "error", err, "project", dp.Project)
+
+			return
+		}
+
+		err = b.createOrUpdateResources(ctx, client, dp, newp)
 		if err != nil {
 			return
 		}
@@ -135,16 +142,7 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	}, nil
 }
 
-func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan) (*mongodbatlas.Project, error) {
-	logger := b.funcLogger()
-
-	p, _, err := client.Projects.Create(ctx, dp.Project)
-	if err != nil {
-		logger.Errorw("Cannot create project", "error", err, "project", dp.Project)
-
-		return nil, errors.Wrap(err, "cannot create Atlas project")
-	}
-
+func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan, p *mongodbatlas.Project) error {
 	for _, u := range dp.DatabaseUsers {
 		if len(u.Scopes) == 0 {
 			u.Scopes = append(u.Scopes, mongodbatlas.Scope{
@@ -153,35 +151,44 @@ func (b *Broker) createResources(ctx context.Context, client *mongodbatlas.Clien
 			})
 		}
 
-		_, _, err := client.DatabaseUsers.Create(ctx, p.ID, u)
+		_, r, err := client.DatabaseUsers.Create(ctx, p.ID, u)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create Database User")
+			if r.StatusCode != http.StatusConflict {
+				return errors.Wrap(err, "cannot create Database User")
+			}
+
+			_, _, err = client.DatabaseUsers.Update(ctx, p.ID, u.Username, u)
+			if err != nil {
+				return errors.Wrap(err, "cannot update Database User")
+			}
 		}
 	}
 
 	// keep support for the deprecated IPWhitelists
 	if len(dp.IPWhitelists) > 0 { // nolint
+		// note: Create() is identical to Update()
 		_, _, err := client.ProjectIPWhitelist.Create(ctx, p.ID, dp.IPWhitelists) // nolint
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create IP Whitelist")
+			return errors.Wrap(err, "cannot create/update IP Whitelist")
 		}
 	}
 
 	if len(dp.IPAccessLists) > 0 {
+		// note: Create() is identical to Update()
 		_, _, err := client.ProjectIPAccessList.Create(ctx, p.ID, dp.IPAccessLists)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create IP Access List")
+			return errors.Wrap(err, "cannot create/update IP Access List")
 		}
 	}
 
 	for _, i := range dp.Integrations {
-		_, _, err := client.Integrations.Create(ctx, p.ID, i.Type, i)
+		_, _, err := client.Integrations.Replace(ctx, p.ID, i.Type, i)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create Third-Party Integration")
+			return errors.Wrap(err, "cannot create Third-Party Integration")
 		}
 	}
 
-	return p, nil
+	return nil
 }
 
 // Update will change the configuration of an existing Atlas cluster asynchronously.
@@ -246,16 +253,21 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		}, err
 	}
 
+	newPlan, err := b.parsePlan(planContext, details.PlanID)
+	if err != nil {
+		return
+	}
+
+	err = b.createOrUpdateResources(ctx, client, newPlan, oldPlan.Project)
+	if err != nil {
+		return
+	}
+
 	// Fetch the cluster from Atlas. The Atlas API requires an instance size to
 	// be passed during updates (if there are other update to the provider, such
 	// as region). The plan is not included in the OSB call unless it has changed
 	// hence we need to fetch the current value from Atlas.
 	existingCluster, _, err := client.Clusters.Get(ctx, oldPlan.Project.ID, oldPlan.Cluster.Name)
-	if err != nil {
-		return
-	}
-
-	newPlan, err := b.parsePlan(planContext, details.PlanID)
 	if err != nil {
 		return
 	}
