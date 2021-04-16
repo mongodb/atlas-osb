@@ -44,8 +44,8 @@ type RealmStateStorage struct {
 	Logger       *zap.SugaredLogger
 }
 
-func client(baseURL string, userAgent string, k credentials.APIKey) (*mongodbatlas.Client, error) {
-	hc, err := digest.NewTransport(k.PublicKey, k.PrivateKey).Client()
+func client(baseURL string, userAgent string, k credentials.Credential) (*mongodbatlas.Client, error) {
+	hc, err := digest.NewTransport(k["publicKey"], k["privateKey"]).Client()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create Digest client")
 	}
@@ -53,11 +53,11 @@ func client(baseURL string, userAgent string, k credentials.APIKey) (*mongodbatl
 	return mongodbatlas.New(hc, mongodbatlas.SetBaseURL(baseURL), mongodbatlas.SetUserAgent(userAgent))
 }
 
-func Get(ctx context.Context, key credentials.APIKey, userAgent string, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
+func Get(ctx context.Context, key credentials.Credential, userAgent string, atlasURL string, realmURL string, logger *zap.SugaredLogger) (*RealmStateStorage, error) {
 	realmClient, err := mongodbrealm.New(
 		nil,
 		mongodbrealm.SetBaseURL(realmURL),
-		mongodbrealm.SetAPIAuth(ctx, key.PublicKey, key.PrivateKey),
+		mongodbrealm.SetAPIAuth(ctx, key["publicKey"], key["privateKey"]),
 	)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func Get(ctx context.Context, key credentials.APIKey, userAgent string, atlasURL
 		return nil, errors.Wrap(err, "cannot create Atlas client")
 	}
 
-	mainPrj, err := getOrCreateBrokerMaintenanceGroup(ctx, key.OrgID, client, logger)
+	mainPrj, err := getOrCreateBrokerMaintenanceGroup(ctx, key["orgID"], client, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func Get(ctx context.Context, key credentials.APIKey, userAgent string, atlasURL
 	}
 
 	rss := &RealmStateStorage{
-		OrgID:        key.OrgID,
+		OrgID:        key["orgID"],
 		RealmClient:  realmClient,
 		RealmApp:     realmApp,
 		RealmProject: mainPrj,

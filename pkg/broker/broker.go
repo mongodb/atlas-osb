@@ -188,12 +188,12 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	key := credentials.APIKey{}
+	var key credentials.Credential
 
 	switch {
 	case dp.APIKey != nil:
-		key = *dp.APIKey
-		dp.Project.OrgID = dp.APIKey.OrgID
+		key = dp.APIKey
+		dp.Project.OrgID = dp.APIKey["orgID"]
 
 	case dp.Project.OrgID != "":
 		key, err = b.credentials.ByOrg(dp.Project.OrgID)
@@ -207,7 +207,7 @@ func (b *Broker) getClient(ctx context.Context, instanceID string, planID string
 		return
 	}
 
-	hc, err := digest.NewTransport(key.PublicKey, key.PrivateKey).Client()
+	hc, err := digest.NewTransport(key["publicKey"], key["privateKey"]).Client()
 	if err != nil {
 		err = errors.Wrap(err, "cannot create Digest client")
 
