@@ -155,5 +155,5 @@ func orgIDByAlias(c *credentials.Credentials, alias string) (string, error) {
 		return "", errors.Wrap(err, "cannot get API key by alias")
 	}
 
-	return key.OrgID, nil
+	return key["orgID"], nil
 }
