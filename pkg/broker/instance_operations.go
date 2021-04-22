@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
+	"github.com/mongodb/atlas-osb/pkg/broker/privateendpoint"
 	"github.com/mongodb/atlas-osb/pkg/broker/statestorage"
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
@@ -190,7 +191,7 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 
 	for provider, regions := range dp.PrivateEndpoints {
 		for region, service := range regions {
-			if service.ServiceID != "" {
+			if service.ID != "" {
 				// endpoint service already created
 				continue
 			}
@@ -203,22 +204,49 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 				return errors.Wrap(err, "cannot create Private Endpoint Service")
 			}
 
-			service.ServiceID = conn.ID
+			service.ID = conn.ID
 		}
 	}
 
 	return nil
 }
 
+// TODO: this retry logic is clunky, come up with something better?
 func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan) (retry bool, err error) {
 	for provider, regions := range dp.PrivateEndpoints {
 		for _, service := range regions {
-			if service.ServiceID == "" {
-				return false, fmt.Errorf("endpoint descriptor has an empty service ID")
+			atlasService, _, err := client.PrivateEndpoints.Get(ctx, dp.Project.ID, provider, service.ID)
+			if err != nil {
+				return false, errors.Wrap(err, "cannot add Private Endpoint to Endpoint Service")
+			}
+
+			switch atlasService.Status {
+			case "INITIATING", "WAITING_FOR_USER":
+				retry = true
+
+				continue
+
+			case "AVAILABLE":
+				break
+
+			default:
+				return false, errors.Wrapf(err, "Private Endpoint service is in the wrong state: %s", atlasService.Status)
 			}
 
 			for _, e := range service.Endpoints {
-				existing, r, err := client.PrivateEndpoints.GetOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ServiceID, e.ID)
+				future, err := privateendpoint.Create(ctx, e, atlasService)
+				if err != nil {
+					return false, errors.Wrap(err, "cannot create Private Endpoint in Azure")
+				}
+
+				pe, err := future()
+				if err != nil {
+					retry = true
+					continue
+				}
+				pe.
+
+				existing, r, err := client.PrivateEndpoints.GetOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ID, e.ID)
 				if err != nil {
 					if r == nil || r.StatusCode != http.StatusNotFound {
 						return false, errors.Wrap(err, "cannot get Private Endpoint")
@@ -226,7 +254,7 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 				}
 
 				if existing == nil {
-					_, _, err = client.PrivateEndpoints.AddOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ServiceID, &mongodbatlas.InterfaceEndpointConnection{
+					_, _, err = client.PrivateEndpoints.AddOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ID, &mongodbatlas.InterfaceEndpointConnection{
 						ID:                       e.ID,
 						PrivateEndpointIPAddress: e.PrivateEndpointIPAddress,
 					})
@@ -241,7 +269,7 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 					continue
 				}
 
-				_, err = client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ServiceID, e.ID)
+				_, err = client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ID, e.ID)
 				if err != nil {
 					return false, errors.Wrap(err, "cannot delete Private Endpoint")
 				}

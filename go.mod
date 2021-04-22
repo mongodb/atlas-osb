@@ -6,6 +6,11 @@ replace go.mongodb.org/atlas => github.com/vasilevp/go-client-mongodb-atlas v0.7
 
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible
+	github.com/Azure/azure-sdk-for-go v53.3.0+incompatible
+	github.com/Azure/go-autorest/autorest v0.11.17
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
+	github.com/Azure/go-autorest/autorest/to v0.4.0
+	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/Sectorbob/mlab-ns2 v0.0.0-20171030222938-d3aa0c295a8a
 	github.com/TheZeroSlave/zapsentry v1.6.0
