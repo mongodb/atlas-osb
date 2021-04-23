@@ -54,3 +54,13 @@ ipAccessLists:
   comment: "everything"
 - ipAddress: "128.0.0.0/1"
   comment: "everything"
+
+#privateEndpoints:
+#  AZURE:
+#    US_WEST_2:
+#      endpoints:
+#      - subscriptionID: {{ .subscriptionID }}
+#        resourceGroup: rg-test
+#        virtualNetworkName: test-subnet
+#        subnetName: default
+#        endpointName: {{ .instance_name }}

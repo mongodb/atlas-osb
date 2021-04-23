@@ -16,9 +16,12 @@ package privateendpoint
 
 import (
 	"context"
+	"net/http"
+	"os"
+	"path"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/network/mgmt/network"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-11-01/network"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
@@ -32,8 +35,8 @@ type (
 type PrivateEndpoints map[Provider]map[Region]*EndpointService
 
 type EndpointService struct {
-	ID        string `json:"serviceID,omitempty"`
-	Endpoints []*PrivateEndpoint
+	ID        string             `json:"serviceID,omitempty"`
+	Endpoints []*PrivateEndpoint `json:"endpoints,omitempty"`
 }
 
 type PrivateEndpoint struct {
@@ -44,32 +47,64 @@ type PrivateEndpoint struct {
 	EndpointName       string `json:"endpointName,omitempty"`
 }
 
+// TODO: this is a hack to get Azure working ASAP
+// replace with proper auth (see below)
+type tokenProvider struct{}
+
+func (*tokenProvider) OAuthToken() string {
+	return os.Getenv("AZURE_BEARER_TOKEN")
+}
+
 func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEndpointConnection) (futureWrapper func() (network.PrivateEndpoint, error), err error) {
+	// TODO: understand how to use this Authorizer & implement it
 	// create an authorizer from env vars or Azure Managed Service Idenity
-	authorizer, err := auth.NewAuthorizerFromEnvironment()
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot create authorizer from environment")
-	}
+	// authorizer, err := auth.NewAuthorizerFromEnvironment()
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "cannot create authorizer from environment")
+	// }
+
+	authorizer := autorest.NewBearerAuthorizer(new(tokenProvider))
 
 	// disable network policies for Private Endpoints: https://docs.microsoft.com/en-us/azure/private-link/disable-private-endpoint-network-policy
+
 	snClient := network.NewSubnetsClient(e.SubscriptionID)
 	snClient.Authorizer = authorizer
 
-	_, err = snClient.CreateOrUpdate(ctx, e.ResourceGroup, e.VirtualNetworkName, e.SubnetName, network.Subnet{
-		SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
-			PrivateEndpointNetworkPolicies: to.StringPtr("Disabled"),
-		},
-	})
+	// update request has to contain AddressPrefix, so we have to retrieve it first
+	// also we need the subnet info during PE creation
+	sn, err := snClient.Get(ctx, e.ResourceGroup, e.VirtualNetworkName, e.SubnetName, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create or update subnet")
+		return nil, errors.Wrap(err, "cannot get existing subnet")
+	}
+
+	sn.PrivateEndpointNetworkPolicies = to.StringPtr("Disabled")
+
+	_, err = snClient.CreateOrUpdate(ctx, e.ResourceGroup, e.VirtualNetworkName, e.SubnetName, sn)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot update subnet")
 	}
 
 	// create the Private Endpoint
 	peClient := network.NewPrivateEndpointsClient(e.SubscriptionID)
 	peClient.Authorizer = authorizer
 
+	ep, err := peClient.Get(ctx, e.ResourceGroup, e.EndpointName, "")
+	if err != nil {
+		if ep.StatusCode != http.StatusNotFound {
+			return nil, errors.Wrap(err, "cannot retrieve private endpoint")
+		}
+	} else {
+		// TODO: handle existing endpoint properly
+		return func() (network.PrivateEndpoint, error) {
+			return ep, nil
+		}, nil
+	}
+
 	future, err := peClient.CreateOrUpdate(ctx, e.ResourceGroup, e.EndpointName, network.PrivateEndpoint{
+		Location: to.StringPtr("westus"), // TODO: add another field to plan? or deduce from Atlas region name?
 		PrivateEndpointProperties: &network.PrivateEndpointProperties{
+			Subnet: &sn,
+
 			// TODO: should we use PrivateLinkServiceConnections instead?
 			ManualPrivateLinkServiceConnections: &[]network.PrivateLinkServiceConnection{
 				{
@@ -91,17 +126,29 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 	}, nil
 }
 
-func GetIPAddress(e network.PrivateEndpoint) (string, error) {
-	if e.NetworkInterfaces == nil || len(*e.NetworkInterfaces) == 0 {
+func GetIPAddress(ctx context.Context, azureEP network.PrivateEndpoint, e *PrivateEndpoint) (string, error) {
+	if azureEP.NetworkInterfaces == nil || len(*azureEP.NetworkInterfaces) == 0 {
 		return "", errors.New("no NetworkInterfaces in endpoint")
 	}
 
-	i := (*e.NetworkInterfaces)[0]
+	i := (*azureEP.NetworkInterfaces)[0]
 
-	if i.IPConfigurations == nil || len(*i.IPConfigurations) == 0 {
+	ifClient := network.NewInterfacesClient(e.SubscriptionID)
+	ifClient.Authorizer = autorest.NewBearerAuthorizer(new(tokenProvider))
+
+	// only ID is included in the response
+	// name is the last element of the resource ID by default
+	// TODO: verify this doesn't change
+	i, err := ifClient.Get(ctx, e.ResourceGroup, path.Base(*i.ID), "")
+	if err != nil {
+		return "", errors.Wrap(err, "cannot get network interface")
+	}
+
+	if i.InterfacePropertiesFormat == nil || i.IPConfigurations == nil || len(*i.IPConfigurations) == 0 {
 		return "", errors.New("no IPConfigurations in NetworkInterface associated with endpoint")
 	}
 
+	// TODO: ipConfiguration where name == 'privateEndpointIpConfig'
 	conf := (*i.IPConfigurations)[0]
 
 	if conf.PrivateIPAddress == nil {

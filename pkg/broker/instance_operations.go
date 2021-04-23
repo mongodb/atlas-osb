@@ -246,7 +246,7 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 					continue
 				}
 
-				addr, err := privateendpoint.GetIPAddress(pe)
+				addr, err := privateendpoint.GetIPAddress(ctx, pe, e)
 				if err != nil {
 					return false, errors.Wrap(err, "cannot get IP address for Private Endpoint")
 				}
