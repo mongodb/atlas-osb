@@ -37,13 +37,11 @@ type EndpointService struct {
 }
 
 type PrivateEndpoint struct {
-	ID                       string `json:"id,omitempty"`
-	PrivateEndpointIPAddress string `json:"privateEndpointIPAddress,omitempty"`
-	SubscriptionID           string `json:"subscriptionID,omitempty"`
-	ResourceGroup            string `json:"resourceGroup,omitempty"`
-	VirtualNetworkName       string `json:"virtualNetworkName,omitempty"`
-	SubnetName               string `json:"subnetName,omitempty"`
-	EndpointName             string `json:"endpointName,omitempty"`
+	SubscriptionID     string `json:"subscriptionID,omitempty"`
+	ResourceGroup      string `json:"resourceGroup,omitempty"`
+	VirtualNetworkName string `json:"virtualNetworkName,omitempty"`
+	SubnetName         string `json:"subnetName,omitempty"`
+	EndpointName       string `json:"endpointName,omitempty"`
 }
 
 func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEndpointConnection) (futureWrapper func() (network.PrivateEndpoint, error), err error) {
@@ -72,7 +70,7 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 
 	future, err := peClient.CreateOrUpdate(ctx, e.ResourceGroup, e.EndpointName, network.PrivateEndpoint{
 		PrivateEndpointProperties: &network.PrivateEndpointProperties{
-			// TODO: should I use PrivateLinkServiceConnections instead?
+			// TODO: should we use PrivateLinkServiceConnections instead?
 			ManualPrivateLinkServiceConnections: &[]network.PrivateLinkServiceConnection{
 				{
 					Name: to.StringPtr(pe.PrivateLinkServiceName),
@@ -91,4 +89,24 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 	return func() (network.PrivateEndpoint, error) {
 		return future.Result(peClient)
 	}, nil
+}
+
+func GetIPAddress(e network.PrivateEndpoint) (string, error) {
+	if e.NetworkInterfaces == nil || len(*e.NetworkInterfaces) == 0 {
+		return "", errors.New("no NetworkInterfaces in endpoint")
+	}
+
+	i := (*e.NetworkInterfaces)[0]
+
+	if i.IPConfigurations == nil || len(*i.IPConfigurations) == 0 {
+		return "", errors.New("no IPConfigurations in NetworkInterface associated with endpoint")
+	}
+
+	conf := (*i.IPConfigurations)[0]
+
+	if conf.PrivateIPAddress == nil {
+		return "", errors.New("nil IPAddress in NetworkInterface/IPConfiguration associated with endpoint")
+	}
+
+	return *conf.PrivateIPAddress, nil
 }

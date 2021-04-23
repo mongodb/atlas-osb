@@ -242,11 +242,16 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 				pe, err := future()
 				if err != nil {
 					retry = true
+
 					continue
 				}
-				pe.
 
-				existing, r, err := client.PrivateEndpoints.GetOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ID, e.ID)
+				addr, err := privateendpoint.GetIPAddress(pe)
+				if err != nil {
+					return false, errors.Wrap(err, "cannot get IP address for Private Endpoint")
+				}
+
+				existing, r, err := client.PrivateEndpoints.GetOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ID, *pe.ID)
 				if err != nil {
 					if r == nil || r.StatusCode != http.StatusNotFound {
 						return false, errors.Wrap(err, "cannot get Private Endpoint")
@@ -255,8 +260,8 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 
 				if existing == nil {
 					_, _, err = client.PrivateEndpoints.AddOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ID, &mongodbatlas.InterfaceEndpointConnection{
-						ID:                       e.ID,
-						PrivateEndpointIPAddress: e.PrivateEndpointIPAddress,
+						ID:                       *pe.ID,
+						PrivateEndpointIPAddress: addr,
 					})
 					if err != nil {
 						return false, errors.Wrap(err, "cannot add Private Endpoint to Endpoint Service")
@@ -265,11 +270,11 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 					continue
 				}
 
-				if existing.PrivateEndpointIPAddress == e.PrivateEndpointIPAddress {
+				if existing.PrivateEndpointIPAddress == addr {
 					continue
 				}
 
-				_, err = client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ID, e.ID)
+				_, err = client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, dp.Project.ID, provider, service.ID, *pe.ID)
 				if err != nil {
 					return false, errors.Wrap(err, "cannot delete Private Endpoint")
 				}
