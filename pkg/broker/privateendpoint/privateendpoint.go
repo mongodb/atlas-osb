@@ -115,8 +115,8 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 	}, nil
 }
 
-func GetIPAddress(ctx context.Context, azureEP network.PrivateEndpoint, e *PrivateEndpoint) (string, error) {
-	if azureEP.NetworkInterfaces == nil || len(*azureEP.NetworkInterfaces) == 0 {
+func GetIPAddress(ctx context.Context, azurePE network.PrivateEndpoint, e *PrivateEndpoint) (string, error) {
+	if azurePE.NetworkInterfaces == nil || len(*azurePE.NetworkInterfaces) == 0 {
 		return "", errors.New("no NetworkInterfaces in endpoint")
 	}
 
@@ -126,7 +126,7 @@ func GetIPAddress(ctx context.Context, azureEP network.PrivateEndpoint, e *Priva
 		return "", errors.Wrap(err, "cannot create authorizer from environment")
 	}
 
-	i := (*azureEP.NetworkInterfaces)[0]
+	i := (*azurePE.NetworkInterfaces)[0]
 
 	ifClient := network.NewInterfacesClient(e.SubscriptionID)
 	ifClient.Authorizer = authorizer
