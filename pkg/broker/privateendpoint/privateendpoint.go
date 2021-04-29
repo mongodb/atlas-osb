@@ -47,23 +47,12 @@ type PrivateEndpoint struct {
 	EndpointName       string `json:"endpointName,omitempty"`
 }
 
-// TODO: this is a hack to get Azure working ASAP
-// replace with proper auth (see below)
-type tokenProvider struct{}
-
-func (*tokenProvider) OAuthToken() string {
-	return os.Getenv("AZURE_BEARER_TOKEN")
-}
-
 func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEndpointConnection) (futureWrapper func() (network.PrivateEndpoint, error), err error) {
-	// TODO: understand how to use this Authorizer & implement it
 	// create an authorizer from env vars or Azure Managed Service Idenity
-	// authorizer, err := auth.NewAuthorizerFromEnvironment()
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "cannot create authorizer from environment")
-	// }
-
-	authorizer := autorest.NewBearerAuthorizer(new(tokenProvider))
+	authorizer, err := NewAuthorizerFromEnvironment()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create authorizer from environment")
+	}
 
 	// disable network policies for Private Endpoints: https://docs.microsoft.com/en-us/azure/private-link/disable-private-endpoint-network-policy
 
@@ -131,15 +120,21 @@ func GetIPAddress(ctx context.Context, azureEP network.PrivateEndpoint, e *Priva
 		return "", errors.New("no NetworkInterfaces in endpoint")
 	}
 
+	// create an authorizer from env vars or Azure Managed Service Idenity
+	authorizer, err := NewAuthorizerFromEnvironment()
+	if err != nil {
+		return "", errors.Wrap(err, "cannot create authorizer from environment")
+	}
+
 	i := (*azureEP.NetworkInterfaces)[0]
 
 	ifClient := network.NewInterfacesClient(e.SubscriptionID)
-	ifClient.Authorizer = autorest.NewBearerAuthorizer(new(tokenProvider))
+	ifClient.Authorizer = authorizer
 
 	// only ID is included in the response
 	// name is the last element of the resource ID by default
 	// TODO: verify this doesn't change
-	i, err := ifClient.Get(ctx, e.ResourceGroup, path.Base(*i.ID), "")
+	i, err = ifClient.Get(ctx, e.ResourceGroup, path.Base(*i.ID), "")
 	if err != nil {
 		return "", errors.Wrap(err, "cannot get network interface")
 	}
@@ -156,4 +151,15 @@ func GetIPAddress(ctx context.Context, azureEP network.PrivateEndpoint, e *Priva
 	}
 
 	return *conf.PrivateIPAddress, nil
+}
+
+func NewAuthorizerFromEnvironment() (*autorest.BasicAuthorizer, error) {
+	username, okUser := os.LookupEnv("AZURE_USER")
+	password, okPass := os.LookupEnv("AZURE_PASS")
+
+	if !okUser || !okPass {
+		return nil, errors.New("'AZURE_USER' or 'AZURE_PASS' not assigned")
+	}
+
+	return autorest.NewBasicAuthorizer(username, password), nil
 }
