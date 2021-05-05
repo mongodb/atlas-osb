@@ -17,11 +17,10 @@ package privateendpoint
 import (
 	"context"
 	"net/http"
-	"os"
 	"path"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-11-01/network"
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
@@ -49,7 +48,7 @@ type PrivateEndpoint struct {
 
 func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEndpointConnection) (futureWrapper func() (network.PrivateEndpoint, error), err error) {
 	// create an authorizer from env vars or Azure Managed Service Idenity
-	authorizer, err := NewAuthorizerFromEnvironment()
+	authorizer, err := auth.NewAuthorizerFromEnvironment()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create authorizer from environment")
 	}
@@ -121,7 +120,7 @@ func GetIPAddress(ctx context.Context, azurePE network.PrivateEndpoint, e *Priva
 	}
 
 	// create an authorizer from env vars or Azure Managed Service Idenity
-	authorizer, err := NewAuthorizerFromEnvironment()
+	authorizer, err := auth.NewAuthorizerFromEnvironment()
 	if err != nil {
 		return "", errors.Wrap(err, "cannot create authorizer from environment")
 	}
@@ -151,15 +150,4 @@ func GetIPAddress(ctx context.Context, azurePE network.PrivateEndpoint, e *Priva
 	}
 
 	return *conf.PrivateIPAddress, nil
-}
-
-func NewAuthorizerFromEnvironment() (*autorest.BasicAuthorizer, error) {
-	username, okUser := os.LookupEnv("AZURE_USER")
-	password, okPass := os.LookupEnv("AZURE_PASS")
-
-	if !okUser || !okPass {
-		return nil, errors.New("'AZURE_USER' or 'AZURE_PASS' not assigned")
-	}
-
-	return autorest.NewBasicAuthorizer(username, password), nil
 }
