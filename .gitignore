@@ -6,6 +6,9 @@ test-run/
 .secrets
 event.json
 
+#go builds
+build/
+
 #IDEs
 .idea/
 .vscode/
