@@ -17,9 +17,11 @@ package privateendpoint
 import (
 	"context"
 	"net/http"
+	"os"
 	"path"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-11-01/network"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/pkg/errors"
@@ -48,7 +50,7 @@ type PrivateEndpoint struct {
 
 func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEndpointConnection) (futureWrapper func() (network.PrivateEndpoint, error), err error) {
 	// create an authorizer from env vars or Azure Managed Service Idenity
-	authorizer, err := auth.NewAuthorizerFromEnvironment()
+	authorizer, err := NewAuthorizerFromEnvironment()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create authorizer from environment")
 	}
@@ -67,10 +69,11 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 
 	sn.PrivateEndpointNetworkPolicies = to.StringPtr("Disabled")
 
-	_, err = snClient.CreateOrUpdate(ctx, e.ResourceGroup, e.VirtualNetworkName, e.SubnetName, sn)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot update subnet")
-	}
+	// TODO: find out if previosly disabled PE returns an error for this call and handle this error properly
+	_, _ = snClient.CreateOrUpdate(ctx, e.ResourceGroup, e.VirtualNetworkName, e.SubnetName, sn)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "cannot update subnet")
+	// }
 
 	// create the Private Endpoint
 	peClient := network.NewPrivateEndpointsClient(e.SubscriptionID)
@@ -120,7 +123,7 @@ func GetIPAddress(ctx context.Context, azurePE network.PrivateEndpoint, e *Priva
 	}
 
 	// create an authorizer from env vars or Azure Managed Service Idenity
-	authorizer, err := auth.NewAuthorizerFromEnvironment()
+	authorizer, err := NewAuthorizerFromEnvironment()
 	if err != nil {
 		return "", errors.Wrap(err, "cannot create authorizer from environment")
 	}
@@ -150,4 +153,22 @@ func GetIPAddress(ctx context.Context, azurePE network.PrivateEndpoint, e *Priva
 	}
 
 	return *conf.PrivateIPAddress, nil
+}
+
+func NewAuthorizerFromEnvironment() (autorest.Authorizer, error) {
+	if token, exists := os.LookupEnv("AZURE_BEARER_TOKEN"); exists {
+		return autorest.NewBearerAuthorizer(&tokenProvider{
+			token: token,
+		}), nil
+	}
+
+	return auth.NewAuthorizerFromEnvironment()
+}
+
+type tokenProvider struct {
+	token string
+}
+
+func (tp *tokenProvider) OAuthToken() string {
+	return tp.token
 }

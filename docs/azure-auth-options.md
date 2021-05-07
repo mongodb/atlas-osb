@@ -37,3 +37,10 @@ Pick one authorization option and supply all the required variables for the chos
 #### MSI
 - `AZURE_AD_RESOURCE`
 - `AZURE_CLIENT_ID`
+
+### Other Auth Options
+
+This alternative authentication was added for development. <br>
+If provided, it has the highest priority and will be used first.
+
+- `AZURE_BEARER_TOKEN`

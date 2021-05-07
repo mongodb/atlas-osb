@@ -78,6 +78,8 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 
 		err = b.createOrUpdateResources(ctx, client, dp, newp)
 		if err != nil {
+			logger.Errorw("Cannot update resource", "error", err, "project", dp.Project)
+
 			return
 		}
 
