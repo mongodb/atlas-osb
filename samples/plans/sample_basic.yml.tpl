@@ -60,6 +60,7 @@ ipAccessLists:
 #    US_WEST_2:
 #      endpoints:
 #      - subscriptionID: {{ .subscriptionID }}
+#        azureLocation: westus
 #        resourceGroup: rg-test
 #        virtualNetworkName: test-subnet
 #        subnetName: default

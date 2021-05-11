@@ -42,6 +42,7 @@ type EndpointService struct {
 
 type PrivateEndpoint struct {
 	SubscriptionID     string `json:"subscriptionID,omitempty"`
+	AzureLocation      string `json:"azureLocation,omitempty"`
 	ResourceGroup      string `json:"resourceGroup,omitempty"`
 	VirtualNetworkName string `json:"virtualNetworkName,omitempty"`
 	SubnetName         string `json:"subnetName,omitempty"`
@@ -92,7 +93,7 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 	}
 
 	future, err := peClient.CreateOrUpdate(ctx, e.ResourceGroup, e.EndpointName, network.PrivateEndpoint{
-		Location: to.StringPtr("westus"), // TODO: add another field to plan? or deduce from Atlas region name?
+		Location: to.StringPtr(e.AzureLocation),
 		PrivateEndpointProperties: &network.PrivateEndpointProperties{
 			Subnet: &sn,
 
