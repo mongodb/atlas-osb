@@ -28,21 +28,14 @@ import (
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
-type (
-	Provider = string
-	Region   = string
-)
-
-type PrivateEndpoints map[Provider]map[Region]*EndpointService
-
-type EndpointService struct {
-	ID        string             `json:"serviceID,omitempty"`
-	Endpoints []*PrivateEndpoint `json:"endpoints,omitempty"`
-}
+type PrivateEndpoints []*PrivateEndpoint
 
 type PrivateEndpoint struct {
+	ID                 string `json:"serviceID,omitempty"`
+	Provider           string `json:"provider,omitempty"`
 	SubscriptionID     string `json:"subscriptionID,omitempty"`
-	AzureLocation      string `json:"azureLocation,omitempty"`
+	Region             string `json:"region,omitempty"`
+	Location           string `json:"location,omitempty"`
 	ResourceGroup      string `json:"resourceGroup,omitempty"`
 	VirtualNetworkName string `json:"virtualNetworkName,omitempty"`
 	SubnetName         string `json:"subnetName,omitempty"`
@@ -93,7 +86,7 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 	}
 
 	future, err := peClient.CreateOrUpdate(ctx, e.ResourceGroup, e.EndpointName, network.PrivateEndpoint{
-		Location: to.StringPtr(e.AzureLocation),
+		Location: to.StringPtr(e.Location),
 		PrivateEndpointProperties: &network.PrivateEndpointProperties{
 			Subnet: &sn,
 

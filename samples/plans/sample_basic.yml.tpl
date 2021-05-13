@@ -55,13 +55,12 @@ ipAccessLists:
 - ipAddress: "128.0.0.0/1"
   comment: "everything"
 
-#privateEndpoints:
-#  AZURE:
-#    US_WEST_2:
-#      endpoints:
-#      - subscriptionID: {{ .subscriptionID }}
-#        azureLocation: westus
-#        resourceGroup: rg-test
-#        virtualNetworkName: test-subnet
-#        subnetName: default
-#        endpointName: {{ .instance_name }}
+# privateEndpoints:
+# - provider: "AZURE"
+#   subscriptionID: AZURE_SUB_ID_HERE
+#   region: "US_WEST_2"
+#   location: "westus"
+#   resourceGroup: test-group
+#   virtualNetworkName: test-vnet
+#   subnetName: default
+#   endpointName: test-endpoint
