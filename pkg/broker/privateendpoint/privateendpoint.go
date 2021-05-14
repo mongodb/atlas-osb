@@ -111,6 +111,27 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 	}, nil
 }
 
+func Delete(ctx context.Context, e *PrivateEndpoint) (futureWrapper func() (autorest.Response, error), err error) {
+	// create an authorizer from env vars or Azure Managed Service Idenity
+	authorizer, err := NewAuthorizerFromEnvironment()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create authorizer from environment")
+	}
+
+	// create the Private Endpoint
+	peClient := network.NewPrivateEndpointsClient(e.SubscriptionID)
+	peClient.Authorizer = authorizer
+
+	future, err := peClient.Delete(ctx, e.ResourceGroup, e.EndpointName)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot delete endpoint")
+	}
+
+	return func() (autorest.Response, error) {
+		return future.Result(peClient)
+	}, nil
+}
+
 func GetIPAddress(ctx context.Context, azurePE network.PrivateEndpoint, e *PrivateEndpoint) (string, error) {
 	if azurePE.NetworkInterfaces == nil || len(*azurePE.NetworkInterfaces) == 0 {
 		return "", errors.New("no NetworkInterfaces in endpoint")

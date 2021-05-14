@@ -440,6 +440,27 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 		return
 	}
 
+	for _, peService := range p.PrivateEndpoints {
+		if _, err := privateendpoint.Delete(ctx, peService); err != nil {
+			logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "peService", peService)
+		}
+
+		conn, _, err := client.PrivateEndpoints.Get(ctx, p.Project.ID, peService.Provider, peService.ID)
+		if err != nil {
+			logger.Errorw("Failed to fetch Private Endpoint Service Connection from Atlas", "error", err, "peService", peService)
+		}
+
+		for _, peID := range conn.PrivateEndpoints {
+			if _, err := client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, p.Project.ID, peService.Provider, peService.ID, peID); err != nil {
+				logger.Errorw("Failed to delete Private Endpoint from Atlas", "error", err, "pe", peID)
+			}
+		}
+
+		if _, err := client.PrivateEndpoints.Delete(ctx, p.Project.ID, peService.Provider, peService.ID); err != nil {
+			logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "pe", peService)
+		}
+	}
+
 	_, err = client.Clusters.Delete(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
 		logger.Errorw("Failed to delete Atlas cluster", "error", err)
