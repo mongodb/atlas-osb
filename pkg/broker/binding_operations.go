@@ -100,17 +100,16 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	logger.Infow("Successfully created Atlas database user")
 
-	cs, err := url.Parse(cluster.ConnectionStrings.PrivateSrv)
+	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
+	if cluster.ConnectionStrings.PrivateSrv != "" {
+		cs, err = url.Parse(cluster.ConnectionStrings.PrivateSrv)
+	}
 	if err != nil {
-		logger.Infow("Failed to parse private connection string, trying standard connection string")
+		logger.Errorw("Failed to parse connection strings", "error", err,
+			"standard", cluster.ConnectionStrings.StandardSrv,
+			"private", cluster.ConnectionStrings.PrivateSrv)
 
-		if cs, err = url.Parse(cluster.ConnectionStrings.StandardSrv); err != nil {
-			logger.Errorw("Failed to parse connection strings", "error", err,
-				"standard", cluster.ConnectionStrings.StandardSrv,
-				"private", cluster.ConnectionStrings.PrivateSrv)
-
-			return
-		}
+		return
 	}
 
 	cs.Path = user.DatabaseName
