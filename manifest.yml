@@ -4,7 +4,7 @@ applications:
     memory: 256MB
     disk_quota: 512MB
     buildpacks:
-      - https://github.com/cloudfoundry/go-buildpack.git
+      - go_buildpack
     env:
       GOVERSION: "1.15"
       BROKER_HOST: "0.0.0.0"
