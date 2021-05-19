@@ -101,13 +101,22 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 	logger.Infow("Successfully created Atlas database user")
 
 	cs, err := url.Parse(cluster.ConnectionStrings.StandardSrv)
-	if cluster.ConnectionStrings.PrivateSrv != "" {
-		cs, err = url.Parse(cluster.ConnectionStrings.PrivateSrv)
+	if len(cluster.ConnectionStrings.PrivateEndpoint) != 0 {
+		logger.Infow("Using private connection string")
+		for _, e := range cluster.ConnectionStrings.PrivateEndpoint {
+			cs, err = url.Parse(e.SRVConnectionString)
+			if err != nil {
+				logger.Errorw("Failed to parse private connection string", "error", err)
+
+				continue
+			}
+
+			break
+		}
 	}
 	if err != nil {
 		logger.Errorw("Failed to parse connection strings", "error", err,
-			"standard", cluster.ConnectionStrings.StandardSrv,
-			"private", cluster.ConnectionStrings.PrivateSrv)
+			"standard", cluster.ConnectionStrings.StandardSrv)
 
 		return
 	}
