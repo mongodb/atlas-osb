@@ -146,6 +146,8 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 }
 
 func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan, p *mongodbatlas.Project) error {
+	logger := b.funcLogger()
+
 	for _, u := range dp.DatabaseUsers {
 		if len(u.Scopes) == 0 {
 			u.Scopes = append(u.Scopes, mongodbatlas.Scope{
@@ -197,6 +199,7 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 			continue
 		}
 
+		logger.Debugw("start creation process for PrivateEndpoints", "project ID", p.ID)
 		conn, _, err := client.PrivateEndpoints.Create(ctx, p.ID, &mongodbatlas.PrivateEndpointConnection{
 			ProviderName: endpoint.Provider,
 			Region:       endpoint.Region,
@@ -213,6 +216,9 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 
 // TODO: this retry logic is clunky, come up with something better?
 func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan) (retry bool, err error) {
+	logger := b.funcLogger()
+
+	logger.Debugw("Setup PrivateEndpoints", "PrivateEndpoints", dp.PrivateEndpoints)
 	for _, endpoint := range dp.PrivateEndpoints {
 		atlasService, _, err := client.PrivateEndpoints.Get(ctx, dp.Project.ID, endpoint.Provider, endpoint.ID)
 		if err != nil {
@@ -232,6 +238,7 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 			return false, errors.Wrapf(err, "Private Endpoint service is in the wrong state: %s", atlasService.Status)
 		}
 
+		logger.Debugw("Creating private endpoint", "endpoint", endpoint.ID)
 		future, err := privateendpoint.Create(ctx, endpoint, atlasService)
 		if err != nil {
 			return false, errors.Wrap(err, "cannot create Private Endpoint in Azure")
@@ -239,6 +246,7 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 
 		pe, err := future()
 		if err != nil {
+			logger.Debugw("PrivateEndpoint not ready; retry", "PrivateEndpoint", pe)
 			retry = true
 
 			continue
@@ -321,6 +329,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 
 	// special case: pause/unpause
 	if paused, ok := planContext["paused"].(bool); ok {
+		logger.Info("Special case: pause/unpause")
 		request := &mongodbatlas.Cluster{
 			Paused: &paused,
 		}
@@ -336,6 +345,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 
 	// special case: perform update operations
 	if op, ok := planContext["op"].(string); ok {
+		logger.Info("Special case: perform update operations")
 		err = b.performOperation(ctx, client, planContext, oldPlan, op)
 
 		return domain.UpdateServiceSpec{
@@ -350,8 +360,11 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
+	logger.Infow("Updating resources", "new plan", newPlan)
 	err = b.createOrUpdateResources(ctx, client, newPlan, oldPlan.Project)
 	if err != nil {
+		logger.Errorw("Cannot update resources", "error", err)
+
 		return
 	}
 
@@ -374,17 +387,19 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
-	planEnc, err := encodePlan(*oldPlan)
-	if err != nil {
-		return
-	}
-
 	// update fields that can be safely updated
 	oldPlan.Description = newPlan.Description
 	oldPlan.Free = newPlan.Free
 	oldPlan.Version = newPlan.Version
 	oldPlan.Settings = newPlan.Settings
 	oldPlan.Cluster = resultingCluster
+	oldPlan.IPAccessLists = newPlan.IPAccessLists
+	oldPlan.PrivateEndpoints = newPlan.PrivateEndpoints
+
+	planEnc, err := encodePlan(*oldPlan)
+	if err != nil {
+		return
+	}
 
 	s := domain.GetInstanceDetailsSpec{
 		PlanID:       details.PlanID,
@@ -576,6 +591,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		}
 
 		retry := false
+		logger.Debugw("Create resources", "plan", p)
 		retry, err = b.postCreateResources(ctx, client, p)
 		if err != nil {
 			break
