@@ -186,6 +186,28 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		}
 	}
 
+	// create and populater the set with IPs from the plan
+	planIPAccessListItems := make(map[string]struct{})
+	for _, item := range dp.IPAccessLists {
+		planIPAccessListItems[item.IPAddress] = struct{}{}
+	}
+	logger.Debugw("IP Access List from the plan", "IPs", planIPAccessListItems)
+
+	atlasAccessLists, _, err := client.ProjectIPAccessList.List(ctx, p.ID, nil)
+	if err != nil {
+		return errors.Wrap(err, "cannot get IP Access Lists from Atlas")
+	}
+	for _, item := range atlasAccessLists.Results {
+		// delete all IPs which are not in the plan
+		if _, ok := planIPAccessListItems[item.CIDRBlock]; !ok {
+			logger.Debugw("Deleting IP Access List Item", "cidrBlock", item.CIDRBlock, "item", item)
+			_, err := client.ProjectIPAccessList.Delete(ctx, p.ID, item.CIDRBlock)
+			if err != nil {
+				logger.Errorw("Failed to delete an item from IP Access List", "err", err)
+			}
+		}
+	}
+
 	for _, i := range dp.Integrations {
 		_, _, err := client.Integrations.Replace(ctx, p.ID, i.Type, i)
 		if err != nil {
