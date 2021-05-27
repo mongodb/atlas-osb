@@ -57,10 +57,10 @@ databaseUsers:
 
 privateEndpoints:
 - provider: "AZURE"
-  subscriptionID: fd01adff-b37e-4693-8497-83ecf183a145
+  subscriptionID: AZURE_SUB_ID_HERE
   region: "US_WEST_2"
   location: "westus"
-  resourceGroup: anton-f-test
-  virtualNetworkName: anton-vnet
+  resourceGroup: test-group
+  virtualNetworkName: test-vnet
   subnetName: default
-  endpointName: anton-f-endpoint
+  endpointName: test-endpoint
