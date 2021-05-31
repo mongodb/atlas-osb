@@ -215,6 +215,10 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		}
 	}
 
+	//TODO: this is hardcoded cause only one provider is supported as of right now
+	peProvider := "AZURE"
+
+	planPrivateEndpoints := make(map[string]struct{})
 	for _, endpoint := range dp.PrivateEndpoints {
 		if endpoint.ID != "" {
 			// endpoint service already created
@@ -231,6 +235,31 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		}
 
 		endpoint.ID = conn.ID
+		planPrivateEndpoints[endpoint.ID] = struct{}{}
+	}
+
+	logger.Debugw("Private Endpoints from the plan", "PE names", planPrivateEndpoints)
+
+	atlasPrivateEndpoints, _, err := client.PrivateEndpoints.List(ctx, p.ID, peProvider, nil)
+	if err != nil {
+		return errors.Wrap(err, "cannot get IP Access Lists from Atlas")
+	}
+
+	for _, peConnection := range atlasPrivateEndpoints {
+		// delete all PE endpoints which are not in the plan
+		if _, ok := planPrivateEndpoints[peConnection.ID]; !ok {
+			logger.Debugw("Deleting Private Endpoint", "connection", peConnection)
+
+			for _, peID := range peConnection.PrivateEndpoints {
+				if _, err := client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, p.ID, peProvider, peConnection.ID, peID); err != nil {
+					logger.Errorw("Failed to delete Private Endpoint from Atlas", "error", err, "pe", peID)
+				}
+			}
+
+			if _, err := client.PrivateEndpoints.Delete(ctx, p.ID, peProvider, peConnection.ID); err != nil {
+				logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "pe", peConnection)
+			}
+		}
 	}
 
 	return nil
