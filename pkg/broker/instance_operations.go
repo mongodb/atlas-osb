@@ -215,8 +215,7 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		}
 	}
 
-	//TODO: this is hardcoded cause only one provider is supported as of right now
-	peProvider := "AZURE"
+	peProvider := "AZURE" // this is hardcoded cause only one provider is supported for now
 
 	planPrivateEndpoints := make(map[string]struct{})
 	for _, endpoint := range dp.PrivateEndpoints {
@@ -242,7 +241,7 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 
 	atlasPrivateEndpoints, _, err := client.PrivateEndpoints.List(ctx, p.ID, peProvider, nil)
 	if err != nil {
-		return errors.Wrap(err, "cannot get IP Access Lists from Atlas")
+		return errors.Wrap(err, "cannot get Private Endpoints from Atlas")
 	}
 
 	for _, peConnection := range atlasPrivateEndpoints {
@@ -645,6 +644,8 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		logger.Debugw("Create resources", "plan", p)
 		retry, err = b.postCreateResources(ctx, client, p)
 		if err != nil {
+			logger.Debugw("Create resources error", "error", err, "retry", retry)
+
 			break
 		}
 

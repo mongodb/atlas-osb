@@ -74,12 +74,32 @@ func Create(ctx context.Context, e *PrivateEndpoint, pe *mongodbatlas.PrivateEnd
 	peClient.Authorizer = authorizer
 
 	ep, err := peClient.Get(ctx, e.ResourceGroup, e.EndpointName, "")
-	if err != nil {
-		if ep.StatusCode != http.StatusNotFound {
-			return nil, errors.Wrap(err, "cannot retrieve private endpoint")
+	if err != nil && ep.StatusCode != http.StatusNotFound {
+		return nil, errors.Wrap(err, "cannot retrieve private endpoint")
+	}
+
+	// Delete PEs if they're "Disconnected"
+	props := ep.PrivateEndpointProperties
+	if props != nil && props.ManualPrivateLinkServiceConnections != nil {
+		for _, peConn := range *props.ManualPrivateLinkServiceConnections {
+			if peConn.PrivateLinkServiceConnectionState == nil || peConn.PrivateLinkServiceConnectionState.Status == nil {
+				continue
+			}
+			if *peConn.PrivateLinkServiceConnectionState.Status == "Disconnected" {
+				_, err := peClient.Delete(ctx, e.ResourceGroup, e.EndpointName)
+				if err != nil {
+					return nil, errors.Wrap(err, "cannot delete disconnected private endpoint")
+				}
+
+				return func() (network.PrivateEndpoint, error) {
+					return network.PrivateEndpoint{}, errors.New("deleting the disconnected private endpoint")
+				}, nil
+			}
 		}
-	} else {
-		// TODO: handle existing endpoint properly
+	}
+
+	// Return PE if there is no Errors and it isn't "Disconnected"
+	if err == nil {
 		return func() (network.PrivateEndpoint, error) {
 			return ep, nil
 		}, nil
@@ -118,7 +138,7 @@ func Delete(ctx context.Context, e *PrivateEndpoint) (futureWrapper func() (auto
 		return nil, errors.Wrap(err, "cannot create authorizer from environment")
 	}
 
-	// create the Private Endpoint
+	// create the Private Endpoint client
 	peClient := network.NewPrivateEndpointsClient(e.SubscriptionID)
 	peClient.Authorizer = authorizer
 
