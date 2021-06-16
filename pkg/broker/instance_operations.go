@@ -68,22 +68,23 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	}
 
 	if dp.Project.ID == "" {
-		var newp *mongodbatlas.Project
-		newp, _, err = client.Projects.Create(ctx, dp.Project)
+		var newProject *mongodbatlas.Project
+		newProject, _, err = client.Projects.Create(ctx, dp.Project)
 		if err != nil {
 			logger.Errorw("Cannot create project", "error", err, "project", dp.Project)
 
 			return
 		}
 
-		err = b.createOrUpdateResources(ctx, client, dp, newp)
+		dp.Project = newProject
+		err = b.createOrUpdateResources(ctx, client, dp, dp)
 		if err != nil {
 			logger.Errorw("Cannot update resource", "error", err, "project", dp.Project)
 
 			return
 		}
 
-		dp.Project.ID = newp.ID
+		dp.Project.ID = newProject.ID
 	}
 
 	// Async needs to be supported for provisioning to work.
@@ -145,24 +146,24 @@ func (b Broker) Provision(ctx context.Context, instanceID string, details domain
 	}, nil
 }
 
-func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan, p *mongodbatlas.Project) error {
+func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatlas.Client, newPlan *dynamicplans.Plan, oldPlan *dynamicplans.Plan) error {
 	logger := b.funcLogger()
 
-	for _, u := range dp.DatabaseUsers {
+	for _, u := range newPlan.DatabaseUsers {
 		if len(u.Scopes) == 0 {
 			u.Scopes = append(u.Scopes, mongodbatlas.Scope{
-				Name: dp.Cluster.Name,
+				Name: newPlan.Cluster.Name,
 				Type: "CLUSTER",
 			})
 		}
 
-		_, r, err := client.DatabaseUsers.Create(ctx, p.ID, u)
+		_, r, err := client.DatabaseUsers.Create(ctx, oldPlan.Project.ID, u)
 		if err != nil {
 			if r.StatusCode != http.StatusConflict {
 				return errors.Wrap(err, "cannot create Database User")
 			}
 
-			_, _, err = client.DatabaseUsers.Update(ctx, p.ID, u.Username, u)
+			_, _, err = client.DatabaseUsers.Update(ctx, oldPlan.Project.ID, u.Username, u)
 			if err != nil {
 				return errors.Wrap(err, "cannot update Database User")
 			}
@@ -170,17 +171,17 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 	}
 
 	// keep support for the deprecated IPWhitelists
-	if len(dp.IPWhitelists) > 0 { // nolint
+	if len(newPlan.IPWhitelists) > 0 { // nolint
 		// note: Create() is identical to Update()
-		_, _, err := client.ProjectIPWhitelist.Create(ctx, p.ID, dp.IPWhitelists) // nolint
+		_, _, err := client.ProjectIPWhitelist.Create(ctx, oldPlan.Project.ID, newPlan.IPWhitelists) // nolint
 		if err != nil {
 			return errors.Wrap(err, "cannot create/update IP Whitelist")
 		}
 	}
 
-	if len(dp.IPAccessLists) > 0 {
+	if len(newPlan.IPAccessLists) > 0 {
 		// note: Create() is identical to Update()
-		_, _, err := client.ProjectIPAccessList.Create(ctx, p.ID, dp.IPAccessLists)
+		_, _, err := client.ProjectIPAccessList.Create(ctx, oldPlan.Project.ID, newPlan.IPAccessLists)
 		if err != nil {
 			return errors.Wrap(err, "cannot create/update IP Access List")
 		}
@@ -188,12 +189,12 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 
 	// create and populater the set with IPs from the plan
 	planIPAccessListItems := make(map[string]struct{})
-	for _, item := range dp.IPAccessLists {
+	for _, item := range newPlan.IPAccessLists {
 		planIPAccessListItems[item.IPAddress] = struct{}{}
 	}
 	logger.Debugw("IP Access List from the plan", "IPs", planIPAccessListItems)
 
-	atlasAccessLists, _, err := client.ProjectIPAccessList.List(ctx, p.ID, nil)
+	atlasAccessLists, _, err := client.ProjectIPAccessList.List(ctx, oldPlan.Project.ID, nil)
 	if err != nil {
 		return errors.Wrap(err, "cannot get IP Access Lists from Atlas")
 	}
@@ -201,15 +202,15 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		// delete all IPs which are not in the plan
 		if _, ok := planIPAccessListItems[item.CIDRBlock]; !ok {
 			logger.Debugw("Deleting IP Access List Item", "cidrBlock", item.CIDRBlock, "item", item)
-			_, err := client.ProjectIPAccessList.Delete(ctx, p.ID, item.CIDRBlock)
+			_, err := client.ProjectIPAccessList.Delete(ctx, oldPlan.Project.ID, item.CIDRBlock)
 			if err != nil {
 				logger.Errorw("Failed to delete an item from IP Access List", "err", err)
 			}
 		}
 	}
 
-	for _, i := range dp.Integrations {
-		_, _, err := client.Integrations.Replace(ctx, p.ID, i.Type, i)
+	for _, i := range newPlan.Integrations {
+		_, _, err := client.Integrations.Replace(ctx, oldPlan.Project.ID, i.Type, i)
 		if err != nil {
 			return errors.Wrap(err, "cannot create Third-Party Integration")
 		}
@@ -218,14 +219,14 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 	peProvider := "AZURE" // this is hardcoded cause only one provider is supported for now
 
 	planPrivateEndpoints := make(map[string]struct{})
-	for _, endpoint := range dp.PrivateEndpoints {
+	for _, endpoint := range newPlan.PrivateEndpoints {
 		if endpoint.ID != "" {
 			// endpoint service already created
 			continue
 		}
 
-		logger.Debugw("start creation process for PrivateEndpoints", "project ID", p.ID)
-		conn, _, err := client.PrivateEndpoints.Create(ctx, p.ID, &mongodbatlas.PrivateEndpointConnection{
+		logger.Debugw("start creation process for PrivateEndpoints", "project ID", oldPlan.Project.ID)
+		conn, _, err := client.PrivateEndpoints.Create(ctx, oldPlan.Project.ID, &mongodbatlas.PrivateEndpointConnection{
 			ProviderName: endpoint.Provider,
 			Region:       endpoint.Region,
 		})
@@ -239,7 +240,14 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 
 	logger.Debugw("Private Endpoints from the plan", "PE names", planPrivateEndpoints)
 
-	atlasPrivateEndpoints, _, err := client.PrivateEndpoints.List(ctx, p.ID, peProvider, nil)
+	oldPrivateEndpoints := make(map[string]*privateendpoint.PrivateEndpoint)
+	for _, endpoint := range oldPlan.PrivateEndpoints {
+		if _, ok := planPrivateEndpoints[endpoint.ID]; !ok {
+			oldPrivateEndpoints[endpoint.ID] = endpoint
+		}
+	}
+
+	atlasPrivateEndpoints, _, err := client.PrivateEndpoints.List(ctx, oldPlan.Project.ID, peProvider, nil)
 	if err != nil {
 		return errors.Wrap(err, "cannot get Private Endpoints from Atlas")
 	}
@@ -249,13 +257,19 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		if _, ok := planPrivateEndpoints[peConnection.ID]; !ok {
 			logger.Debugw("Deleting Private Endpoint", "connection", peConnection)
 
+			if oldEndpoint, ok := oldPrivateEndpoints[peConnection.ID]; ok {
+				if _, err := privateendpoint.Delete(ctx, oldEndpoint); err != nil {
+					logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "oldEndpoint", oldEndpoint)
+				}
+			}
+
 			for _, peID := range peConnection.PrivateEndpoints {
-				if _, err := client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, p.ID, peProvider, peConnection.ID, peID); err != nil {
+				if _, err := client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, oldPlan.Project.ID, peProvider, peConnection.ID, peID); err != nil {
 					logger.Errorw("Failed to delete Private Endpoint from Atlas", "error", err, "pe", peID)
 				}
 			}
 
-			if _, err := client.PrivateEndpoints.Delete(ctx, p.ID, peProvider, peConnection.ID); err != nil {
+			if _, err := client.PrivateEndpoints.Delete(ctx, oldPlan.Project.ID, peProvider, peConnection.ID); err != nil {
 				logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "pe", peConnection)
 			}
 		}
@@ -411,7 +425,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	}
 
 	logger.Infow("Updating resources", "new plan", newPlan)
-	err = b.createOrUpdateResources(ctx, client, newPlan, oldPlan.Project)
+	err = b.createOrUpdateResources(ctx, client, newPlan, oldPlan)
 	if err != nil {
 		logger.Errorw("Cannot update resources", "error", err)
 
@@ -521,9 +535,9 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 			}
 		}
 
-		if _, err := client.PrivateEndpoints.Delete(ctx, p.Project.ID, peService.Provider, peService.ID); err != nil {
-			logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "pe", peService)
-		}
+		// if _, err := client.PrivateEndpoints.Delete(ctx, p.Project.ID, peService.Provider, peService.ID); err != nil {
+		// 	logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "pe", peService)
+		// }
 	}
 
 	_, err = client.Clusters.Delete(ctx, p.Project.ID, p.Cluster.Name)
@@ -612,7 +626,7 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 
 	cluster, r, err := client.Clusters.Get(ctx, p.Project.ID, p.Cluster.Name)
 	if err != nil {
-		if r == nil || r.StatusCode != http.StatusNotFound {
+		if r.StatusCode != http.StatusNotFound {
 			err = errors.Wrap(err, "cannot get existing cluster")
 			logger.Errorw("Failed to get existing cluster", "error", err)
 
@@ -621,6 +635,19 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	}
 
 	logger.Infow("Found existing cluster", "cluster", cluster)
+
+	peEndpoints := []*mongodbatlas.PrivateEndpointConnection{}
+	for _, pe := range p.PrivateEndpoints {
+		peConnection, _, err := client.PrivateEndpoints.Get(ctx, p.Project.ID, pe.Provider, pe.ID)
+		if err != nil {
+			logger.Errorw("Failed to fetch Private Endpoint Service Connection from Atlas", "error", err)
+
+			continue
+		}
+		peEndpoints = append(peEndpoints, peConnection)
+	}
+
+	logger.Infow("Found existing Private Endpoints", "endpoints", peEndpoints)
 
 	// brokerapi will NOT update service state if we return any error, so... we won't?
 	defer func() {
@@ -673,6 +700,17 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		// will return the cluster with a state of "DELETED". Both of these
 		// scenarios indicate that a cluster has been successfully deleted.
 		case r.StatusCode == http.StatusNotFound, cluster.StateName == "DELETED":
+			if len(peEndpoints) != 0 {
+				resp.State = domain.InProgress
+				for _, peConnection := range peEndpoints {
+					if _, err := client.PrivateEndpoints.Delete(ctx, p.Project.ID, "AZURE", peConnection.ID); err != nil {
+						logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "connection", peConnection)
+					}
+				}
+
+				break
+			}
+
 			if r.StatusCode == http.StatusNotFound || cluster.StateName == "DELETED" {
 				resp.State = domain.Succeeded
 			}
