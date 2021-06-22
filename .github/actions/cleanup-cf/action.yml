@@ -1,7 +1,7 @@
 name: 'Atlas broker testing'
 description: 'uses for cleaning environments after/before testing'
 inputs:
-  cf_api:
+  cf_url:
     description: "PCF url uses for pcf command"
     required: true
   cf_user:
@@ -16,4 +16,4 @@ runs:
   args:
     - ${{ inputs.cf_user }}
     - ${{ inputs.cf_password }}
-    - ${{ inputs.cf_api }}
+    - ${{ inputs.cf_url }}

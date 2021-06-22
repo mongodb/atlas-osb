@@ -12,7 +12,12 @@ cf_login() {
     space="system"
   fi
 
-  cf login -a "$INPUT_CF_API" -u "$INPUT_CF_USER" -p "$INPUT_CF_PASSWORD" --skip-ssl-validation -o $org
+  local cf_app_url="api.$(pcf cf-info | grep system_domain | cut -d' ' -f 3)"
+  local cf_app_user="$(pcf cf-info | grep admin_username | cut -d' ' -f 3)"
+  local cf_app_password="$(pcf cf-info | grep admin_password | cut -d' ' -f 3)"
+
+  cf login -a "$cf_app_url" -u "$cf_app_user" -p "$cf_app_password" --skip-ssl-validation -o "$org"
+
   if [[ $org == "system" && $space == "system" ]]; then
     cf create-space ${space} -o ${org}
   fi

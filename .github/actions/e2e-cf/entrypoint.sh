@@ -9,6 +9,7 @@ source ".github/base-dockerfile/helpers/params.sh"
 INSTALL_TIMEOUT=40 #service deploy timeout
 
 echo "init"
+make_pcf_metadata "$INPUT_CF_URL" "$INPUT_CF_USER" "$INPUT_CF_PASSWORD"
 make_multikey_config samples/apikeys-config.json
 
 echo "Login. Create ORG and SPACE depended on the branch name"
@@ -18,7 +19,6 @@ cf create-space "$SPACE_NAME" && cf target -s "$SPACE_NAME"
 
 echo "Create service-broker"
 cf push "$BROKER_APP" --no-start
-cf set-env "$BROKER_APP" "SENTRY_DSN" "$INPUT_SENTRY_DSN"
 cf restart "$BROKER_APP"
 
 check_app_started "$BROKER_APP"
