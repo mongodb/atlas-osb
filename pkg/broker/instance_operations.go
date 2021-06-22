@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
 	"github.com/mongodb/atlas-osb/pkg/broker/privateendpoint"
@@ -218,10 +219,27 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 
 	peProvider := "AZURE" // this is hardcoded cause only one provider is supported for now
 
+	atlasPrivateEndpoints, _, err := client.PrivateEndpoints.List(ctx, oldPlan.Project.ID, peProvider, nil)
+	if err != nil {
+		return errors.Wrap(err, "cannot get Private Endpoints from Atlas")
+	}
+	atlasPrivateEndpoints = b.populateConnections(atlasPrivateEndpoints)
+
 	planPrivateEndpoints := make(map[string]struct{})
 	for _, endpoint := range newPlan.PrivateEndpoints {
 		if endpoint.ID != "" {
 			// endpoint service already created
+			planPrivateEndpoints[endpoint.ID] = struct{}{}
+
+			continue
+		}
+
+		logger.Debugw("Atlas PEs", "endpoints", atlasPrivateEndpoints)
+
+		if connID, exists := b.privateEndpointExists(endpoint.Provider, endpoint.EndpointName, atlasPrivateEndpoints); exists {
+			planPrivateEndpoints[connID] = struct{}{}
+			endpoint.ID = connID
+
 			continue
 		}
 
@@ -232,34 +250,24 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		})
 		if err != nil {
 			return errors.Wrap(err, "cannot create Private Endpoint Service")
+		} else {
+			endpoint.ID = conn.ID
+			planPrivateEndpoints[endpoint.ID] = struct{}{}
 		}
-
-		endpoint.ID = conn.ID
-		planPrivateEndpoints[endpoint.ID] = struct{}{}
 	}
 
 	logger.Debugw("Private Endpoints from the plan", "PE names", planPrivateEndpoints)
 
-	oldPrivateEndpoints := make(map[string]*privateendpoint.PrivateEndpoint)
-	for _, endpoint := range oldPlan.PrivateEndpoints {
-		if _, ok := planPrivateEndpoints[endpoint.ID]; !ok {
-			oldPrivateEndpoints[endpoint.ID] = endpoint
-		}
-	}
-
-	atlasPrivateEndpoints, _, err := client.PrivateEndpoints.List(ctx, oldPlan.Project.ID, peProvider, nil)
-	if err != nil {
-		return errors.Wrap(err, "cannot get Private Endpoints from Atlas")
-	}
-
 	for _, peConnection := range atlasPrivateEndpoints {
 		// delete all PE endpoints which are not in the plan
-		if _, ok := planPrivateEndpoints[peConnection.ID]; !ok {
+		if _, isPlanned := planPrivateEndpoints[peConnection.ID]; !isPlanned {
 			logger.Debugw("Deleting Private Endpoint", "connection", peConnection)
 
-			if oldEndpoint, ok := oldPrivateEndpoints[peConnection.ID]; ok {
-				if _, err := privateendpoint.Delete(ctx, oldEndpoint); err != nil {
-					logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "oldEndpoint", oldEndpoint)
+			for _, endpoint := range oldPlan.PrivateEndpoints {
+				if endpoint.EndpointName == peConnection.EndpointServiceName {
+					if _, err := privateendpoint.Delete(ctx, endpoint); err != nil {
+						logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "endpoint", endpoint.EndpointName)
+					}
 				}
 			}
 
@@ -278,15 +286,55 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 	return nil
 }
 
+func (b *Broker) privateEndpointExists(provider string, name string, connections []mongodbatlas.PrivateEndpointConnection) (string, bool) {
+	logger := b.funcLogger()
+
+	for _, peConnection := range connections {
+		logger.Infow("privateEndpointExists func", "conn", peConnection)
+		if peConnection.ProviderName == provider && peConnection.EndpointServiceName == name {
+			return peConnection.ID, true
+		}
+	}
+
+	return "", false
+}
+
+func (b *Broker) populateConnections(connections []mongodbatlas.PrivateEndpointConnection) []mongodbatlas.PrivateEndpointConnection {
+	logger := b.funcLogger()
+	r := regexp.MustCompile("/([^/]+)/resourceGroups/([^/]+)/providers/([^/]+)/privateEndpoints/([^/]+)$")
+	for connIdx := range connections {
+		for _, pe := range connections[connIdx].PrivateEndpoints {
+			res := r.FindAllStringSubmatch(pe, -1)
+			if len(res) == 1 && len(res[0]) == 5 {
+				m1 := res[0]
+				sub, group, prov, name := m1[1], m1[2], m1[3], m1[4]
+				logger.Debugw("populateConnections", "sub", sub, "group", group, "prov", prov, "name", name)
+				connections[connIdx].ProviderName = prov
+				connections[connIdx].EndpointServiceName = name
+
+				if connections[connIdx].ProviderName == "Microsoft.Network" {
+					connections[connIdx].ProviderName = "AZURE"
+				}
+			}
+		}
+	}
+
+	return connections
+}
+
 // TODO: this retry logic is clunky, come up with something better?
 func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan) (retry bool, err error) {
 	logger := b.funcLogger()
 
 	logger.Debugw("Setup PrivateEndpoints", "PrivateEndpoints", dp.PrivateEndpoints)
 	for _, endpoint := range dp.PrivateEndpoints {
+		if endpoint.ID == "" {
+			continue
+		}
+
 		atlasService, _, err := client.PrivateEndpoints.Get(ctx, dp.Project.ID, endpoint.Provider, endpoint.ID)
 		if err != nil {
-			return false, errors.Wrap(err, "cannot add Private Endpoint to Endpoint Service")
+			return false, errors.Wrap(err, "cannot get Private Endpoint Service")
 		}
 
 		switch atlasService.Status {
@@ -313,6 +361,10 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 			logger.Debugw("PrivateEndpoint not ready; retry", "PrivateEndpoint", pe)
 			retry = true
 
+			continue
+		}
+
+		if pe.ID == nil {
 			continue
 		}
 
@@ -424,7 +476,6 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 		return
 	}
 
-	logger.Infow("Updating resources", "new plan", newPlan)
 	err = b.createOrUpdateResources(ctx, client, newPlan, oldPlan)
 	if err != nil {
 		logger.Errorw("Cannot update resources", "error", err)
@@ -524,6 +575,10 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 			logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "peService", peService)
 		}
 
+		if peService.ID == "" {
+			continue
+		}
+
 		conn, _, err := client.PrivateEndpoints.Get(ctx, p.Project.ID, peService.Provider, peService.ID)
 		if err != nil {
 			logger.Errorw("Failed to fetch Private Endpoint Service Connection from Atlas", "error", err, "peService", peService)
@@ -534,10 +589,6 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 				logger.Errorw("Failed to delete Private Endpoint from Atlas", "error", err, "pe", peID)
 			}
 		}
-
-		// if _, err := client.PrivateEndpoints.Delete(ctx, p.Project.ID, peService.Provider, peService.ID); err != nil {
-		// 	logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "pe", peService)
-		// }
 	}
 
 	_, err = client.Clusters.Delete(ctx, p.Project.ID, p.Cluster.Name)
@@ -638,6 +689,9 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 
 	peEndpoints := []*mongodbatlas.PrivateEndpointConnection{}
 	for _, pe := range p.PrivateEndpoints {
+		if pe.ID == "" {
+			continue
+		}
 		peConnection, _, err := client.PrivateEndpoints.Get(ctx, p.Project.ID, pe.Provider, pe.ID)
 		if err != nil {
 			logger.Errorw("Failed to fetch Private Endpoint Service Connection from Atlas", "error", err)
