@@ -2,7 +2,7 @@
 name: 'Atlas broker testing'
 description: 'add org user to atlas'
 inputs:
-  cf_api:
+  cf_url:
     description: "PCF url uses for pcf command"
     required: true
   cf_user:
@@ -29,7 +29,7 @@ runs:
   args:
     - ${{ inputs.cf_user }}
     - ${{ inputs.cf_password }}
-    - ${{ inputs.cf_api }}
+    - ${{ inputs.cf_url }}
     - ${{ inputs.atlas_public_key }}
     - ${{ inputs.atlas_private_key }}
     - ${{ inputs.atlas_org_id}}

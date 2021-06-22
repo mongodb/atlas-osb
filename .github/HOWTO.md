@@ -16,7 +16,7 @@ Below there is an actual sample of `.actrc` with all required secrets:
 -s ATLAS_PUBLIC_KEY=<public key>
 -s ATLAS_ORG_ID=<org_id for the templates>
 -s CF_PASSWORD=<password>
--s CF_API=api.something
+-s CF_URL=<https://pcf.host>
 -s CF_USER=<user>
 -s REGISTRY=quay.io
 -s REGISTRY_USERNAME=<...>
