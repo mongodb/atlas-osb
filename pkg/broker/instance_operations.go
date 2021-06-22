@@ -264,7 +264,7 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 			logger.Debugw("Deleting Private Endpoint", "connection", peConnection)
 
 			for _, endpoint := range oldPlan.PrivateEndpoints {
-				if endpoint.EndpointName == peConnection.EndpointServiceName {
+				if endpoint.EndpointName == peConnection.EndpointServiceName && endpoint.Provider == peConnection.ProviderName {
 					if _, err := privateendpoint.Delete(ctx, endpoint); err != nil {
 						logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "endpoint", endpoint.EndpointName)
 					}
