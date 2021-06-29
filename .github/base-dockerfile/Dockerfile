@@ -19,13 +19,13 @@ RUN set -xe && \
     dpkg-divert --local --rename --add /sbin/initctl && \
     cp -a /usr/sbin/policy-rc.d /sbin/initctl && \
     sed -i 's/^exit.*/exit 0/' /sbin/initctl && \
-    echo 'force-unsafe-io' > /etc/dpkg/dpkg.cfg.d/docker-apt-speedup && \ 
+    echo 'force-unsafe-io' > /etc/dpkg/dpkg.cfg.d/docker-apt-speedup && \
     echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' > /etc/apt/apt.conf.d/docker-clean  && \
     echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' >> /etc/apt/apt.conf.d/docker-clean  && \
     echo 'Dir::Cache::pkgcache ""; Dir::Cache::srcpkgcache "";' >> /etc/apt/apt.conf.d/docker-clean && \
     echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/docker-no-languages && \
     echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/docker-gzip-indexes && \
-    echo 'Apt::AutoRemove::SuggestsImportant "false";' > /etc/apt/apt.conf.d/docker-autoremove-suggests && \ 
+    echo 'Apt::AutoRemove::SuggestsImportant "false";' > /etc/apt/apt.conf.d/docker-autoremove-suggests && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /run/systemd && echo 'docker' > /run/systemd/container && \
     rm -f /etc/localtime && \
@@ -49,7 +49,7 @@ RUN wget https://s3.amazonaws.com/bosh-cli-artifacts/bosh-cli-${BOSH_CLI_VERSION
 RUN wget https://github.com/pivotal-cf/om/releases/download/${OM_VERSION}/om-linux-${OM_VERSION} -O om-linux && \
     mv om-linux /usr/local/bin/om && \
     chmod +x /usr/local/bin/om
-RUN wget https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/${CREDHUB_CLI_VERSION}/credhub-linux-${CREDHUB_CLI_VERSION}.tgz -O credhub.tgz && \ 
+RUN wget https://github.com/cloudfoundry-incubator/credhub-cli/releases/download/${CREDHUB_CLI_VERSION}/credhub-linux-${CREDHUB_CLI_VERSION}.tgz -O credhub.tgz && \
     tar xzf ./credhub.tgz && \
     mv credhub /usr/local/bin/credhub && \
     chmod +x /usr/local/bin/credhub && \
