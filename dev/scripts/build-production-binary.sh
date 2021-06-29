@@ -10,7 +10,5 @@ fi
 
 set -xeuf
 
-
 release_version=$(git describe --always --dirty)
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.releaseVersion=$release_version" -o "$1"
-golangci-lint run
