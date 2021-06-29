@@ -217,6 +217,16 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		}
 	}
 
+	if err := b.syncPrivateEndpoints(ctx, client, newPlan, oldPlan); err != nil {
+		return errors.Wrap(err, "cannot sync Private Endpoints")
+	}
+
+	return nil
+}
+
+func (b *Broker) syncPrivateEndpoints(ctx context.Context, client *mongodbatlas.Client, newPlan *dynamicplans.Plan, oldPlan *dynamicplans.Plan) error {
+	logger := b.funcLogger()
+
 	peProvider := "AZURE" // this is hardcoded cause only one provider is supported for now
 
 	atlasPrivateEndpoints, _, err := client.PrivateEndpoints.List(ctx, oldPlan.Project.ID, peProvider, nil)
