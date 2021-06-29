@@ -17,23 +17,22 @@ package dynamicplans
 import (
 	"encoding/json"
 
-	"github.com/mongodb/atlas-osb/pkg/broker/privateendpoint"
+	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 // Plan represents a set of MongoDB Atlas resources
 type Plan struct {
-	Version          string                                `json:"version,omitempty"`
-	Name             string                                `json:"name,omitempty"`
-	Description      string                                `json:"description,omitempty"`
-	Free             *bool                                 `json:"free,omitempty"`
-	APIKey           map[string]string                     `json:"apiKey,omitempty"`
-	Project          *mongodbatlas.Project                 `json:"project,omitempty"`
-	Cluster          *mongodbatlas.Cluster                 `json:"cluster,omitempty"`
-	DatabaseUsers    []*mongodbatlas.DatabaseUser          `json:"databaseUsers,omitempty"`
-	IPAccessLists    []*mongodbatlas.ProjectIPAccessList   `json:"ipAccessLists,omitempty"`
-	Integrations     []*mongodbatlas.ThirdPartyIntegration `json:"integrations,omitempty"`
-	PrivateEndpoints privateendpoint.PrivateEndpoints      `json:"privateEndpoints,omitempty"`
+	Version       string                                `json:"version,omitempty"`
+	Name          string                                `json:"name,omitempty"`
+	Description   string                                `json:"description,omitempty"`
+	Free          *bool                                 `json:"free,omitempty"`
+	APIKey        credentials.Credential                `json:"apiKey,omitempty"`
+	Project       *mongodbatlas.Project                 `json:"project,omitempty"`
+	Cluster       *mongodbatlas.Cluster                 `json:"cluster,omitempty"`
+	DatabaseUsers []*mongodbatlas.DatabaseUser          `json:"databaseUsers,omitempty"`
+	IPAccessLists []*mongodbatlas.ProjectIPAccessList   `json:"ipAccessLists,omitempty"`
+	Integrations  []*mongodbatlas.ThirdPartyIntegration `json:"integrations,omitempty"`
 
 	Settings map[string]interface{} `json:"settings,omitempty"`
 

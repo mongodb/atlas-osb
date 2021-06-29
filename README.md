@@ -130,7 +130,7 @@ Grab the `routes` value from `cf app atlas-osb` and use this URL in the followin
 # create the actual broker
 cf create-service-broker atlas-osb admin admin <YOUR-DEPLOYMENT-URL>
 # enable access
-cf enable-service-access atlas
+cf enable-service-access mongodb-atlas-template
 ```
 
 Check out the results.
@@ -146,7 +146,7 @@ For this flow, we'll create an instance of the "basic-plan" called "hello-atlas-
 See [/samples/plans/sample_basic.yml.tpl](/samples/plans/sample_basic.yml.tpl).
 
 ```bash
-cf create-service atlas basic-plan hello-atlas-osb
+cf create-service mongodb-atlas-template basic-plan hello-atlas-osb
 cf service hello-atlas-osb
 ```
 
