@@ -5,6 +5,7 @@
 on:
   push:
     branches:
+      - '**'
     paths:
       - '!docs/**'
   workflow_dispatch:
