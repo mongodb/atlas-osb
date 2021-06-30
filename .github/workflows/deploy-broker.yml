@@ -6,8 +6,8 @@ on:
   push:
     branches:
       - '**'
-    paths:
-      - '!docs/**'
+    paths-ignore:
+      - 'docs/**'
   workflow_dispatch:
 
 name: e2e VMware TAS
