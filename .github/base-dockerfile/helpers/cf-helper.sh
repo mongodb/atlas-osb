@@ -12,6 +12,7 @@ cf_login() {
     space="system"
   fi
 
+  make_pcf_metadata "$INPUT_CF_URL" "$INPUT_CF_USER" "$INPUT_CF_PASSWORD"
   local cf_app_url="api.$(pcf cf-info | grep system_domain | cut -d' ' -f 3)"
   local cf_app_user="$(pcf cf-info | grep admin_username | cut -d' ' -f 3)"
   local cf_app_password="$(pcf cf-info | grep admin_password | cut -d' ' -f 3)"
@@ -23,6 +24,24 @@ cf_login() {
   fi
 
   cf target -o ${org} -s ${space}
+}
+
+# required by `pcf` tool
+make_pcf_metadata() {
+	local PCF_URL=$1
+	local PCF_USERNAME=$2
+	local PCF_PASSWORD=$3
+	file="metadata"
+	if [ -f $file ]; then
+		rm $file
+	fi
+	cat >$file <<EOF
+---
+opsmgr:
+  url: "${PCF_URL}"
+  username: "${PCF_USERNAME}"
+  password: "${PCF_PASSWORD}"
+EOF
 }
 
 #cf.helper. wait for particular service status
