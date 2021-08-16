@@ -18,10 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 
+	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
@@ -29,8 +29,7 @@ func (c *Client) RealmAppInputFromString(value string) (*RealmAppInput, error) {
 	var t RealmAppInput
 	err := json.Unmarshal([]byte(value), &t)
 	if err != nil {
-		log.Printf("Unmarshal: %v", err)
-		return nil, err
+		return nil, errors.Wrap(err, "cannot unmarshal value")
 	}
 
 	return &t, nil
@@ -60,8 +59,6 @@ type RealmAppsServiceOp service
 
 var _ RealmAppsService = &RealmAppsServiceOp{}
 
-var RealmAccessToken = ""
-
 // RealmAppInput represents MongoDB API key input request for Create.
 type RealmAppInput struct {
 	Name            string `json:"name,omitempty"`
@@ -72,7 +69,7 @@ type RealmAppInput struct {
 }
 
 // RealmApp represents MongoDB API Key.
-//{"_id":"5f12de8c15049be9464eb269","client_app_id":"mad-elion-arays","name":"mad-elion","location":"US-VA","deployment_model":"GLOBAL","domain_id":"5f12de8c15049be9464eb26a","group_id":"5f12d8cc6c2bfd1e0c670f4a","last_used":1595072140,"last_modified":1595072140,"product":"standard"}
+// {"_id":"5f12de8c15049be9464eb269","client_app_id":"mad-elion-arays","name":"mad-elion","location":"US-VA","deployment_model":"GLOBAL","domain_id":"5f12de8c15049be9464eb26a","group_id":"5f12d8cc6c2bfd1e0c670f4a","last_used":1595072140,"last_modified":1595072140,"product":"standard"}
 type RealmApp struct {
 	Name            string `json:"name,omitempty"`
 	ID              string `json:"_id,omitempty"`
@@ -92,20 +89,19 @@ func (s *RealmAppsServiceOp) List(ctx context.Context, groupID string, listOptio
 	// Add query params from listOptions
 	path, err := setListOptions(path, listOptions)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot set list options")
 	}
 
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot create request")
 	}
 
-	//root := new(realmAppsResponse)
+	// root := new(realmAppsResponse)
 	root := make([]RealmApp, 0)
 	resp, err := s.Client.Do(ctx, req, &root)
 	if err != nil {
-		log.Printf("realmapps List - resp: %+v", resp)
-		return nil, resp, err
+		return nil, resp, errors.Wrap(err, "cannot do request")
 	}
 
 	return root, resp, nil
@@ -122,20 +118,18 @@ func (s *RealmAppsServiceOp) Get(ctx context.Context, groupID string, appID stri
 	escapedEntry := url.PathEscape(appID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
-
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot create request")
 	}
 
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
 	if err != nil {
-		return nil, resp, err
+		return nil, resp, errors.Wrap(err, "cannot do request")
 	}
 
-	return root, resp, err
+	return root, resp, nil
 }
 
 // Create an API Key by the {ORG-ID}.
@@ -147,20 +141,18 @@ func (s *RealmAppsServiceOp) Create(ctx context.Context, groupID string, createR
 
 	path := fmt.Sprintf(realmAppsPath, groupID)
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
-
 	req, err := s.Client.NewRequest(ctx, http.MethodPost, path, createRequest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot create request")
 	}
 
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
 	if err != nil {
-		return nil, resp, err
+		return nil, resp, errors.Wrap(err, "cannot do request")
 	}
 
-	return root, resp, err
+	return root, resp, nil
 }
 
 // Update a API Key in the organization associated to {ORG-ID}
@@ -174,20 +166,15 @@ func (s *RealmAppsServiceOp) Update(ctx context.Context, groupID, appID string, 
 	escapedEntry := url.PathEscape(appID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
-
 	req, err := s.Client.NewRequest(ctx, http.MethodPatch, path, updateRequest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot create request")
 	}
 
 	root := new(RealmApp)
 	resp, err := s.Client.Do(ctx, req, root)
-	if err != nil {
-		return nil, resp, err
-	}
 
-	return root, resp, err
+	return root, resp, errors.Wrap(err, "cannot do request")
 }
 
 // Delete the API Key specified to {API-KEY-ID} from the organization associated to {ORG-ID}.
@@ -201,13 +188,12 @@ func (s *RealmAppsServiceOp) Delete(ctx context.Context, groupID, appID string) 
 	escapedEntry := url.PathEscape(appID)
 	path := fmt.Sprintf("%s/%s", basePath, escapedEntry)
 
-	path = fmt.Sprintf("%s%s", realmDefaultBaseURL, path)
-
 	req, err := s.Client.NewRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create request")
 	}
 
 	resp, err := s.Client.Do(ctx, req, nil)
-	return resp, err
+
+	return resp, errors.Wrap(err, "cannot do request")
 }

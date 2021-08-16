@@ -21,7 +21,6 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 type BrokerAuth struct {
@@ -31,34 +30,17 @@ type BrokerAuth struct {
 }
 
 type Credentials struct {
-	aliases map[string]string
-	byOrg   map[string]APIKey
+	byAlias map[string]Credential
+	byOrg   map[string]Credential
 	Broker  *BrokerAuth
 }
 
 type keyList struct {
-	Keys   map[string]APIKey `json:"keys"`
-	Broker *BrokerAuth       `json:"broker"`
+	Keys   map[string]Credential `json:"keys"`
+	Broker *BrokerAuth           `json:"broker"`
 }
 
-type APIKey struct {
-	ID         string                   `json:"id,omitempty"`
-	Desc       string                   `json:"desc,omitempty"`
-	Roles      []mongodbatlas.AtlasRole `json:"roles,omitempty"`
-	PrivateKey string                   `json:"privateKey,omitempty"`
-	PublicKey  string                   `json:"publicKey,omitempty"`
-	OrgID      string                   `json:"orgID,omitempty"`
-}
-
-func (k APIKey) MongoKey() mongodbatlas.APIKey {
-	return mongodbatlas.APIKey{
-		ID:         k.ID,
-		Desc:       k.Desc,
-		Roles:      k.Roles,
-		PrivateKey: k.PrivateKey,
-		PublicKey:  k.PublicKey,
-	}
-}
+type Credential map[string]string
 
 type credHub struct {
 	BindingName string  `json:"binding_name"`
@@ -78,18 +60,20 @@ func FromCredHub(baseURL string) (*Credentials, error) {
 
 	services := &services{}
 	if err := json.Unmarshal([]byte(env), services); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal VCAP_SERVICES: %v", err)
+		return nil, fmt.Errorf("cannot unmarshal VCAP_SERVICES: %w", err)
 	}
 
 	result := Credentials{
-		aliases: map[string]string{},
-		byOrg:   map[string]APIKey{},
+		byAlias: map[string]Credential{},
+		byOrg:   map[string]Credential{},
 	}
 
 	for _, c := range append(services.CredHub, services.UserProvided...) {
 		for k, v := range c.KeyList.Keys {
-			result.aliases[k] = v.OrgID
-			result.byOrg[v.OrgID] = v
+			result.byAlias[k] = v
+			if oid, ok := v["orgID"]; ok {
+				result.byOrg[oid] = v
+			}
 		}
 
 		if c.KeyList.Broker != nil {
@@ -98,7 +82,7 @@ func FromCredHub(baseURL string) (*Credentials, error) {
 	}
 
 	if err := result.validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate credentials: %v", err)
+		return nil, fmt.Errorf("failed to validate credentials: %w", err)
 	}
 
 	return &result, nil
@@ -111,39 +95,41 @@ func FromEnv(baseURL string) (*Credentials, error) {
 	}
 
 	keys := keyList{
-		Keys:   map[string]APIKey{},
+		Keys:   map[string]Credential{},
 		Broker: &BrokerAuth{},
 	}
 
 	if err := json.Unmarshal([]byte(env), &keys); err != nil {
 		file, err := os.Open(env)
 		if err != nil {
-			return nil, fmt.Errorf("cannot find BROKER_APIKEYS: %v", err)
+			return nil, fmt.Errorf("cannot find BROKER_APIKEYS: %w", err)
 		}
 		defer file.Close()
 
 		fileData, err := ioutil.ReadAll(file)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read BROKER_APIKEYS: %v", err)
+			return nil, fmt.Errorf("cannot read BROKER_APIKEYS: %w", err)
 		}
 		if err := json.Unmarshal(fileData, &keys); err != nil {
-			return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %v", err)
+			return nil, fmt.Errorf("cannot unmarshal BROKER_APIKEYS: %w", err)
 		}
 	}
 
 	result := Credentials{
-		aliases: map[string]string{},
-		byOrg:   map[string]APIKey{},
+		byAlias: map[string]Credential{},
+		byOrg:   map[string]Credential{},
 		Broker:  keys.Broker,
 	}
 
 	for k, v := range keys.Keys {
-		result.aliases[k] = v.OrgID
-		result.byOrg[v.OrgID] = v
+		result.byAlias[k] = v
+		if oid, ok := v["orgID"]; ok {
+			result.byOrg[oid] = v
+		}
 	}
 
 	if err := result.validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate credentials: %v", err)
+		return nil, fmt.Errorf("failed to validate credentials: %w", err)
 	}
 
 	return &result, nil
@@ -161,27 +147,24 @@ func (c *Credentials) validate() error {
 	return nil
 }
 
-func (c *Credentials) ByAlias(alias string) (APIKey, error) {
-	id, ok := c.aliases[alias]
+func (c *Credentials) ByAlias(alias string) (Credential, error) {
+	k, ok := c.byAlias[alias]
 	if !ok {
-		return APIKey{}, fmt.Errorf("no organization ID for alias %q", alias)
+		return Credential{}, fmt.Errorf("no API key for alias %q", alias)
 	}
 
+	return k, nil
+}
+
+func (c *Credentials) ByOrg(id string) (Credential, error) {
 	k, ok := c.byOrg[id]
 	if !ok {
 		return k, fmt.Errorf("no API key for organization %s", id)
 	}
+
 	return k, nil
 }
 
-func (c *Credentials) ByOrg(id string) (APIKey, error) {
-	k, ok := c.byOrg[id]
-	if !ok {
-		return k, fmt.Errorf("no API key for organization %s", id)
-	}
-	return k, nil
-}
-
-func (c *Credentials) Keys() map[string]APIKey {
+func (c *Credentials) Keys() map[string]Credential {
 	return c.byOrg
 }

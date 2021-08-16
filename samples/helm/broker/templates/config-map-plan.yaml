@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plans
+  namespace: {{ .Release.Namespace }}
+data:
+  {{ range $path, $bytes := .Files.Glob "plan/*.tpl" }}
+  {{- base $path }}: |-
+    {{- $bytes | toString | nindent 4 }}
+  {{ end }}
+  

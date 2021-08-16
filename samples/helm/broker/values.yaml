@@ -1,0 +1,24 @@
+# Atlas-osb image
+image: leori/test:atlas
+
+# Atlas Credentials
+atlas:
+  orgId: orgId
+  publicKey: public-key
+  privateKey: private-key-is-here
+
+#brokers enviromet variables and keys
+broker:
+  auth:
+    username: "admin"
+    password: "admin"
+  deployment:
+    atlasBaseURL: "https://cloud.mongodb.com/api/atlas/v1.0/"
+    realmBaseURL: "https://realm.mongodb.com/api/admin/v3.0/"
+    logLevel: "DEBUG"
+    host: "0.0.0.0"
+    port: "4000"
+    serviceName: "atlas"
+
+cluster:
+  planName: basic-overrides-plan

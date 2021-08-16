@@ -32,6 +32,7 @@ const idPrefix = "aosb-cluster"
 func (b *Broker) Services(ctx context.Context) ([]domain.Service, error) {
 	logger := b.funcLogger()
 	logger.Info("Retrieving service catalog")
+
 	return b.catalog.services, nil
 }
 
@@ -73,7 +74,6 @@ func (b *Broker) buildServiceTemplate() (service domain.Service) {
 
 func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 	logger := b.funcLogger()
-	var plans []domain.ServicePlan
 
 	templates, err := dynamicplans.FromEnv()
 	if err != nil {
@@ -84,18 +84,22 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 		"credentials": b.credentials,
 	}
 
+	plans := make([]domain.ServicePlan, 0, len(templates))
+
 	for _, template := range templates {
 		raw := new(bytes.Buffer)
 
 		err := template.Execute(raw, planContext)
 		if err != nil {
 			logger.Errorf("cannot execute template %q: %v", template.Name(), err)
+
 			continue
 		}
 
 		p := dynamicplans.Plan{}
 		if err := yaml.NewDecoder(raw).Decode(&p); err != nil {
 			logger.Errorw("cannot decode yaml template", "name", template.Name(), "error", err)
+
 			continue
 		}
 
@@ -109,6 +113,7 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 					"name", template.Name(),
 					"error", ".cluster.providerSettings.providerName must not be empty",
 				)
+
 				continue
 			}
 			if p.Cluster.ProviderSettings.InstanceSizeName == "" {
@@ -117,6 +122,7 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 					"name", template.Name(),
 					"error", ".cluster.providerSettings.instanceSizeName must not be empty",
 				)
+
 				continue
 			}
 		}
@@ -136,6 +142,7 @@ func (b *Broker) buildPlansForProviderDynamic() []domain.ServicePlan {
 			},
 		}
 		plans = append(plans, plan)
+
 		continue
 	}
 

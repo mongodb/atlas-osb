@@ -8,8 +8,8 @@ if [[ "$TYPE" == "branch" ]]; then
     echo "$TYPE's orgs $branch_name will be deleted"
 
     cf_login
-    cf target -o "$ORG_NAME"
-    
+    cf target -o "$ORG_PREFIX$BRANCH"
+
     empty=$(cf spaces | awk '/No spaces found/{print "true"}')
     if ! "$empty"; then
     echo "not empty"
@@ -18,7 +18,7 @@ if [[ "$TYPE" == "branch" ]]; then
             cf delete-space "$space" -f
         done
     fi
-    
+
     #the rest spaces have problems and should be purged
     empty=$(cf spaces | awk '/No spaces found/{print "true"}')
     if ! "$empty"; then

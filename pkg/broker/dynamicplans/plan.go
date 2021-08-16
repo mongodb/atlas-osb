@@ -17,37 +17,44 @@ package dynamicplans
 import (
 	"encoding/json"
 
-	"github.com/jinzhu/copier"
-	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
+	"github.com/mongodb/atlas-osb/pkg/broker/privateendpoint"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
 // Plan represents a set of MongoDB Atlas resources
 type Plan struct {
-	Version             string                             `json:"version,omitempty"`
-	Name                string                             `json:"name,omitempty"`
-	Description         string                             `json:"description,omitempty"`
-	Free                *bool                              `json:"free,omitempty"`
-	APIKey              *credentials.APIKey                `json:"apiKey,omitempty"`
-	Project             *mongodbatlas.Project              `json:"project,omitempty"`
-	Cluster             *mongodbatlas.Cluster              `json:"cluster,omitempty"`
-	DatabaseUsers       []*mongodbatlas.DatabaseUser       `json:"databaseUsers,omitempty"`
-	IPWhitelists        []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
-	DefaultBindingRoles *[]mongodbatlas.Role               `json:"defaultBindingRoles"`
-	Bindings            []*Binding                         `json:"bindings,omitempty"` // READ ONLY! Populated by bind()
+	Version          string                                `json:"version,omitempty"`
+	Name             string                                `json:"name,omitempty"`
+	Description      string                                `json:"description,omitempty"`
+	Free             *bool                                 `json:"free,omitempty"`
+	APIKey           map[string]string                     `json:"apiKey,omitempty"`
+	Project          *mongodbatlas.Project                 `json:"project,omitempty"`
+	Cluster          *mongodbatlas.Cluster                 `json:"cluster,omitempty"`
+	DatabaseUsers    []*mongodbatlas.DatabaseUser          `json:"databaseUsers,omitempty"`
+	IPAccessLists    []*mongodbatlas.ProjectIPAccessList   `json:"ipAccessLists,omitempty"`
+	Integrations     []*mongodbatlas.ThirdPartyIntegration `json:"integrations,omitempty"`
+	PrivateEndpoints privateendpoint.PrivateEndpoints      `json:"privateEndpoints,omitempty"`
 
-	Settings map[string]string `json:"settings,omitempty"`
+	Settings map[string]interface{} `json:"settings,omitempty"`
+
+	// Deprecated: Use IPAccessLists instead!
+	IPWhitelists []*mongodbatlas.ProjectIPWhitelist `json:"ipWhitelists,omitempty"`
 }
 
 func (p *Plan) SafeCopy() Plan {
-	safe := Plan{}
-	err := copier.Copy(&safe, p)
+	b, err := json.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 
-	if safe.APIKey != nil && safe.APIKey.PrivateKey != "" {
-		safe.APIKey.PrivateKey = "*REDACTED*"
+	safe := Plan{}
+	err = json.Unmarshal(b, &safe)
+	if err != nil {
+		panic(err)
+	}
+
+	if safe.APIKey != nil && safe.APIKey["privateKey"] != "" {
+		safe.APIKey["privateKey"] = "*REDACTED*"
 	}
 
 	for i := range safe.DatabaseUsers {
@@ -60,10 +67,10 @@ func (p *Plan) SafeCopy() Plan {
 }
 
 func (p Plan) String() string {
-	s, _ := json.Marshal(p)
-	return string(s)
-}
+	s, err := json.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
 
-// Binding info
-type Binding struct {
+	return string(s)
 }

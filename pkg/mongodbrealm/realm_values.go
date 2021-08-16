@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/pkg/errors"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
 
@@ -34,6 +35,7 @@ func (c *Client) RealmValueFromString(key string, value string) (*RealmValue, er
 		Name:  key,
 		Value: json.RawMessage(value), // ????
 	}
+
 	return v, nil
 }
 
@@ -63,9 +65,9 @@ type RealmValue struct {
 }
 
 // realmValuesResponse is the response from the RealmValuesService.List.
-//type realmValuesResponse struct {
+// type realmValuesResponse struct {
 //        Apps []RealmValue
-//}
+// }
 
 // List all API-KEY in the organization associated to {ORG-ID}.
 // See more: https://docs.atlas.mongodb.com/reference/api/apiKeys-orgs-get-all/
@@ -75,21 +77,18 @@ func (s *RealmValuesServiceOp) List(ctx context.Context, groupID string, appID s
 	// Add query params from listOptions
 	path, err := setListOptions(path, listOptions)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot set list options")
 	}
 
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot create request")
 	}
 
 	root := make([]RealmValue, 0)
 	resp, err := s.Client.Do(ctx, req, &root)
-	if err != nil {
-		return nil, resp, err
-	}
 
-	return root, resp, nil
+	return root, resp, errors.Wrap(err, "cannot do request")
 }
 
 // Get gets the RealmValue specified to {API-KEY-ID} from the organization associated to {ORG-ID}.
@@ -105,16 +104,13 @@ func (s *RealmValuesServiceOp) Get(ctx context.Context, groupID string, appID st
 
 	req, err := s.Client.NewRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot create request")
 	}
 
 	root := new(RealmValue)
 	resp, err := s.Client.Do(ctx, req, root)
-	if err != nil {
-		return nil, resp, err
-	}
 
-	return root, resp, err
+	return root, resp, errors.Wrap(err, "cannot do request")
 }
 
 // Create an API Key by the {ORG-ID}.
@@ -128,16 +124,13 @@ func (s *RealmValuesServiceOp) Create(ctx context.Context, groupID string, appID
 
 	req, err := s.Client.NewRequest(ctx, http.MethodPost, path, createRequest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot create request")
 	}
 
 	root := new(RealmValue)
 	resp, err := s.Client.Do(ctx, req, root)
-	if err != nil {
-		return nil, resp, err
-	}
 
-	return root, resp, err
+	return root, resp, errors.Wrap(err, "cannot do request")
 }
 
 // Update a API Key in the organization associated to {ORG-ID}
@@ -153,16 +146,13 @@ func (s *RealmValuesServiceOp) Update(ctx context.Context, groupID string, appID
 
 	req, err := s.Client.NewRequest(ctx, http.MethodPatch, path, updateRequest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "cannot create request")
 	}
 
 	root := new(RealmValue)
 	resp, err := s.Client.Do(ctx, req, root)
-	if err != nil {
-		return nil, resp, err
-	}
 
-	return root, resp, err
+	return root, resp, errors.Wrap(err, "cannot do request")
 }
 
 // Delete the API Key specified to {API-KEY-ID} from the organization associated to {ORG-ID}.
@@ -178,10 +168,10 @@ func (s *RealmValuesServiceOp) Delete(ctx context.Context, groupID, appID string
 
 	req, err := s.Client.NewRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create request")
 	}
 
 	resp, err := s.Client.Do(ctx, req, nil)
 
-	return resp, err
+	return resp, errors.Wrap(err, "cannot do request")
 }

@@ -1,0 +1,41 @@
+#demo: create service instance
+
+on:
+  workflow_dispatch:
+    input:
+      namespace:
+        description: "k8s Namespace"
+        required: false
+      service_name:
+        description: "Service instance name"
+        required: false
+
+name: K8s Demo.
+
+jobs:
+  k8s-demo-instance:
+    name: Create service instance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Create service instance
+        with:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          NAMESPACE: ${{ github.event.inputs.namespace }}
+          SERVICE: ${{ github.event.inputs.service_name }}
+        run: |
+          set -e
+          ./.github/base-dockerfile/helpers/install_k8s_helm.sh
+          source ".github/base-dockerfile/helpers/params.sh"
+
+          #prepare env
+          echo "$INPUT_KUBE_CONFIG_DATA" >> ./kube.config
+          export KUBECONFIG="./kube.config"
+
+          helm install "${K_SERVICE}" samples/helm/sample-service/ \
+            --set broker.auth.username="${K_DEFAULT_USER}" \
+            --set broker.auth.password="${K_DEFAULT_PASS}" \
+            --namespace "${K_NAMESPACE}" --wait --timeout 60m
+
+          kubectl get all -n "${K_NAMESPACE}"

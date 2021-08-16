@@ -3,15 +3,45 @@
 
 cf_login() {
   local org=$1
-  local sys=$2
+  local space=$2
 
   if [[ -z $org ]]; then
     org="system"
   fi
-  if [[ -z $sys ]]; then
-    sys="system"
+  if [[ -z $space ]]; then
+    space="system"
   fi
-  cf login -a "$INPUT_CF_API" -u "$INPUT_CF_USER" -p "$INPUT_CF_PASSWORD" --skip-ssl-validation -o ${org} -s ${sys}
+
+  make_pcf_metadata "$INPUT_CF_URL" "$INPUT_CF_USER" "$INPUT_CF_PASSWORD"
+  local cf_app_url="api.$(pcf cf-info | grep system_domain | cut -d' ' -f 3)"
+  local cf_app_user="$(pcf cf-info | grep admin_username | cut -d' ' -f 3)"
+  local cf_app_password="$(pcf cf-info | grep admin_password | cut -d' ' -f 3)"
+
+  cf login -a "$cf_app_url" -u "$cf_app_user" -p "$cf_app_password" --skip-ssl-validation -o "$org"
+
+  if [[ $org == "system" && $space == "system" ]]; then
+    cf create-space ${space} -o ${org}
+  fi
+
+  cf target -o ${org} -s ${space}
+}
+
+# required by `pcf` tool
+make_pcf_metadata() {
+	local PCF_URL=$1
+	local PCF_USERNAME=$2
+	local PCF_PASSWORD=$3
+	file="metadata"
+	if [ -f $file ]; then
+		rm $file
+	fi
+	cat >$file <<EOF
+---
+opsmgr:
+  url: "${PCF_URL}"
+  username: "${PCF_USERNAME}"
+  password: "${PCF_PASSWORD}"
+EOF
 }
 
 #cf.helper. wait for particular service status
