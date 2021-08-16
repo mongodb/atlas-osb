@@ -35,7 +35,7 @@ SERVICE_ATLAS
 */
 
 type KeyList struct {
-	Keys   map[string]c.APIKey `json:"keys"`
+	Keys   map[string]c.Credential `json:"keys"`
 	Broker *c.BrokerAuth       `json:"broker"`
 }
 type PCF struct {
@@ -114,14 +114,14 @@ func setUp() {
 		Password: os.Getenv("INPUT_CF_PASSWORD"),
 	}
 
-	keys := c.APIKey{
-		OrgID:      os.Getenv("INPUT_ATLAS_ORG_ID"),
-		PublicKey:  os.Getenv("INPUT_ATLAS_PUBLIC_KEY"),
-		PrivateKey: os.Getenv("INPUT_ATLAS_PRIVATE_KEY"),
+	keys := c.Credential{
+		"OrgID":      os.Getenv("INPUT_ATLAS_ORG_ID"),
+		"PublicKey":  os.Getenv("INPUT_ATLAS_PUBLIC_KEY"),
+		"PrivateKey": os.Getenv("INPUT_ATLAS_PRIVATE_KEY"),
 	}
 
 	APIKeys = KeyList{
-		Keys: map[string]c.APIKey{
+		Keys: map[string]c.Credential{
 			TKey: keys,
 		},
 		Broker: &c.BrokerAuth{
@@ -135,11 +135,11 @@ func setUp() {
 		"User":     Not(BeEmpty()),
 		"Password": Not(BeEmpty()),
 	}))
-	Expect(APIKeys.Keys[TKey]).To(MatchFields(IgnoreExtras, Fields{
-		"OrgID":      Not(BeEmpty()),
-		"PublicKey":  Not(BeEmpty()),
-		"PrivateKey": Not(BeEmpty()),
-	}))
+
+	Expect(APIKeys.Keys[TKey]).Should(HaveKeyWithValue("OrgID", Not(BeEmpty())))
+	Expect(APIKeys.Keys[TKey]).Should(HaveKeyWithValue("PublicKey", Not(BeEmpty())))
+	Expect(APIKeys.Keys[TKey]).Should(HaveKeyWithValue("PrivateKey", Not(BeEmpty())))
+
 	Expect(APIKeys.Broker).To(PointTo(MatchFields(IgnoreExtras, Fields{
 		"Username": Not(BeEmpty()),
 		"Password": Not(BeEmpty()),
@@ -147,7 +147,7 @@ func setUp() {
 }
 
 func AClient() *mongodbatlas.Client {
-	t := digest.NewTransport(APIKeys.Keys[TKey].PublicKey, APIKeys.Keys[TKey].PrivateKey)
+	t := digest.NewTransport(APIKeys.Keys["TKey"]["PublicKey"], APIKeys.Keys["TKey"]["PrivateKey"])
 	tc, err := t.Client()
 	if err != nil {
 		panic(err)

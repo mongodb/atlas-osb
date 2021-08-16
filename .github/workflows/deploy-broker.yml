@@ -98,7 +98,7 @@ jobs:
         id: gotest1
         uses: ./.github/actions/gotest
         with:
-          cf_api: ${{ secrets.CF_API }}
+          cf_api: ${{ secrets.CF_URL }}
           cf_user: ${{ secrets.CF_USER }}
           cf_password: ${{ secrets.CF_PASSWORD }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
