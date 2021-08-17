@@ -155,6 +155,8 @@ func (b Broker) Unbind(ctx context.Context, instanceID string, bindingID string,
 
 	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
+		logger.Errorw("Failed to get existing client", "error", err)
+
 		return
 	}
 
