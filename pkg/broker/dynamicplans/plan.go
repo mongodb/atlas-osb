@@ -89,6 +89,7 @@ func (p *Plan) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("failed to fix the plan with error: %w", err)
 		}
 
+		pl.APIKey["orgID"] = pl.Project.OrgID
 		pl.APIKey["orgId"] = pl.Project.OrgID
 	}
 
