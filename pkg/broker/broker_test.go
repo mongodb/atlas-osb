@@ -12,7 +12,7 @@ const testDataDir = "../../test/data"
 
 func TestDecodePlan(t *testing.T) {
 	t.Run("Plan with current version of the apiKey field", func(t *testing.T) {
-		planData, err := os.ReadFile(testDataDir + "/realmPlan.json")
+		planData, err := os.ReadFile(testDataDir + "/realm-plan.json")
 		if err != nil {
 			t.Fatalf("err: %s", err)
 		}
@@ -36,7 +36,7 @@ func TestDecodePlan(t *testing.T) {
 	})
 
 	t.Run("Plan with an old version of the apiKey field", func(t *testing.T) {
-		planData, err := os.ReadFile(testDataDir + "/realmPlanOld.json")
+		planData, err := os.ReadFile(testDataDir + "/realm-plan-old.json")
 		if err != nil {
 			t.Fatalf("err: %s", err)
 		}
