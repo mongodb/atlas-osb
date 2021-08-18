@@ -90,7 +90,12 @@ func (p *Plan) UnmarshalJSON(data []byte) error {
 		}
 
 		pl.APIKey["orgID"] = pl.Project.OrgID
-		pl.APIKey["orgId"] = pl.Project.OrgID
+	}
+
+	// fix camelcase for "orgID" in a map
+	if _, ok := pl.APIKey["orgId"]; ok {
+		pl.APIKey["orgID"] = pl.APIKey["orgId"]
+		delete(pl.APIKey, "orgId")
 	}
 
 	*p = Plan(pl)

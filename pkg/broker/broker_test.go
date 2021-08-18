@@ -44,7 +44,7 @@ func TestDecodePlan(t *testing.T) {
 			t.Fatal(errors.New("Failed to parse the plan"))
 		}
 
-		if plan.APIKey["orgId"] == "" {
+		if plan.APIKey["orgID"] == "" {
 			t.Fatal(errors.New("Failed to parse apiKey.orgID from the plan"))
 		}
 	})
@@ -81,7 +81,7 @@ func TestDecodePlan(t *testing.T) {
 		}
 		t.Log(plan)
 
-		if plan.APIKey["orgId"] == "" {
+		if plan.APIKey["orgID"] == "" {
 			t.Fatal(errors.New("Failed to parse apiKey.orgID from the plan"))
 		}
 	})
