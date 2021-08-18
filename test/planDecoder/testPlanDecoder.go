@@ -40,7 +40,7 @@ func main() {
 		panic(errors.New("Failed to parse the plan"))
 	}
 
-	if plan.APIKey["orgId"] == "" {
+	if plan.APIKey["orgID"] == "" {
 		panic(errors.New("Failed to parse apiKey.orgID from the plan"))
 	}
 
