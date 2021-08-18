@@ -16,7 +16,9 @@ package dynamicplans
 
 import (
 	"encoding/json"
+	"fmt"
 
+	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"github.com/mongodb/atlas-osb/pkg/broker/privateendpoint"
 	"go.mongodb.org/atlas/mongodbatlas"
 )
@@ -27,7 +29,7 @@ type Plan struct {
 	Name             string                                `json:"name,omitempty"`
 	Description      string                                `json:"description,omitempty"`
 	Free             *bool                                 `json:"free,omitempty"`
-	APIKey           map[string]string                     `json:"apiKey,omitempty"`
+	APIKey           credentials.Credential                `json:"apiKey,omitempty"`
 	Project          *mongodbatlas.Project                 `json:"project,omitempty"`
 	Cluster          *mongodbatlas.Cluster                 `json:"cluster,omitempty"`
 	DatabaseUsers    []*mongodbatlas.DatabaseUser          `json:"databaseUsers,omitempty"`
@@ -73,4 +75,24 @@ func (p Plan) String() string {
 	}
 
 	return string(s)
+}
+
+func (p *Plan) UnmarshalJSON(data []byte) error {
+	type plan Plan
+
+	var pl plan
+	err := json.Unmarshal(data, &pl)
+
+	// try to fix the plan in case of an error
+	if err != nil && pl.APIKey != nil {
+		if pl.Project.OrgID == "" {
+			return fmt.Errorf("failed to fix the plan with error: %w", err)
+		}
+
+		pl.APIKey["orgID"] = pl.Project.OrgID
+	}
+
+	*p = Plan(pl)
+
+	return nil
 }
