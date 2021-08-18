@@ -34,8 +34,6 @@ func main() {
 		panic(fmt.Errorf("err: %w", err))
 	}
 
-	// fmt.Println(plan)
-
 	if plan.APIKey == nil || plan.Name == "" {
 		panic(errors.New("Failed to parse the plan"))
 	}

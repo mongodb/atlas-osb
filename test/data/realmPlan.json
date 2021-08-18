@@ -4,7 +4,7 @@
         "id": "atlas-osb-api-key",
         "privateKey": "<key>",
         "publicKey": "<ksy>",
-        "orgId": "<orgid>"
+        "orgID": "<orgid>"
     },
     "cluster": {
         "labels": [
@@ -13,7 +13,7 @@
                 "value": "MongoDB Atlas Service Broker"
             }
         ],
-        "name": "gitlabEmpRpt-svc-new",
+        "name": "<name>",
         "providerBackupEnabled": true,
         "providerSettings": {
             "diskTypeName": "P4",
@@ -37,7 +37,7 @@
     "name": "M10-small",
     "project": {
         "id": "<id>",
-        "name": "gitlabEmpRpt-svc-new",
+        "name": "<name>",
         "orgId": "<id>"
     },
     "settings": {

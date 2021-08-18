@@ -51,6 +51,8 @@ func (b Broker) Bind(ctx context.Context, instanceID string, bindingID string, d
 
 	client, p, err := b.getClient(ctx, instanceID, details.PlanID, nil)
 	if err != nil {
+		logger.Errorw("Failed to get existing client", "error", err)
+
 		return
 	}
 

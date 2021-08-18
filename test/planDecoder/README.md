@@ -6,10 +6,10 @@ Supports `.json` files or `base64` text files.
 
 #### `JSON`
 ```
-    go run test/planDecoder/testPlanDecoder.go ./test/planDecoder/examplePlan.json 
+    go run test/planDecoder/testPlanDecoder.go ./test/data/realmPlan.json
 ```
 
 #### `base64`
 ```
-    go run test/planDecoder/testPlanDecoder.go ./test/planDecoder/examplePlan.txt 
+    go run test/planDecoder/testPlanDecoder.go ./test/data/realmPlan.b64
 ```
