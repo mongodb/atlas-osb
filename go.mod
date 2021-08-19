@@ -30,6 +30,7 @@ require (
 	github.com/pivotal-cf-experimental/cf-test-helpers v0.0.0-20170428144005-e56b6ec41da9
 	github.com/pivotal-cf/brokerapi v5.1.0+incompatible
 	github.com/pkg/errors v0.9.1
+	github.com/sethvargo/go-password v0.2.0
 	go.mongodb.org/atlas v0.7.2
 	go.mongodb.org/mongo-driver v1.5.1
 	go.uber.org/zap v1.16.0

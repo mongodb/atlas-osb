@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -18,15 +17,35 @@ import (
 	. "github.com/onsi/gomega/gexec"
 	. "github.com/onsi/gomega/gstruct"
 
+	"github.com/mongodb/atlas-osb/test/cfe2e/model/atlaskey"
+	"github.com/mongodb/atlas-osb/test/cfe2e/model/cf"
+	apptest "github.com/mongodb/atlas-osb/test/cfe2e/utils/apptest"
 	cfc "github.com/pivotal-cf-experimental/cf-test-helpers/cf"
 )
 
 var _ = Describe("Feature: Atlas broker supports basic template", func() {
-
+	var APIKeys atlaskey.KeyList
 	When("Given names and plan template", func() {
 		It("Should pass flow", func() {
+			By("Set up", func() {
+				APIKeys = atlaskey.NewAtlasKeys()
+				Expect(APIKeys.Keys[TKey]).Should(HaveKeyWithValue("orgID", Not(BeEmpty())))
+				Expect(APIKeys.Keys[TKey]).Should(HaveKeyWithValue("publicKey", Not(BeEmpty())))
+				Expect(APIKeys.Keys[TKey]).Should(HaveKeyWithValue("privateKey", Not(BeEmpty())))
+				Expect(APIKeys.Broker).To(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Username": Not(BeEmpty()),
+					"Password": Not(BeEmpty()),
+				})))
+			})
 			By("Can login to CF and create organization", func() {
-				Eventually(cfc.Cf("login", "-a", PCFKeys.Endpoint, "-u", PCFKeys.User, "-p", PCFKeys.Password, "--skip-ssl-validation")).Should(Say("OK"))
+				Expect(APIKeys.Keys[TKey]).Should(HaveKeyWithValue("publicKey", Not(BeEmpty())))
+				PCFKeys := cf.NewCF()
+				Expect(PCFKeys).To(MatchFields(IgnoreExtras, Fields{
+					"URL":      Not(BeEmpty()),
+					"User":     Not(BeEmpty()),
+					"Password": Not(BeEmpty()),
+				}))
+				Eventually(cfc.Cf("login", "-a", PCFKeys.URL, "-u", PCFKeys.User, "-p", PCFKeys.Password, "--skip-ssl-validation")).Should(Say("OK"))
 				Eventually(cfc.Cf("create-org", orgName)).Should(Say("OK"))
 				Eventually(cfc.Cf("target", "-o", orgName)).Should(Exit(0))
 				Eventually(cfc.Cf("create-space", spaceName)).Should(Exit(0))
@@ -80,20 +99,18 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				s := cfc.Cf("restart", testApp)
 				Eventually(s, "2m", "10s").Should(Exit(0))
 				Eventually(s, "2m", "10s").Should(Say("running"))
+				Eventually(cfc.Cf("app", testApp), "5m", "10s").Should(Say("running"))
 				appURL = string(regexp.MustCompile(`routes:[ ]*(.+)`).FindSubmatch(s.Out.Contents())[1])
 				Expect(appURL).ShouldNot(BeEmpty())
 			})
 			By("Can send data to cluster and get it back", func() {
-				// appURL = "simple-ruby.apps.sanmarcos.cf-app.com"
-				URL := fmt.Sprintf("http://%s/service/mongo/test", appURL)
-				ds := `{"data":"somesimpletest130"}` //TODO gen
+				//	appURL = "simple.apps.spanishgray.cf-app.com" // TODO REMOVE!!!!!
+				data := `{"data":"somesimpletest130"}` //TODO gen
 
-				respCode := putData(URL, ds)
-				Expect(respCode).Should(Equal(200))
-
-				respCode, answer := getData(URL)
-				Expect(respCode).Should(Equal(200))
-				Expect(answer).To(Equal(ds))
+				app := apptest.NewTestAppClient("http://" + appURL)
+				Expect(app.Get("")).Should(Equal("hello from sinatra"))
+				Expect(app.PutData("/service/mongo/test", data)).ShouldNot(HaveOccurred())
+				Expect(app.Get("/service/mongo/test")).Should(Equal(data))
 			})
 			By("Possible to create service-key", func() {
 				Eventually(cfc.Cf("create-service-key", serviceIns, "atlasKey")).Should(Say("OK"))
@@ -103,8 +120,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			By("Backup is active as default", func() {
 				path := fmt.Sprintf("data/%s.yml.tpl", planName)
 				backup := getBackupStateFromPlanConfig(path)
-
-				AC := AClient()
+				AC := AClient(APIKeys.Keys[TKey])
 				projectInfo, _, _ := AC.Projects.GetOneProjectByName(context.Background(), serviceIns)
 				clusterInfo, _, _ := AC.Clusters.Get(context.Background(), projectInfo.ID, serviceIns)
 				Expect(clusterInfo.ProviderBackupEnabled).To(PointTo(Equal(backup)))
@@ -115,7 +131,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				waitServiceStatus(serviceIns, "update succeeded")
 
 				// get the real size
-				AC := AClient()
+				AC := AClient(APIKeys.Keys[TKey])
 				projectInfo, _, err := AC.Projects.GetOneProjectByName(context.Background(), serviceIns)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(projectInfo.ID).ShouldNot(BeEmpty())
@@ -123,24 +139,19 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				Expect(clusterInfo.ProviderSettings.InstanceSizeName).Should(Equal(newSize))
 			})
 			By("Possible to continue using app after update", func() {
-				// appURL = "simple-app-serial-tests-bc0f0d9-2.apps.sanmarcos.cf-app.com"
-				URL := fmt.Sprintf("http://%s/service/mongo/test", appURL)
-				ds := `{"data":"somesimpletest130"}` //TODO gen
-				respCode, answer := getData(URL)
-				Expect(respCode).Should(Equal(200))
-				Expect(answer).To(Equal(ds))
+				// URL := fmt.Sprintf("http://%s/service/mongo/test", appURL)
+				data := `{"data":"somesimpletest130"}` //TODO gen
+				app := apptest.NewTestAppClient("http://" + appURL)
+				Expect(app.Get("/service/mongo/test")).Should(Equal(data))
 			})
 			By("Possible to PUT new data after update", func() {
-				// appURL = "simple-app-serial-tests-bc0f0d9-2.apps.sanmarcos.cf-app.com"
-				URL := fmt.Sprintf("http://%s/service/mongo/test2", appURL)
-				ds := `{"data":"somesimpletest130update"}` //TODO gen
+				// URL := fmt.Sprintf("http://%s/service/mongo/test2", appURL)
+				data := `{"data":"somesimpletest130update"}` //TODO gen
 
-				respCode := putData(URL, ds)
-				Expect(respCode).Should(Equal(200))
+				app := apptest.NewTestAppClient("http://" + appURL)
+				Expect(app.PutData("/service/mongo/test2", data)).ShouldNot(HaveOccurred())
+				Expect(app.Get("/service/mongo/test2")).Should(Equal(data))
 
-				respCode, answer := getData(URL)
-				Expect(respCode).Should(Equal(200))
-				Expect(answer).To(Equal(ds))
 			})
 			//TODO move to tierdown
 			By("Possible to delete service-key", func() {
@@ -195,7 +206,7 @@ func waitServiceStatus(serviceName string, expectedStatus string) {
 	waiting := true
 	try := 0
 	for waiting {
-		time.Sleep(1 * time.Minute) //TODO :\\
+		time.Sleep(1 * time.Minute) //TODO
 		try++
 		s := cfc.Cf("service", serviceName)
 		EventuallyWithOffset(1, s).Should(Exit(0))
@@ -211,31 +222,6 @@ func waitServiceStatus(serviceName string, expectedStatus string) {
 			ExpectWithOffset(1, true).Should(Equal(false)) //TODO call fail
 		}
 	}
-}
-
-func putData(appURL string, ds string) int {
-	r, err := http.NewRequest("PUT", appURL, strings.NewReader(ds))
-	ExpectWithOffset(1, err).ShouldNot(HaveOccurred())
-	client := &http.Client{}
-
-	resp, err := client.Do(r)
-	if err != nil {
-		GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
-	}
-	defer resp.Body.Close()
-	ExpectWithOffset(1, err).ShouldNot(HaveOccurred())
-	return resp.StatusCode
-}
-
-func getData(appURL string) (int, string) {
-	resp, err := http.Get(appURL) //nolint
-	if err != nil {
-		GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get response %s", err)))
-	}
-	ExpectWithOffset(1, err).ShouldNot(HaveOccurred())
-	defer resp.Body.Close()
-	responseData, _ := ioutil.ReadAll(resp.Body)
-	return resp.StatusCode, string(responseData)
 }
 
 func getBackupStateFromPlanConfig(path string) bool {
