@@ -5,13 +5,13 @@ import (
 	"os/exec"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega/gexec"
 )
 
 func Execute(command string, args ...string) *gexec.Session {
-	GinkgoWriter.Write([]byte("\n " + command + " " + strings.Join(args, " ") + "\n"))
-	return ExecuteCommand(GinkgoWriter, command, args...)
+	ginkgo.GinkgoWriter.Write([]byte("\n " + command + " " + strings.Join(args, " ") + "\n"))
+	return ExecuteCommand(ginkgo.GinkgoWriter, command, args...)
 }
 
 func ExecuteWithoutWriter(command string, args ...string) *gexec.Session {

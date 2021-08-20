@@ -41,6 +41,7 @@ issues:
   exclude-rules:
     - path: test
       linters:
+        - errcheck
         - gocyclo
         - gochecknoglobals
         - wrapcheck

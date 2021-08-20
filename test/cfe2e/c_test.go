@@ -52,8 +52,8 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				Eventually(cfc.Cf("target", "-s", spaceName)).Should(Exit(0))
 			})
 			By("Can create service broker from repo and setup env", func() {
-				s := cfc.Cf("push", brokerApp, "-p", "../../.", "--no-start") //ginkgo starts from test-root folder
-				Eventually(s, "2m", "10s").Should(Exit(0))                    //TODO probably one of the common timeouts
+				s := cfc.Cf("push", brokerApp, "-p", "../../.", "--no-start") // ginkgo starts from test-root folder
+				Eventually(s, "2m", "10s").Should(Exit(0))                    // TODO probably one of the common timeouts
 				Eventually(s).Should(Say("down"))
 				Eventually(cfc.Cf("set-env", brokerApp, "BROKER_HOST", "0.0.0.0")).Should(Exit(0))
 				Eventually(cfc.Cf("set-env", brokerApp, "BROKER_PORT", "8080")).Should(Exit(0))
@@ -63,7 +63,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				Eventually(cfc.Cf("set-env", brokerApp, "BROKER_OSB_SERVICE_NAME", mPlaceName)).Should(Exit(0))
 
 				s = cfc.Cf("restart", brokerApp)
-				Eventually(s, "5m", "10s").Should(Say("running")) //TODO probably one of the common timeouts
+				Eventually(s, "5m", "10s").Should(Say("running")) // TODO probably one of the common timeouts
 				brokerURL = "http://" + string(regexp.MustCompile(`routes:[ ]*(.+)`).FindSubmatch(s.Out.Contents())[1])
 			})
 			By("Possible to create service-broker", func() {
@@ -82,17 +82,16 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				waitServiceStatus(serviceIns, "create succeeded")
 			})
 
-			//TODO: PARALLEL CHECKS
+			// TODO: PARALLEL CHECKS
 			By("Can install test app", func() {
 				testAppRepo := "https://github.com/leo-ri/simple-ruby.git"
-				_, err := git.PlainClone("simple-ruby", false, &git.CloneOptions{ //TODO change with mini-docker image
+				_, err := git.PlainClone("simple-ruby", false, &git.CloneOptions{ // TODO change with mini-docker image
 					URL:               testAppRepo,
 					RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 				})
 				if err != nil {
 					GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get test application %s", appURL)))
 				}
-
 				Eventually(cfc.Cf("push", testApp, "-p", "./simple-ruby", "--no-start")).Should(Say("down"))
 				Eventually(cfc.Cf("bind-service", testApp, serviceIns)).Should(Say("OK"))
 
@@ -104,8 +103,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				Expect(appURL).ShouldNot(BeEmpty())
 			})
 			By("Can send data to cluster and get it back", func() {
-				//	appURL = "simple.apps.spanishgray.cf-app.com" // TODO REMOVE!!!!!
-				data := `{"data":"somesimpletest130"}` //TODO gen
+				data := `{"data":"somesimpletest130"}` // TODO gen
 
 				app := apptest.NewTestAppClient("http://" + appURL)
 				Expect(app.Get("")).Should(Equal("hello from sinatra"))
@@ -115,7 +113,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			By("Possible to create service-key", func() {
 				Eventually(cfc.Cf("create-service-key", serviceIns, "atlasKey")).Should(Say("OK"))
 				// '{"user" : { "roles" : [ { "roleName":"atlasAdmin", "databaseName" : "admin" } ] } }'
-				GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) //TODO !
+				GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) // TODO !
 			})
 			By("Backup is active as default", func() {
 				path := fmt.Sprintf("data/%s.yml.tpl", planName)
@@ -139,21 +137,18 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				Expect(clusterInfo.ProviderSettings.InstanceSizeName).Should(Equal(newSize))
 			})
 			By("Possible to continue using app after update", func() {
-				// URL := fmt.Sprintf("http://%s/service/mongo/test", appURL)
-				data := `{"data":"somesimpletest130"}` //TODO gen
+				data := `{"data":"somesimpletest130"}` // TODO gen
 				app := apptest.NewTestAppClient("http://" + appURL)
 				Expect(app.Get("/service/mongo/test")).Should(Equal(data))
 			})
 			By("Possible to PUT new data after update", func() {
-				// URL := fmt.Sprintf("http://%s/service/mongo/test2", appURL)
-				data := `{"data":"somesimpletest130update"}` //TODO gen
+				data := `{"data":"somesimpletest130update"}` // TODO gen
 
 				app := apptest.NewTestAppClient("http://" + appURL)
 				Expect(app.PutData("/service/mongo/test2", data)).ShouldNot(HaveOccurred())
 				Expect(app.Get("/service/mongo/test2")).Should(Equal(data))
-
 			})
-			//TODO move to tierdown
+			// TODO move to tierdown
 			By("Possible to delete service-key", func() {
 				Eventually(cfc.Cf("delete-service-key", serviceIns, "atlasKey", "-f")).Should(Say("OK"))
 			})
@@ -174,7 +169,6 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 				Eventually(cfc.Cf("delete", brokerApp, "-f")).Should(Say("OK"))
 			})
 		})
-
 	})
 })
 
@@ -182,7 +176,7 @@ func waitForDelete() {
 	waiting := true
 	try := 0
 	for waiting {
-		time.Sleep(1 * time.Minute) //TODO
+		time.Sleep(1 * time.Minute) // TODO
 		try++
 		session := cfc.Cf("services")
 		EventuallyWithOffset(1, session).Should(Exit(0))
@@ -193,20 +187,20 @@ func waitForDelete() {
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Succeed."))
 		}
-		if try > 13 { //TODO what is our req. for awaiting
+		if try > 13 { // TODO what is our req. for awaiting
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Timeout"))
-			ExpectWithOffset(1, true).Should(Equal(false)) //TODO call fail
+			ExpectWithOffset(1, true).Should(Equal(false)) // TODO call fail
 		}
 	}
 }
 
-//waitStatus wait until status is appear
+// waitStatus wait until status is appear
 func waitServiceStatus(serviceName string, expectedStatus string) {
 	waiting := true
 	try := 0
 	for waiting {
-		time.Sleep(1 * time.Minute) //TODO
+		time.Sleep(1 * time.Minute) // TODO
 		try++
 		s := cfc.Cf("service", serviceName)
 		EventuallyWithOffset(1, s).Should(Exit(0))
@@ -216,10 +210,10 @@ func waitServiceStatus(serviceName string, expectedStatus string) {
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Succeed."))
 		}
-		if try > 15 { //TODO ??
+		if try > 15 { // TODO ??
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Timeout"))
-			ExpectWithOffset(1, true).Should(Equal(false)) //TODO call fail
+			ExpectWithOffset(1, true).Should(Equal(false)) // TODO call fail
 		}
 	}
 }

@@ -88,17 +88,25 @@ jobs:
       - name: Cleanup ENV for current branch
         uses: ./.github/actions/clean-failed
         with:
-          cf_api: ${{ secrets.CF_API }}
+          cf_url: ${{ secrets.CF_URL }}
           cf_user: ${{ secrets.CF_USER }}
           cf_password: ${{ secrets.CF_PASSWORD }}
         env:
           TEST_TYPE: "go"
 
+      - name: Mask CF
+        id: mask
+        uses: ./.github/actions/prepare-gotest
+        with:
+          cf_url: ${{ secrets.CF_URL }}
+          cf_user: ${{ secrets.CF_USER }}
+          cf_password: ${{ secrets.CF_PASSWORD }}
+
       - name: Create CF org, space, broker, service and push app
-        id: gotest1
+        id: gotest
         uses: ./.github/actions/gotest
         with:
-          cf_api: ${{ secrets.CF_URL }}
+          cf_url: ${{ secrets.CF_URL }}
           cf_user: ${{ secrets.CF_USER }}
           cf_password: ${{ secrets.CF_PASSWORD }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}

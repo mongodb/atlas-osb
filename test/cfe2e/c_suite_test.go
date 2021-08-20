@@ -35,7 +35,7 @@ SERVICE_ATLAS
 const (
 	CFEventuallyTimeout   = 60 * time.Second
 	CFConsistentlyTimeout = 60 * time.Millisecond
-	TKey                  = "testKey" //TODO get it from the plan
+	TKey                  = "testKey" // TODO get it from the plan
 	tPath                 = "./test/cfe2e/data"
 	mPlaceName            = "atlas"
 )
@@ -63,6 +63,7 @@ var _ = BeforeSuite(func() {
 	GinkgoWriter.Write([]byte("==============================Before==============================\n"))
 	SetDefaultEventuallyTimeout(CFEventuallyTimeout)
 	SetDefaultConsistentlyDuration(CFConsistentlyTimeout)
+
 	checkupCFinputs()
 	setUp()
 	GinkgoWriter.Write([]byte("========================End of Before==============================\n"))

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -18,21 +19,29 @@ func NewTestAppClient(url string) *App {
 }
 
 func (app *App) Get(endpoint string) string {
-	res, err := http.Get(app.url + endpoint)
+	url := app.url + endpoint
+	r, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		fmt.Print(err)
 		return ""
 	}
-	defer res.Body.Close()
-	data, _ := ioutil.ReadAll(res.Body)
+	client := &http.Client{}
+	resp, err := client.Do(r)
+	if err != nil {
+		fmt.Print(err)
+		return ""
+	}
+	defer resp.Body.Close()
+	data, _ := ioutil.ReadAll(resp.Body)
 	fmt.Print(string(data))
 	return string(data)
 }
 
 func (app *App) PutData(endpoint string, ds string) error {
 	url := app.url + endpoint
-	r, err := http.NewRequest("PUT", url, strings.NewReader(ds))
+	r, err := http.NewRequestWithContext(context.Background(), http.MethodPut, url, strings.NewReader(ds))
 	if err != nil {
+		fmt.Print(err)
 		return err
 	}
 	client := &http.Client{}
