@@ -78,13 +78,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2.3.1
 
-      - name: Wait for other CI to finish
-        uses: softprops/turnstyle@v1
-        with:
-          poll-interval-seconds: 10
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Cleanup ENV for current branch
         uses: ./.github/actions/clean-failed
         with:
