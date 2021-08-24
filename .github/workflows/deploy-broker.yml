@@ -45,36 +45,14 @@ jobs:
       - name: Run ShellCheck
         uses: bewuethr/shellcheck-action@v2
 
-  basic-plan-cloudfoundry:
-    name: basic-plan-cloudfoundry
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2.3.1
-
-      - name: Create CF org, space, broker, service and push app
-        id: prepare
-        uses: ./.github/actions/e2e-cf
-        with:
-          cf_url: ${{ secrets.CF_URL }}
-          cf_user: ${{ secrets.CF_USER }}
-          cf_password: ${{ secrets.CF_PASSWORD }}
-          atlas_project_id: ${{ secrets.ATLAS_PROJECT_ID }}
-          atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
-          atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
-          credhub_file: ${{ secrets.CREDHUB_FILE }}
-          atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
-          sentry_dsn: ${{ secrets.SENTRY_DSN }}
-
-      - name: Cleanup ENV for current branch
-        uses: ./.github/actions/cleanup-cf
-        with:
-          cf_url: ${{ secrets.CF_URL }}
-          cf_user: ${{ secrets.CF_USER }}
-          cf_password: ${{ secrets.CF_PASSWORD }}
-
   gotest:
     name: replace test
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # plan: ["override-bind-db-plan", "multiregion-override-bind-db-plan"]
+        plan: ["multiregion-override-bind-db-plan"]
     steps:
       - uses: actions/checkout@v2.3.1
 
@@ -106,4 +84,5 @@ jobs:
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
         env:
+          TEST_PLAN: ${{ matrix.plan }}
           TEST_TYPE: "go"

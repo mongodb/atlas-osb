@@ -31,6 +31,7 @@ func NewTest() Test {
 	test.Broker = os.Getenv("BROKER") + id
 	test.ServiceIns = os.Getenv("SERVICE_ATLAS") + id
 	test.TestApp = os.Getenv("TEST_SIMPLE_APP") + id
+	test.PlanName = os.Getenv("TEST_PLAN")
 	test.APIKeys = atlaskey.NewAtlasKeys()
 	return test
 }

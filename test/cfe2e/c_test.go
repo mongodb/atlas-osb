@@ -29,7 +29,6 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 	var _ = BeforeEach(func() {
 		By("Set up", func() {
 			testData = test.NewTest()
-			testData.PlanName = "override-bind-db-plan" // TODO get from folder
 		})
 	})
 	var _ = AfterEach(func() {
@@ -195,7 +194,7 @@ func waitServiceStatus(serviceName string, expectedStatus string) {
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Succeed."))
 		}
-		if try > 15 { // TODO ??
+		if try > 25 { // TODO ??
 			waiting = false
 			GinkgoWriter.Write([]byte("Finish waiting. Timeout"))
 			ExpectWithOffset(1, true).Should(Equal(false)) // TODO call fail

@@ -171,3 +171,9 @@ act -j eksdemo-broker -e event.json
 act -j eksdemo-instance -e event.json
 act -j eksdemo-test -e event.json
 ```
+
+## Run test sample
+
+```bash
+act -j gotest
+```
