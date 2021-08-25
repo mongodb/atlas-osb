@@ -46,13 +46,12 @@ jobs:
         uses: bewuethr/shellcheck-action@v2
 
   gotest:
-    name: replace test
+    name: CF tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # plan: ["override-bind-db-plan", "multiregion-override-bind-db-plan"]
-        plan: ["multiregion-override-bind-db-plan"]
+        plan: ["override-bind-db-plan", "multiregion-override-bind-db-plan"]
     steps:
       - uses: actions/checkout@v2.3.1
 
@@ -86,3 +85,10 @@ jobs:
         env:
           TEST_PLAN: ${{ matrix.plan }}
           TEST_TYPE: "go"
+
+      - name: Upload operator logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: logs
+          path: test/cfe2e/output/**

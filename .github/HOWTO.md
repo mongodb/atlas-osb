@@ -125,6 +125,7 @@ Actions available right now:
 - cleanup-cf - clean Cloud Foundry space after testing
 - e2e-cf - deploy atlas broker with provided templates
 - reaper - delete all clusters/projects from Atlas, except M0
+- gotest - run CF e2e tests
 
 ### base-dockerfile/
 The Dockerfile included here is used for actions and, also contains helper functions
