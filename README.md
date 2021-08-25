@@ -1,12 +1,8 @@
-# <img align="left" src="https://webassets.mongodb.com/_com_assets/cms/vectors-anchor-circle-mydmar539a.svg" /> atlas-osb <span align="right">![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/mongodb/atlas-osb?include_prereleases&style=for-the-badge)</span>
+atlas-osb 
+ 
+This project is currently in sunset mode. Check out (https://www.mongodb.com/kubernetes) and (https://github.com/mongodb/helm-charts) for the latest and best source for cloud native MongoDB.
 
-### Status: Beta (actively looking for [feedback](https://feedback.mongodb.com/forums/924145-atlas?category_id=370720))
-
-[![MongoDB Atlas Go Client](https://img.shields.io/badge/Powered%20by%20-go--client--mongodb--atlas-%2313AA52?style=for-the-badge)](https://github.com/mongodb/go-client-mongodb-atlas)
-
-![e2e VMware TAS](https://github.com/mongodb/atlas-osb/workflows/e2e%20VMware%20TAS/badge.svg)
-
-Extensible Enterprise Production Deployments for MongoDB Atlas
+~~ For Reference Only ~~
 
 Table of Contents
 =====
@@ -543,14 +539,3 @@ The following badges provide version and version-support information about Atlas
 # License
 
 See [LICENSE](LICENSE). Licenses for all third-party dependencies are included in [notices](notices).
-
-# Support, Bugs, Feature Requests
-
-_CURRENT BETA_ --> This software is Non-Production, Beta only, and Experimental. We expect to launch our beta on or before August 25, 2020 and follow up with general availability shortly thereafter.
-
-Support for the MongoDB Atlas-OSB is provided under MongoDB Atlas support plans. Please submit support questions within the Atlas UI. Support questions submitted under the Issues section of this repo will be handled on a "best effort" basis.
-
-Bugs should be filed under the Issues section of this repo.
-
-Feature requests can be submitted at https://feedback.mongodb.com/forums/924145-atlas?category_id=370720 - just select "atlas-osb" as the category or vote for an already suggested feature.
-
