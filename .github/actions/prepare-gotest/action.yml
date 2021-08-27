@@ -1,8 +1,8 @@
-name: 'Atlas broker testing'
-description: 'uses for cleaning environments after/before testing'
+name: 'Prepare creds'
+description: 'tests'
 inputs:
   cf_url:
-    description: "PCF url uses for pcf command"
+    description: "PCF url uses for cf command"
     required: true
   cf_user:
     description: "PCF user uses for cf command"
@@ -10,6 +10,14 @@ inputs:
   cf_password:
     description: "PCF password uses for cf command"
     required: true
+
+outputs:
+  cf_app_url:
+    description: "Application CF API URL"
+  cf_app_user:
+    description: "Application CF username"
+  cf_app_password:
+    description: "Application CF password"
 runs:
   using: 'docker'
   image: 'Dockerfile'

@@ -12,6 +12,10 @@ on:
 
 name: e2e VMware TAS
 
+env:
+  BRANCH: ${{ github.event.ref }}
+  TYPE: ${{ github.event.ref_type }}
+
 jobs:
   golangci:
     name: lint
@@ -41,29 +45,50 @@ jobs:
       - name: Run ShellCheck
         uses: bewuethr/shellcheck-action@v2
 
-  basic-plan-cloudfoundry:
-    name: basic-plan-cloudfoundry
+  gotest:
+    name: CF tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plan: ["override-bind-db-plan", "multiregion-override-bind-db-plan"]
     steps:
       - uses: actions/checkout@v2.3.1
 
-      - name: Create CF org, space, broker, service and push app
-        id: prepare
-        uses: ./.github/actions/e2e-cf
+      - name: Cleanup ENV for current branch
+        uses: ./.github/actions/clean-failed
         with:
           cf_url: ${{ secrets.CF_URL }}
           cf_user: ${{ secrets.CF_USER }}
           cf_password: ${{ secrets.CF_PASSWORD }}
-          atlas_project_id: ${{ secrets.ATLAS_PROJECT_ID }}
+        env:
+          TEST_TYPE: "go"
+
+      - name: Mask CF
+        id: mask
+        uses: ./.github/actions/prepare-gotest
+        with:
+          cf_url: ${{ secrets.CF_URL }}
+          cf_user: ${{ secrets.CF_USER }}
+          cf_password: ${{ secrets.CF_PASSWORD }}
+
+      - name: Create CF org, space, broker, service and push app
+        id: gotest
+        uses: ./.github/actions/gotest
+        with:
+          cf_url: ${{ secrets.CF_URL }}
+          cf_user: ${{ secrets.CF_USER }}
+          cf_password: ${{ secrets.CF_PASSWORD }}
           atlas_public_key: ${{ secrets.ATLAS_PUBLIC_KEY }}
           atlas_private_key: ${{ secrets.ATLAS_PRIVATE_KEY }}
-          credhub_file: ${{ secrets.CREDHUB_FILE }}
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
-          sentry_dsn: ${{ secrets.SENTRY_DSN }}
+        env:
+          TEST_PLAN: ${{ matrix.plan }}
+          TEST_TYPE: "go"
 
-      - name: Cleanup ENV for current branch
-        uses: ./.github/actions/cleanup-cf
+      - name: Upload operator logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
         with:
-          cf_url: ${{ secrets.CF_URL }}
-          cf_user: ${{ secrets.CF_USER }}
-          cf_password: ${{ secrets.CF_PASSWORD }}
+          name: logs
+          path: test/cfe2e/output/**

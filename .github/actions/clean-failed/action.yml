@@ -5,10 +5,10 @@ inputs:
     description: "PCF url uses for pcf command"
     required: true
   cf_user:
-    description: "PCF user uses for pcf command"
+    description: "PCF user uses for cf command"
     required: true
   cf_password:
-    description: "PCF password uses for pcf command"
+    description: "PCF password uses for cf command"
     required: true
 runs:
   using: 'docker'

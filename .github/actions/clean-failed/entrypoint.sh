@@ -5,10 +5,10 @@ source ".github/base-dockerfile/helpers/params.sh"
 
 #final cleaning
 if [[ "$TYPE" == "branch" ]]; then
-    echo "$TYPE $BRANCH has been deleted"
+    echo "$TYPE's orgs will be deleted in $ORG_NAME"
 
     cf_login
-    cf target -o "$ORG_PREFIX$BRANCH"
+    cf target -o "$ORG_NAME"
 
     empty=$(cf spaces | awk '/No spaces found/{print "true"}')
     if ! "$empty"; then
@@ -34,5 +34,5 @@ if [[ "$TYPE" == "branch" ]]; then
         done
     fi
 
-    cf delete-org "$ORG_PREFIX$BRANCH" -f
+    cf delete-org "$ORG_NAME" -f
 fi

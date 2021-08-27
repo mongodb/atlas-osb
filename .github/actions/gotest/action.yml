@@ -1,0 +1,31 @@
+name: 'Atlas broker testing'
+description: 'tests'
+inputs:
+  cf_url:
+    description: "PCF url uses for cf command"
+    required: true
+  cf_user:
+    description: "PCF user uses for cf command"
+    required: true
+  cf_password:
+    description: "PCF password uses for cf command"
+    required: true
+  atlas_public_key:
+    description: "public key for our working projectID/groupID"
+    required: true
+  atlas_private_key:
+    description: "private key for our working projectID/groupID"
+    required: true
+  atlas_org_id:
+    description: "atlas org id"
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.cf_user }}
+    - ${{ inputs.cf_password }}
+    - ${{ inputs.cf_url }}
+    - ${{ inputs.atlas_public_key }}
+    - ${{ inputs.atlas_private_key }}
+    - ${{ inputs.atlas_org_id}}

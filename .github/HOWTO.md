@@ -1,7 +1,32 @@
 # GitHub Actions
 GitHub Actions help to automate and customize workflows. We deploy Atlas Broker to Cloud Foundry using [GitHub Actions](https://docs.github.com/en/actions). Also, they are used for other tasks like release Atlas-OSB, cleaning our Atlas organization, testing, and demo-runs.
 
-## Using GitHub Actions locally
+# Folder structure description
+
+## action
+The folder consists of implemented GitHub actions which are used in "workflows".
+Actions available right now:
+- clean-failed - triggered by deleting the branch, `purge` failed services and clean test-organization
+- cleanup-cf - clean Cloud Foundry space after testing
+- e2e-cf - deploy atlas broker with provided templates
+- reaper - delete clusters/project from Atlas
+
+"e2e-cf" action have commented parts in case spring-music are more preferiable as a test application
+
+## base-dockerfile
+The Dockerfile included here is used for actions and also contains helper functions for actions
+
+## disabled-workflows
+All disabled/cancelled/saved for future use workflows are placed in here. For example, workflow "Deploy to Amazon ECS" we plan to use it later.
+
+## workflows
+Active workflows for operating.
+- `clean-cf.yml` clean Cloud Foundry from previous usage
+- `deploy-broker.yml` deploy broker to CF
+- `reaper.yml` delete clusters from Atlas
+- `create-release-package.yml` create a release
+
+# Using GitHub Actions locally
 Tools for successfully running pipeline locally:
 - `act` allows running GitHub actions without pushing changes to a repository, more information [here](https://github.com/nektos/act)
 - `githubsecrets` helps us to change/create [Github secrets](https://github.com/unfor19/githubsecrets) from CLI
@@ -100,6 +125,7 @@ Actions available right now:
 - cleanup-cf - clean Cloud Foundry space after testing
 - e2e-cf - deploy atlas broker with provided templates
 - reaper - delete all clusters/projects from Atlas, except M0
+- gotest - run CF e2e tests
 
 ### base-dockerfile/
 The Dockerfile included here is used for actions and, also contains helper functions
@@ -145,4 +171,10 @@ echo '{"action":"workflow_dispatch", "inputs": {"service_name":"sky-service","na
 act -j eksdemo-broker -e event.json
 act -j eksdemo-instance -e event.json
 act -j eksdemo-test -e event.json
+```
+
+## Run test sample
+
+```bash
+act -j gotest
 ```

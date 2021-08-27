@@ -1,4 +1,8 @@
-# If the branch has been deleted - clean cf
+# Clean CF If the branch deleted
+#
+# local run sample:
+# echo '{"ref":"HEAD/ref/atlas-broker-demo", "ref_type":"branch"}' > payload.json | act -j clean-cf -e payload.json
+# ^ command will clean branch organization with name `atlas-broker-demo`
 
 on: [delete]
   #  release:
