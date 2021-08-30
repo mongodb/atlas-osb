@@ -505,6 +505,11 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	// Atlas doesn't allow for cluster renaming - ignore any changes
 	newPlan.Cluster.Name = existingCluster.Name
 
+	if newPlan.Cluster.ProviderSettings.ProviderName == "AZURE" {
+		logger.Warn("Cluster.ReplicationSpecs fields cannot be updated for 'AZURE' clusters")
+		newPlan.Cluster.ReplicationSpecs = nil
+	}
+
 	resultingCluster, _, err := client.Clusters.Update(ctx, oldPlan.Project.ID, existingCluster.Name, newPlan.Cluster)
 	if err != nil {
 		logger.Errorw("Failed to update Atlas cluster", "error", err, "new_cluster", newPlan.Cluster)
