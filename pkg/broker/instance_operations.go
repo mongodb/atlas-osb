@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"regexp"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/dynamicplans"
@@ -506,7 +507,12 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	newPlan.Cluster.Name = existingCluster.Name
 
 	if newPlan.Cluster.ProviderSettings.ProviderName == "AZURE" && len(newPlan.Cluster.ReplicationSpecs) > 0 {
-		logger.Warn("Cluster.ReplicationSpecs fields cannot be updated for 'AZURE' clusters")
+		if !reflect.DeepEqual(oldPlan.Cluster.ReplicationSpecs, newPlan.Cluster.ReplicationSpecs) {
+			err = errors.New("update operation for cluster.ReplicationSpecs is not supported by Atlas for Azure clusters; please remove this section from the plan or recreate the cluster")
+
+			return
+		}
+
 		newPlan.Cluster.ReplicationSpecs = nil
 	}
 
