@@ -507,14 +507,7 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 
 	if len(newPlan.Cluster.ReplicationSpecs) > 0 {
 		logger.Debugw("Filling the IDs for Cluster.ReplicationSpecs", "newPlanCluster", newPlan.Cluster.ReplicationSpecs, "existingCluster", existingCluster.ReplicationSpecs)
-		for newSpecIdx, newSpec := range newPlan.Cluster.ReplicationSpecs {
-			for _, existing := range existingCluster.ReplicationSpecs {
-				if existing.ZoneName == newSpec.ZoneName {
-					newSpec.ID = existing.ID
-					newPlan.Cluster.ReplicationSpecs[newSpecIdx] = newSpec
-				}
-			}
-		}
+		populateReplicationSpecsIDs(existingCluster.ReplicationSpecs, newPlan.Cluster.ReplicationSpecs)
 	}
 
 	resultingCluster, _, err := client.Clusters.Update(ctx, oldPlan.Project.ID, existingCluster.Name, newPlan.Cluster)
@@ -837,4 +830,14 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	}
 
 	return resp, err
+}
+
+func populateReplicationSpecsIDs(sourceSpec, targetSpec []mongodbatlas.ReplicationSpec) {
+	for newSpecIdx, newSpec := range targetSpec {
+		for _, existing := range sourceSpec {
+			if existing.ZoneName == newSpec.ZoneName {
+				targetSpec[newSpecIdx].ID = existing.ID
+			}
+		}
+	}
 }
