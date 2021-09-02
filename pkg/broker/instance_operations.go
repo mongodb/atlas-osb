@@ -505,6 +505,11 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	// Atlas doesn't allow for cluster renaming - ignore any changes
 	newPlan.Cluster.Name = existingCluster.Name
 
+	if len(newPlan.Cluster.ReplicationSpecs) > 0 {
+		logger.Debugw("Filling the IDs for Cluster.ReplicationSpecs", "newPlanCluster", newPlan.Cluster.ReplicationSpecs, "existingCluster", existingCluster.ReplicationSpecs)
+		populateReplicationSpecsIDs(existingCluster.ReplicationSpecs, newPlan.Cluster.ReplicationSpecs)
+	}
+
 	resultingCluster, _, err := client.Clusters.Update(ctx, oldPlan.Project.ID, existingCluster.Name, newPlan.Cluster)
 	if err != nil {
 		logger.Errorw("Failed to update Atlas cluster", "error", err, "new_cluster", newPlan.Cluster)
@@ -825,4 +830,14 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 	}
 
 	return resp, err
+}
+
+func populateReplicationSpecsIDs(sourceSpec, targetSpec []mongodbatlas.ReplicationSpec) {
+	for newSpecIdx, newSpec := range targetSpec {
+		for _, existing := range sourceSpec {
+			if existing.ZoneName == newSpec.ZoneName {
+				targetSpec[newSpecIdx].ID = existing.ID
+			}
+		}
+	}
 }
