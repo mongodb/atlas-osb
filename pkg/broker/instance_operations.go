@@ -217,14 +217,14 @@ func (b *Broker) createOrUpdateResources(ctx context.Context, client *mongodbatl
 		}
 	}
 
-	if err := b.syncPrivateEndpoints(ctx, client, newPlan, oldPlan); err != nil {
-		return errors.Wrap(err, "cannot sync Private Endpoints")
+	if err := b.removeOldPrivateEndpoints(ctx, client, newPlan, oldPlan); err != nil {
+		return errors.Wrap(err, "failed to remove old Private Endpoints")
 	}
 
 	return nil
 }
 
-func (b *Broker) syncPrivateEndpoints(ctx context.Context, client *mongodbatlas.Client, newPlan *dynamicplans.Plan, oldPlan *dynamicplans.Plan) error {
+func (b *Broker) removeOldPrivateEndpoints(ctx context.Context, client *mongodbatlas.Client, newPlan *dynamicplans.Plan, oldPlan *dynamicplans.Plan) error {
 	logger := b.funcLogger()
 
 	peProvider := "AZURE" // this is hardcoded cause only one provider is supported for now
@@ -235,42 +235,9 @@ func (b *Broker) syncPrivateEndpoints(ctx context.Context, client *mongodbatlas.
 	}
 	atlasPrivateEndpoints = b.populateConnections(atlasPrivateEndpoints)
 
-	planPrivateEndpoints := make(map[string]struct{})
-	for _, endpoint := range newPlan.PrivateEndpoints {
-		if endpoint.ID != "" {
-			// endpoint service already created
-			planPrivateEndpoints[endpoint.ID] = struct{}{}
-
-			continue
-		}
-
-		logger.Debugw("Atlas PEs", "endpoints", atlasPrivateEndpoints)
-
-		if connID, exists := b.privateEndpointExists(endpoint.Provider, endpoint.EndpointName, atlasPrivateEndpoints); exists {
-			planPrivateEndpoints[connID] = struct{}{}
-			endpoint.ID = connID
-
-			continue
-		}
-
-		logger.Debugw("start creation process for PrivateEndpoints", "project ID", oldPlan.Project.ID)
-		conn, _, err := client.PrivateEndpoints.Create(ctx, oldPlan.Project.ID, &mongodbatlas.PrivateEndpointConnection{
-			ProviderName: endpoint.Provider,
-			Region:       endpoint.Region,
-		})
-		if err != nil {
-			return errors.Wrap(err, "cannot create Private Endpoint Service")
-		} else {
-			endpoint.ID = conn.ID
-			planPrivateEndpoints[endpoint.ID] = struct{}{}
-		}
-	}
-
-	logger.Debugw("Private Endpoints from the plan", "PE names", planPrivateEndpoints)
-
 	for _, peConnection := range atlasPrivateEndpoints {
 		// delete all PE endpoints which are not in the plan
-		if _, isPlanned := planPrivateEndpoints[peConnection.ID]; !isPlanned {
+		if !privateEndpointIsPlanned(peConnection.ProviderName, peConnection.EndpointServiceName, newPlan.PrivateEndpoints) {
 			logger.Debugw("Deleting Private Endpoint", "connection", peConnection)
 
 			for _, endpoint := range oldPlan.PrivateEndpoints {
@@ -296,19 +263,6 @@ func (b *Broker) syncPrivateEndpoints(ctx context.Context, client *mongodbatlas.
 	return nil
 }
 
-func (b *Broker) privateEndpointExists(provider string, name string, connections []mongodbatlas.PrivateEndpointConnection) (string, bool) {
-	logger := b.funcLogger()
-
-	for _, peConnection := range connections {
-		logger.Infow("privateEndpointExists func", "conn", peConnection)
-		if peConnection.ProviderName == provider && peConnection.EndpointServiceName == name {
-			return peConnection.ID, true
-		}
-	}
-
-	return "", false
-}
-
 func (b *Broker) populateConnections(connections []mongodbatlas.PrivateEndpointConnection) []mongodbatlas.PrivateEndpointConnection {
 	logger := b.funcLogger()
 	r := regexp.MustCompile("/([^/]+)/resourceGroups/([^/]+)/providers/([^/]+)/privateEndpoints/([^/]+)$")
@@ -332,14 +286,35 @@ func (b *Broker) populateConnections(connections []mongodbatlas.PrivateEndpointC
 	return connections
 }
 
+func privateEndpointIsPlanned(provider string, name string, planEndpoits privateendpoint.PrivateEndpoints) bool {
+	for _, endpoint := range planEndpoits {
+		if endpoint.Provider == provider && endpoint.EndpointName == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 // TODO: this retry logic is clunky, come up with something better?
 func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.Client, dp *dynamicplans.Plan) (retry bool, err error) {
 	logger := b.funcLogger()
 
 	logger.Debugw("Setup PrivateEndpoints", "PrivateEndpoints", dp.PrivateEndpoints)
-	for _, endpoint := range dp.PrivateEndpoints {
+	for peIdx, endpoint := range dp.PrivateEndpoints {
 		if endpoint.ID == "" {
-			continue
+			conn, _, err := client.PrivateEndpoints.Create(ctx, dp.Project.ID, &mongodbatlas.PrivateEndpointConnection{
+				ProviderName: endpoint.Provider,
+				Region:       endpoint.Region,
+			})
+			if err != nil {
+				return false, errors.Wrap(err, "cannot create Private Endpoint Service")
+			}
+
+			dp.PrivateEndpoints[peIdx].ID = conn.ID
+			logger.Debugw("Creating new Private Endpoint", "endpoint", endpoint)
+
+			return true, nil
 		}
 
 		atlasService, _, err := client.PrivateEndpoints.Get(ctx, dp.Project.ID, endpoint.Provider, endpoint.ID)
@@ -524,21 +499,39 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	oldPlan.Settings = newPlan.Settings
 	oldPlan.Cluster = resultingCluster
 	oldPlan.IPAccessLists = newPlan.IPAccessLists
-	oldPlan.PrivateEndpoints = newPlan.PrivateEndpoints
+	oldPlan.PrivateEndpoints = b.mergePrivateEndpoints(oldPlan, newPlan)
 
-	planEnc, err := encodePlan(*oldPlan)
+	logger.Debugw("Resulting plan to be saved", "plan", oldPlan)
+
+	if err = b.updateState(ctx, instanceID, details.PlanID, details.ServiceID, oldPlan); err != nil {
+		logger.Errorw("Failed when updating the state", "err", err)
+	}
+
+	logger.Infow("Successfully started Atlas cluster update process", "cluster", resultingCluster)
+
+	return domain.UpdateServiceSpec{
+		IsAsync:       true,
+		OperationData: operationUpdate,
+		DashboardURL:  b.GetDashboardURL(oldPlan.Project.ID, resultingCluster.Name),
+	}, nil
+}
+
+func (b Broker) updateState(ctx context.Context, instanceID string, planID string, serviceID string, p *dynamicplans.Plan) (err error) {
+	logger := b.funcLogger().With("instance_id", instanceID)
+
+	planEnc, err := encodePlan(*p)
 	if err != nil {
 		return
 	}
 
 	s := domain.GetInstanceDetailsSpec{
-		PlanID:       details.PlanID,
-		ServiceID:    details.ServiceID,
-		DashboardURL: b.GetDashboardURL(oldPlan.Project.ID, oldPlan.Cluster.Name),
+		PlanID:       planID,
+		ServiceID:    serviceID,
+		DashboardURL: b.GetDashboardURL(p.Project.ID, p.Cluster.Name),
 		Parameters:   planEnc,
 	}
 
-	state, err := b.getState(ctx, oldPlan.Project.OrgID)
+	state, err := b.getState(ctx, p.Project.OrgID)
 	if err != nil {
 		return
 	}
@@ -559,13 +552,35 @@ func (b Broker) Update(ctx context.Context, instanceID string, details domain.Up
 	}
 
 	logger.Infow("Inserted into state", "obj", obj)
-	logger.Infow("Successfully started Atlas cluster update process", "cluster", resultingCluster)
 
-	return domain.UpdateServiceSpec{
-		IsAsync:       true,
-		OperationData: operationUpdate,
-		DashboardURL:  b.GetDashboardURL(oldPlan.Project.ID, resultingCluster.Name),
-	}, nil
+	return
+}
+
+func (b Broker) mergePrivateEndpoints(oldPlan, newPlan *dynamicplans.Plan) privateendpoint.PrivateEndpoints {
+	logger := b.funcLogger()
+
+	newListOfEndpoints := privateendpoint.PrivateEndpoints{}
+	for _, newPlanPE := range newPlan.PrivateEndpoints {
+		matchedPE := matchPlanPE(newPlanPE, oldPlan)
+		if matchedPE == nil {
+			matchedPE = newPlanPE
+		}
+
+		logger.Debugw("Appending Private Endpoint to the merged", "PE", matchedPE)
+		newListOfEndpoints = append(newListOfEndpoints, newPlanPE)
+	}
+
+	return newListOfEndpoints
+}
+
+func matchPlanPE(pe *privateendpoint.PrivateEndpoint, plan *dynamicplans.Plan) *privateendpoint.PrivateEndpoint {
+	for _, pe2 := range plan.PrivateEndpoints {
+		if pe.Provider == pe2.Provider && pe.Region == pe2.Region && pe.EndpointName == pe2.EndpointName {
+			return pe2
+		}
+	}
+
+	return nil
 }
 
 // Deprovision will destroy an Atlas cluster asynchronously.
@@ -748,6 +763,10 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		if retry {
 			resp.State = domain.InProgress
 			resp.Description = "resources are being created"
+
+			if err = b.updateState(ctx, instanceID, details.PlanID, details.ServiceID, p); err != nil {
+				logger.Errorw("Failed when updating the state", "err", err)
+			}
 
 			break
 		}
