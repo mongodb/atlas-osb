@@ -308,7 +308,9 @@ func (b *Broker) postCreateResources(ctx context.Context, client *mongodbatlas.C
 				Region:       endpoint.Region,
 			})
 			if err != nil {
-				return false, errors.Wrap(err, "cannot create Private Endpoint Service")
+				logger.Warnw("cannot create Private Endpoint Service", "err", err)
+
+				return false, nil
 			}
 
 			dp.PrivateEndpoints[peIdx].ID = conn.ID
