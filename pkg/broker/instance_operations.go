@@ -239,28 +239,33 @@ func (b *Broker) removeOldPrivateEndpoints(ctx context.Context, client *mongodba
 		// delete all PE endpoints which are not in the plan
 		if !privateEndpointIsPlanned(peConnection.ProviderName, peConnection.EndpointServiceName, newPlan.PrivateEndpoints) {
 			logger.Debugw("Deleting Private Endpoint", "connection", peConnection)
-
-			for _, endpoint := range oldPlan.PrivateEndpoints {
-				if endpoint.EndpointName == peConnection.EndpointServiceName && endpoint.Provider == peConnection.ProviderName {
-					if _, err := privateendpoint.Delete(ctx, endpoint); err != nil {
-						logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "endpoint", endpoint.EndpointName)
-					}
-				}
-			}
-
-			for _, peID := range peConnection.PrivateEndpoints {
-				if _, err := client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, oldPlan.Project.ID, peProvider, peConnection.ID, peID); err != nil {
-					logger.Errorw("Failed to delete Private Endpoint from Atlas", "error", err, "pe", peID)
-				}
-			}
-
-			if _, err := client.PrivateEndpoints.Delete(ctx, oldPlan.Project.ID, peProvider, peConnection.ID); err != nil {
-				logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "pe", peConnection)
-			}
+			b.deletePrivateEndpoint(ctx, client, peProvider, peConnection, oldPlan)
 		}
 	}
 
 	return nil
+}
+
+func (b Broker) deletePrivateEndpoint(ctx context.Context, client *mongodbatlas.Client, peProvider string, peConnection mongodbatlas.PrivateEndpointConnection, plan *dynamicplans.Plan) {
+	logger := b.funcLogger()
+
+	for _, endpoint := range plan.PrivateEndpoints {
+		if endpoint.EndpointName == peConnection.EndpointServiceName && endpoint.Provider == peConnection.ProviderName {
+			if _, err := privateendpoint.Delete(ctx, endpoint); err != nil {
+				logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "endpoint", endpoint.EndpointName)
+			}
+		}
+	}
+
+	for _, peID := range peConnection.PrivateEndpoints {
+		if _, err := client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, plan.Project.ID, peProvider, peConnection.ID, peID); err != nil {
+			logger.Errorw("Failed to delete Private Endpoint from Atlas", "error", err, "pe", peID)
+		}
+	}
+
+	if _, err := client.PrivateEndpoints.Delete(ctx, plan.Project.ID, peProvider, peConnection.ID); err != nil {
+		logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "pe", peConnection)
+	}
 }
 
 func (b *Broker) populateConnections(connections []mongodbatlas.PrivateEndpointConnection) []mongodbatlas.PrivateEndpointConnection {
@@ -602,25 +607,14 @@ func (b Broker) Deprovision(ctx context.Context, instanceID string, details doma
 		return
 	}
 
-	for _, peService := range p.PrivateEndpoints {
-		if _, err := privateendpoint.Delete(ctx, peService); err != nil {
-			logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "peService", peService)
-		}
+	peProvider := "AZURE"
+	peEndpoints, _, err := client.PrivateEndpoints.List(ctx, p.Project.ID, peProvider, nil)
+	if err != nil {
+		logger.Errorw("cannot get Private Endpoints from Atlas", "err", err)
+	}
 
-		if peService.ID == "" {
-			continue
-		}
-
-		conn, _, err := client.PrivateEndpoints.Get(ctx, p.Project.ID, peService.Provider, peService.ID)
-		if err != nil {
-			logger.Errorw("Failed to fetch Private Endpoint Service Connection from Atlas", "error", err, "peService", peService)
-		}
-
-		for _, peID := range conn.PrivateEndpoints {
-			if _, err := client.PrivateEndpoints.DeleteOnePrivateEndpoint(ctx, p.Project.ID, peService.Provider, peService.ID, peID); err != nil {
-				logger.Errorw("Failed to delete Private Endpoint from Atlas", "error", err, "pe", peID)
-			}
-		}
+	for _, peConnection := range peEndpoints {
+		b.deletePrivateEndpoint(ctx, client, peProvider, peConnection, p)
 	}
 
 	_, err = client.Clusters.Delete(ctx, p.Project.ID, p.Cluster.Name)
@@ -715,22 +709,15 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 
 			return
 		}
+		err = nil
 	}
 
 	logger.Infow("Found existing cluster", "cluster", cluster)
 
-	peEndpoints := []*mongodbatlas.PrivateEndpointConnection{}
-	for _, pe := range p.PrivateEndpoints {
-		if pe.ID == "" {
-			continue
-		}
-		peConnection, _, err := client.PrivateEndpoints.Get(ctx, p.Project.ID, pe.Provider, pe.ID)
-		if err != nil {
-			logger.Errorw("Failed to fetch Private Endpoint Service Connection from Atlas", "error", err)
-
-			continue
-		}
-		peEndpoints = append(peEndpoints, peConnection)
+	peProvider := "AZURE"
+	peEndpoints, _, err := client.PrivateEndpoints.List(ctx, p.Project.ID, peProvider, nil)
+	if err != nil {
+		logger.Errorw("cannot get Private Endpoints from Atlas", "err", err)
 	}
 
 	logger.Infow("Found existing Private Endpoints", "endpoints", peEndpoints)
@@ -791,12 +778,11 @@ func (b Broker) LastOperation(ctx context.Context, instanceID string, details do
 		// scenarios indicate that a cluster has been successfully deleted.
 		case r.StatusCode == http.StatusNotFound, cluster.StateName == "DELETED":
 			if len(peEndpoints) != 0 {
-				resp.State = domain.InProgress
 				for _, peConnection := range peEndpoints {
-					if _, err := client.PrivateEndpoints.Delete(ctx, p.Project.ID, "AZURE", peConnection.ID); err != nil {
-						logger.Errorw("Failed to delete Private Endpoint Service from Atlas", "error", err, "connection", peConnection)
-					}
+					b.deletePrivateEndpoint(ctx, client, peProvider, peConnection, p)
 				}
+
+				resp.State = domain.InProgress
 
 				break
 			}
