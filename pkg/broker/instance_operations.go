@@ -237,7 +237,7 @@ func (b *Broker) removeOldPrivateEndpoints(ctx context.Context, client *mongodba
 
 	for _, peConnection := range atlasPrivateEndpoints {
 		// delete all PE endpoints which are not in the plan
-		if !privateEndpointIsPlanned(peConnection.ProviderName, peConnection.EndpointServiceName, newPlan.PrivateEndpoints) {
+		if !privateEndpointInPlan(peConnection.ProviderName, peConnection.EndpointServiceName, newPlan) {
 			logger.Debugw("Deleting Private Endpoint", "connection", peConnection)
 			b.deletePrivateEndpoint(ctx, client, peProvider, peConnection, oldPlan)
 		}
@@ -291,8 +291,8 @@ func (b *Broker) populateConnections(connections []mongodbatlas.PrivateEndpointC
 	return connections
 }
 
-func privateEndpointIsPlanned(provider string, name string, planEndpoits privateendpoint.PrivateEndpoints) bool {
-	for _, endpoint := range planEndpoits {
+func privateEndpointInPlan(provider string, name string, plan *dynamicplans.Plan) bool {
+	for _, endpoint := range plan.PrivateEndpoints {
 		if endpoint.Provider == provider && endpoint.EndpointName == name {
 			return true
 		}
