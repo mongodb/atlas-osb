@@ -250,10 +250,8 @@ func (b Broker) deletePrivateEndpoint(ctx context.Context, client *mongodbatlas.
 	logger := b.funcLogger()
 
 	for _, endpoint := range plan.PrivateEndpoints {
-		if endpoint.EndpointName == peConnection.EndpointServiceName && endpoint.Provider == peConnection.ProviderName {
-			if _, err := privateendpoint.Delete(ctx, endpoint); err != nil {
-				logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "endpoint", endpoint.EndpointName)
-			}
+		if _, err := privateendpoint.Delete(ctx, endpoint); err != nil {
+			logger.Errorw("Failed to delete Private Endpoint from Azure", "error", err, "endpoint", endpoint.EndpointName)
 		}
 	}
 
