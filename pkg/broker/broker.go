@@ -125,6 +125,16 @@ func (b *Broker) parsePlan(ctx dynamicplans.Context, planID string) (dp *dynamic
 
 	logger.Infow("Parsed plan", "plan", dp.SafeCopy())
 
+	// Attempt to merge in any other values as plan instance data
+	pb, _ := json.Marshal(ctx)
+	logger.Infow("Found plan instance data to merge", "pb", pb)
+	err = json.Unmarshal(pb, &dp)
+	if err != nil {
+		logger.Errorw("Error trying to merge in planContext as plan instance", "err", err)
+	} else {
+		logger.Infow("Merged final plan instance:", "plan", dp.SafeCopy())
+	}
+
 	return dp, nil
 }
 
@@ -269,6 +279,16 @@ func decodePlan(enc string) (dynamicplans.Plan, error) {
 	b64 := base64.NewDecoder(base64.StdEncoding, strings.NewReader(enc))
 	dp := dynamicplans.Plan{}
 	err := json.NewDecoder(b64).Decode(&dp)
+
+	// try to fix the plan in case of an error
+	if err != nil && dp.APIKey != nil {
+		if dp.Project.OrgID == "" {
+			return dp, fmt.Errorf("failed to fix the plan with error: %w", err)
+		}
+
+		dp.APIKey["orgID"] = dp.Project.OrgID
+		err = nil
+	}
 
 	return dp, errors.Wrap(err, "cannot unmarshal plan")
 }

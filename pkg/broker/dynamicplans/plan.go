@@ -16,7 +16,6 @@ package dynamicplans
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/mongodb/atlas-osb/pkg/broker/credentials"
 	"github.com/mongodb/atlas-osb/pkg/broker/privateendpoint"
@@ -75,24 +74,4 @@ func (p Plan) String() string {
 	}
 
 	return string(s)
-}
-
-func (p *Plan) UnmarshalJSON(data []byte) error {
-	type plan Plan
-
-	var pl plan
-	err := json.Unmarshal(data, &pl)
-
-	// try to fix the plan in case of an error
-	if err != nil && pl.APIKey != nil {
-		if pl.Project.OrgID == "" {
-			return fmt.Errorf("failed to fix the plan with error: %w", err)
-		}
-
-		pl.APIKey["orgID"] = pl.Project.OrgID
-	}
-
-	*p = Plan(pl)
-
-	return nil
 }
