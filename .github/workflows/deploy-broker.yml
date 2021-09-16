@@ -51,7 +51,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plan: ["override-bind-db-plan", "multiregion-override-bind-db-plan"]
+        include:
+          - plan: "override-bind-db-plan"
+            update: "{\"instance_size\":\"M20\"}"
+          - plan: "multiregion-override-bind-db-plan"
+            update: "{\"instance_size\":\"M20\"}"
+          - plan: "override-bind-db-plan"
+            update: "{\"cluster\":{\"providerSettings\":{\"instanceSizeName\":\"M20\"}}}"
     steps:
       - uses: actions/checkout@v2.3.1
 
@@ -84,6 +90,7 @@ jobs:
           atlas_org_id: ${{ secrets.ATLAS_ORG_ID }}
         env:
           TEST_PLAN: ${{ matrix.plan }}
+          TEST_UPDATE_TYPE: ${{ matrix.update }}
           TEST_TYPE: "go"
 
       - name: Upload operator logs

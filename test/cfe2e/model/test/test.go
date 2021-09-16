@@ -18,6 +18,7 @@ type Test struct {
 	ServiceIns string
 	TestApp    string
 	PlanName   string
+	UpdateType string
 }
 
 func NewTest() Test {
@@ -33,5 +34,6 @@ func NewTest() Test {
 	test.TestApp = os.Getenv("TEST_SIMPLE_APP") + id
 	test.PlanName = os.Getenv("TEST_PLAN")
 	test.APIKeys = atlaskey.NewAtlasKeys()
+	test.UpdateType = os.Getenv("TEST_UPDATE_TYPE")
 	return test
 }
