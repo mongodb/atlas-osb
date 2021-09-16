@@ -129,7 +129,7 @@ var _ = Describe("Feature: Atlas broker supports basic template", func() {
 			})
 			By("Can scale cluster size", func() {
 				newSize := "M20"
-				Eventually(cfc.Cf("update-service", testData.ServiceIns, "-c", "{\"instance_size\":\"M20\"}")).Should(Say("OK"))
+				Eventually(cfc.Cf("update-service", testData.ServiceIns, "-c", testData.UpdateType)).Should(Say("OK"))
 				waitServiceStatus(testData.ServiceIns, "update succeeded")
 
 				// get the real size
