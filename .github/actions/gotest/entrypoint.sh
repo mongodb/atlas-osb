@@ -9,4 +9,4 @@ export BROKER_APP=$BROKER_APP
 export SERVICE_ATLAS=$SERVICE_ATLAS
 
 cd test/cfe2e || exit
-ginkgo --failFast --slowSpecThreshold 15 --trace -v
+ginkgo --failFast --slowSpecThreshold 15 --trace -v -focus "${TEST}"
