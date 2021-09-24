@@ -1,19 +1,28 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/mongodb/atlas-osb/test/cfe2e/config"
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/atlaskey"
+	"github.com/mongodb/atlas-osb/test/cfe2e/model/cf"
 	"github.com/mongodb/atlas-osb/test/cfe2e/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	. "github.com/onsi/gomega/gexec"
+	. "github.com/onsi/gomega/gstruct"
 	cfc "github.com/pivotal-cf-experimental/cf-test-helpers/cf"
+	"github.com/go-git/go-git/v5"
+)
+
+const (
+	tPath      = "./test/cfe2e/data"
 )
 
 type Test struct {
@@ -122,4 +131,97 @@ func (t *Test) DeleteApplicationResources() {
 	By("Possible to delete test application after use", func() {
 		Eventually(cfc.Cf("delete", t.TestApp, "-f")).Should(Say("OK"))
 	})
+}
+
+func (t *Test) SaveLogs() {
+	s := cfc.Cf("logs", t.BrokerApp, "--recent")
+	Expect(s).Should(Exit(0))
+	utils.SaveToFile(fmt.Sprintf("output/%s", t.BrokerApp), s.Out.Contents())
+}
+
+func (t *Test) Login() {
+	By("Can login to CF and create organization")
+	PCFKeys := cf.NewCF()
+	Expect(PCFKeys).To(MatchFields(IgnoreExtras, Fields{
+		"URL":      Not(BeEmpty()),
+		"User":     Not(BeEmpty()),
+		"Password": Not(BeEmpty()),
+	}))
+	Eventually(cfc.Cf("login", "-a", PCFKeys.URL, "-u", PCFKeys.User, "-p", PCFKeys.Password, "--skip-ssl-validation")).Should(Say("OK"))
+	Eventually(cfc.Cf("create-org", t.OrgName)).Should(Say("OK"))
+	Eventually(cfc.Cf("target", "-o", t.OrgName)).Should(Exit(0))
+	Eventually(cfc.Cf("create-space", t.SpaceName)).Should(Exit(0))
+	Eventually(cfc.Cf("target", "-s", t.SpaceName)).Should(Exit(0))
+}
+
+func (t *Test) PushBroker() {
+	s := cfc.Cf("push", t.BrokerApp, "-p", "../../.", "--no-start") // ginkgo starts from test-root folder
+	Eventually(s, config.CFEventuallyTimeoutMiddle, config.IntervalMiddle).Should(Exit(0))
+	Eventually(s).Should(Say("down"))
+}
+
+func (t *Test) PushTestAppAndBindService() {
+	testAppRepo := "https://github.com/leo-ri/simple-ruby.git"
+	_, err := git.PlainClone("simple-ruby", false, &git.CloneOptions{
+		URL:               testAppRepo,
+		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+	})
+	if err != nil {
+		GinkgoWriter.Write([]byte(fmt.Sprintf("Can't get test application %s", t.AppURL)))
+	}
+	Eventually(cfc.Cf("push", t.TestApp, "-p", "./simple-ruby", "--no-start")).Should(Say("down"))
+	Eventually(cfc.Cf("bind-service", t.TestApp, t.ServiceIns)).Should(Say("OK"))
+
+	s := cfc.Cf("restart", t.TestApp)
+	Eventually(s, config.CFEventuallyTimeoutMiddle, config.IntervalMiddle).Should(Exit(0))
+	Eventually(s, config.CFEventuallyTimeoutMiddle, config.IntervalMiddle).Should(Say("running"))
+	Eventually(cfc.Cf("app", t.TestApp), "5m", config.IntervalMiddle).Should(Say("running"))
+	t.AppURL = string(regexp.MustCompile(`routes:[ ]*(.+)`).FindSubmatch(s.Out.Contents())[1])
+	Expect(t.AppURL).ShouldNot(BeEmpty())
+}
+
+func (t *Test) SetDefaultEnv() {
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "BROKER_LOG_LEVEL", "DEBUG")).Should(Exit(0))
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "BROKER_HOST", "0.0.0.0")).Should(Exit(0))
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "BROKER_PORT", "8080")).Should(Exit(0))
+	cKey, _ := json.Marshal(t.APIKeys)
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "BROKER_APIKEYS", string(cKey))).Should(Exit(0))
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "ATLAS_BROKER_TEMPLATEDIR", config.TestPath)).Should(Exit(0))
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "BROKER_OSB_SERVICE_NAME", config.MarketPlaceName)).Should(Exit(0))
+}
+
+func (t *Test) SetAzureEnv() {
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "AZURE_CLIENT_ID", os.Getenv("AZURE_CLIENT_ID"))).Should(Exit(0))
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "AZURE_CLIENT_SECRET", os.Getenv("AZURE_CLIENT_SECRET"))).Should(Exit(0))
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "AZURE_TENANT_ID", os.Getenv("AZURE_TENANT_ID"))).Should(Exit(0))
+}
+
+func (t *Test) RestartBrokerApp() {
+	s := cfc.Cf("restart", t.BrokerApp)
+	Eventually(s, config.CFEventuallyTimeoutMiddle, config.IntervalMiddle).Should(Say("running"))
+	t.BrokerURL = "http://" + string(regexp.MustCompile(`routes:[ ]*(.+)`).FindSubmatch(s.Out.Contents())[1])
+}
+
+func (t *Test) CreateServiceBroker() {
+	By("Possible to create service-broker")
+	GinkgoWriter.Write([]byte(t.BrokerURL))
+	Eventually(cfc.Cf("create-service-broker", t.Broker, t.APIKeys.Broker.Username, t.APIKeys.Broker.Password,
+		t.BrokerURL, "--space-scoped")).Should(Exit(0))
+	Eventually(cfc.Cf("marketplace")).Should(Say(config.MarketPlaceName))
+}
+
+func (t *Test) CreateService() {
+	orgID := t.APIKeys.Keys["TKey"]["OrgID"]
+	c := fmt.Sprintf("{\"org_id\":\"%s\"}", orgID)
+	s := cfc.Cf("create-service", config.MarketPlaceName, t.PlanName, t.ServiceIns, "-c", c)
+	Eventually(s).Should(Exit(0))
+	Eventually(s).Should(Say("OK"))
+	Eventually(s).ShouldNot(Say("Service instance already exists"))
+	t.WaitServiceStatus("create succeeded")
+}
+
+func (t *Test) CreateServiceKey() {
+	Eventually(cfc.Cf("create-service-key", t.ServiceIns, "atlasKey")).Should(Say("OK"))
+	// '{"user" : { "roles" : [ { "roleName":"atlasAdmin", "databaseName" : "admin" } ] } }'
+	GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) // TODO !
 }

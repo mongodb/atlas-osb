@@ -47,7 +47,6 @@ const (
 	CFStartingTimeout = 15
 
 	TKey       = "testKey" // TODO get it from the plan
-	tPath      = "./test/cfe2e/data"
 	mPlaceName = "atlas"
 )
 
