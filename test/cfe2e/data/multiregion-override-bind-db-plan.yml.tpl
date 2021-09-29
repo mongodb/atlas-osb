@@ -20,20 +20,15 @@ cluster:
   - numShards: 1
     zoneName: "US Zone"
     regionsConfig:
-      US_CENTRAL:
+      NORWAY_EAST:
         analyticsNodes: 0
         electableNodes: 1
         priority: 6
         readOnlyNodes: 0
-      US_EAST_2:
+      GERMANY_NORTH:
         analyticsNodes: 0
         electableNodes: 2
         priority: 7
-        readOnlyNodes: 0
-      US_WEST:
-        analyticsNodes: 0
-        electableNodes: 2
-        priority: 5
         readOnlyNodes: 0
   labels:
     - key: Infrastructure Tool

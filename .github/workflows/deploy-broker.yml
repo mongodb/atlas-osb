@@ -61,7 +61,7 @@ jobs:
           - plan: "override-bind-db-plan"
             update: "{\"cluster\":{\"providerSettings\":{\"instanceSizeName\":\"M20\"}}}"
             test: "standart-flow"
-          - plan: "sample_basic_pe"
+          - plan: "basic-pe-plan"
             update: "{\"instance_size\":\"M20\"}"
             test: "pe-flow"
     steps:

@@ -9,10 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mongodb-forks/digest"
-	c "github.com/mongodb/atlas-osb/pkg/broker/credentials"
-	"go.mongodb.org/atlas/mongodbatlas"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +18,7 @@ Following environment varialble should be present:
 INPUT_ATLAS_ORG_ID
 INPUT_ATLAS_PRIVATE_KEY
 INPUT_ATLAS_PUBLIC_KEY
-INPUT_CF_API
+INPUT_CF_URL
 INPUT_CF_USER
 INPUT_CF_PASSWORD
 These variables are copies of github secrets
@@ -45,9 +41,6 @@ const (
 	// cf timouts
 	CFStagingTimeout  = 15
 	CFStartingTimeout = 15
-
-	TKey       = "testKey" // TODO get it from the plan
-	mPlaceName = "atlas"
 )
 
 func TestBroker(t *testing.T) {
@@ -79,15 +72,6 @@ func checkupCFinputs() {
 	Expect(os.Getenv("BROKER")).ToNot(BeEmpty(), "Please, use param.sh or set up BROKER")
 	Expect(os.Getenv("TEST_SIMPLE_APP")).ToNot(BeEmpty(), "Please, use param.sh or set up TEST_SIMPLE_APP")
 	Expect(os.Getenv("TEST_PLAN")).ToNot(BeEmpty(), "Please, set up TEST_PLAN env, name of the plan in test/data folder")
-}
-
-func AClient(keys c.Credential) *mongodbatlas.Client {
-	t := digest.NewTransport(keys["publicKey"], keys["privateKey"])
-	tc, err := t.Client()
-	if err != nil {
-		panic(err)
-	}
-	return mongodbatlas.NewClient(tc)
 }
 
 func getBackupStateFromPlanConfig(path string) bool {

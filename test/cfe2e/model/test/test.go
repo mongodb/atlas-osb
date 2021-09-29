@@ -8,21 +8,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/mongodb/atlas-osb/test/cfe2e/config"
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/atlaskey"
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/cf"
 	"github.com/mongodb/atlas-osb/test/cfe2e/utils"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gbytes"
-	. "github.com/onsi/gomega/gexec"
-	. "github.com/onsi/gomega/gstruct"
+	. "github.com/onsi/ginkgo" // nolint
+	. "github.com/onsi/gomega" // nolint
+	. "github.com/onsi/gomega/gbytes" // nolint
+	. "github.com/onsi/gomega/gexec" // nolint
+	. "github.com/onsi/gomega/gstruct" // nolint
 	cfc "github.com/pivotal-cf-experimental/cf-test-helpers/cf"
-	"github.com/go-git/go-git/v5"
-)
-
-const (
-	tPath      = "./test/cfe2e/data"
 )
 
 type Test struct {
@@ -106,12 +102,6 @@ func (t *Test) DeleteResources() {
 	By("Possible to delete service-key", func() {
 		Eventually(cfc.Cf("delete-service-key", t.ServiceIns, "atlasKey", "-f")).Should(Say("OK"))
 	})
-	// By("Possible to unbind service", func() {
-	// 	Eventually(cfc.Cf("unbind-service", t.TestApp, t.ServiceIns)).Should(Say("OK"))
-	// })
-	// By("Possible to delete test application after use", func() {
-	// 	Eventually(cfc.Cf("delete", t.TestApp, "-f")).Should(Say("OK"))
-	// })
 	By("Possible to delete service", func() {
 		Eventually(cfc.Cf("delete-service", t.ServiceIns, "-f")).Should(Say("OK"))
 		WaitForDelete()
@@ -141,7 +131,8 @@ func (t *Test) SaveLogs() {
 
 func (t *Test) Login() {
 	By("Can login to CF and create organization")
-	PCFKeys := cf.NewCF()
+	PCFKeys, err := cf.NewCF()
+	Expect(err).ShouldNot(HaveOccurred())
 	Expect(PCFKeys).To(MatchFields(IgnoreExtras, Fields{
 		"URL":      Not(BeEmpty()),
 		"User":     Not(BeEmpty()),
@@ -224,4 +215,8 @@ func (t *Test) CreateServiceKey() {
 	Eventually(cfc.Cf("create-service-key", t.ServiceIns, "atlasKey")).Should(Say("OK"))
 	// '{"user" : { "roles" : [ { "roleName":"atlasAdmin", "databaseName" : "admin" } ] } }'
 	GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) // TODO !
+}
+
+func (t *Test) UpgradeClusterConfig() {
+	Eventually(cfc.Cf("update-service", t.ServiceIns, "-c", t.UpdateType)).Should(Say("OK"))
 }

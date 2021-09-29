@@ -12,9 +12,9 @@ const (
 	CFStagingTimeout  = 15
 	CFStartingTimeout = 15
 
-	TKey       = "testKey" // TODO get it from the plan
+	TKey            = "testKey" // TODO get it from the plan
 	MarketPlaceName = "atlas"
-	TestPath      = "./test/cfe2e/data"
+	TestPath        = "./test/cfe2e/data"
 
 	// test application coordinates
 	TestAppRepo = "https://github.com/leo-ri/simple-ruby.git"
