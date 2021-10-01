@@ -27,11 +27,11 @@ for elkey in $(echo "$projects" | jq '.results | keys | .[]'); do
                 echo "delete cluster: $id $cname $csize"
                 delete_cluster "$id" "$cname"
                 #not going to wait for deleting projects
-            else 
+            else
                 echo "$cname $csize is M0"
             fi
         done
-    else 
+    else
         if [[ $name != "ValleyOfTesting" ]]; then
             echo "deleting project: $id"
             delete_project "$id"
@@ -39,6 +39,4 @@ for elkey in $(echo "$projects" | jq '.results | keys | .[]'); do
             echo "won't delete ValleyOfTesting"
         fi
     fi
-done 
-
-
+done

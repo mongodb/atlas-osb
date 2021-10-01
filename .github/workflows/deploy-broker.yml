@@ -54,10 +54,16 @@ jobs:
         include:
           - plan: "override-bind-db-plan"
             update: "{\"instance_size\":\"M20\"}"
+            test: "standart-flow"
           - plan: "multiregion-override-bind-db-plan"
             update: "{\"instance_size\":\"M20\"}"
+            test: "standart-flow"
           - plan: "override-bind-db-plan"
             update: "{\"cluster\":{\"providerSettings\":{\"instanceSizeName\":\"M20\"}}}"
+            test: "standart-flow"
+          - plan: "basic-pe-plan"
+            update: "{\"instance_size\":\"M20\"}"
+            test: "pe-flow"
     steps:
       - uses: actions/checkout@v2.3.1
 
@@ -91,7 +97,11 @@ jobs:
         env:
           TEST_PLAN: ${{ matrix.plan }}
           TEST_UPDATE_TYPE: ${{ matrix.update }}
+          TEST: ${{ matrix.test }}
           TEST_TYPE: "go"
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
       - name: Upload operator logs
         if: ${{ failure() }}
