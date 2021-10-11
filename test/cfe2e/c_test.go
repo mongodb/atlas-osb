@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"go.mongodb.org/atlas/mongodbatlas"
 
 	"github.com/mongodb/atlas-osb/test/cfe2e/config"
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/atlasclient"
@@ -59,7 +60,23 @@ var _ = Describe("Feature: Atlas broker supports basic template[standart-flow]",
 				Expect(app.Get("/service/mongo/test")).Should(Equal(data))
 			})
 			By("Possible to create service-key", func() {
-				testFlow.CreateServiceKey()
+				role := mongodbatlas.Role{
+					DatabaseName: "admin",
+					RoleName: "readAnyDatabase",
+				}
+				label := "test-service-key"
+				labels := fmt.Sprintf(", \"labels\": [{ \"key\": \"%s\", \"value\": \"%s\" }]", "name", label)
+				c := fmt.Sprintf("{\"user\" : {\"roles\" : [ { \"roleName\" : \"%s\", \"databaseName\" : \"%s\"} ] %s } }",
+					role.RoleName, role.DatabaseName, labels,
+				)
+				testFlow.CreateServiceKey(c)
+
+				// check atlas
+				AC := atlasclient.AClient(testFlow.APIKeys.Keys[config.TKey])
+				users := AC.GetDatabaseUsersList(testFlow)
+				user := FindUserWithLabel(users, label)
+				Expect(user.Roles).Should(HaveLen(1))
+				Expect(user.Roles).Should(ContainElement(role))
 			})
 			By("Backup is active as default", func() {
 				path := fmt.Sprintf("data/%s.yml.tpl", testFlow.PlanName)
@@ -91,3 +108,16 @@ var _ = Describe("Feature: Atlas broker supports basic template[standart-flow]",
 		})
 	})
 })
+
+func FindUserWithLabel(users []mongodbatlas.DatabaseUser, label string) mongodbatlas.DatabaseUser {
+	for _, user := range users {
+		if len(user.Labels) > 0 {
+			for _, l := range user.Labels {
+				if l.Key == "name" && l.Value == label {
+					return user
+				}
+			}
+		}
+	}
+	return mongodbatlas.DatabaseUser{}
+}

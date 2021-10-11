@@ -13,10 +13,10 @@ import (
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/atlaskey"
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/cf"
 	"github.com/mongodb/atlas-osb/test/cfe2e/utils"
-	. "github.com/onsi/ginkgo" // nolint
-	. "github.com/onsi/gomega" // nolint
-	. "github.com/onsi/gomega/gbytes" // nolint
-	. "github.com/onsi/gomega/gexec" // nolint
+	. "github.com/onsi/ginkgo"         // nolint
+	. "github.com/onsi/gomega"         // nolint
+	. "github.com/onsi/gomega/gbytes"  // nolint
+	. "github.com/onsi/gomega/gexec"   // nolint
 	. "github.com/onsi/gomega/gstruct" // nolint
 	cfc "github.com/pivotal-cf-experimental/cf-test-helpers/cf"
 )
@@ -211,10 +211,15 @@ func (t *Test) CreateService() {
 	t.WaitServiceStatus("create succeeded")
 }
 
-func (t *Test) CreateServiceKey() {
-	Eventually(cfc.Cf("create-service-key", t.ServiceIns, "atlasKey")).Should(Say("OK"))
-	// '{"user" : { "roles" : [ { "roleName":"atlasAdmin", "databaseName" : "admin" } ] } }'
-	GinkgoWriter.Write([]byte("Possible to create service-key. Check is not ready")) // TODO !
+// CreateServiceKey - create-service-key command with -c key
+// config samples:
+// '{"user" : {"roles" : [ { "roleName" : "atlasAdmin", "databaseName" : "admin" } ] } }'
+// '{"user" : {"roles" : [ { "roleName" : "readAnyDatabase", "databaseName" : "admin"} ] } }'
+func (t *Test) CreateServiceKey(config string) {
+	if config == "" {
+		config = "{}"
+	}
+	Eventually(cfc.Cf("create-service-key", t.ServiceIns, "atlasKey", "-c", config)).Should(Say("OK"))
 }
 
 func (t *Test) UpgradeClusterConfig() {

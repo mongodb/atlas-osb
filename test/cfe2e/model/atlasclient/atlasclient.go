@@ -48,3 +48,16 @@ func (c *Client) GetBackupState(testFlow test.Test) bool {
 	Expect(err).ShouldNot(HaveOccurred())
 	return *clusterInfo.ProviderBackupEnabled
 }
+
+// GetDatabaseUsersList
+func (c *Client) GetDatabaseUsersList(testFlow test.Test) []mongodbatlas.DatabaseUser {
+	projectInfo, _, err := c.Atlas.Projects.GetOneProjectByName(context.Background(), testFlow.ServiceIns)
+	Expect(err).ShouldNot(HaveOccurred())
+	users, _, err := c.Atlas.DatabaseUsers.List(context.Background(), projectInfo.ID,
+		&mongodbatlas.ListOptions{
+			PageNum:      0,
+			ItemsPerPage: 0,
+	})
+	Expect(err).ShouldNot(HaveOccurred())
+	return users
+}
