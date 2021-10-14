@@ -2,9 +2,11 @@ package atlasclient
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/mongodb-forks/digest"
 	c "github.com/mongodb/atlas-osb/pkg/broker/credentials"
+	"github.com/mongodb/atlas-osb/test/cfe2e/config"
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/test"
 	. "github.com/onsi/gomega" // nolint
 	"go.mongodb.org/atlas/mongodbatlas"
@@ -20,7 +22,13 @@ func AClient(keys c.Credential) Client {
 	if err != nil {
 		panic(err)
 	}
-	return Client{mongodbatlas.NewClient(tc)}
+
+	var client Client
+	client.Atlas = mongodbatlas.NewClient(tc)
+	u, _ := url.Parse(config.CloudQAHost)
+	client.Atlas.BaseURL = u
+
+	return client
 }
 
 func (c *Client) GetAzurePrivateEndpointStatus(testFlow test.Test) string {
@@ -57,7 +65,8 @@ func (c *Client) GetDatabaseUsersList(testFlow test.Test) []mongodbatlas.Databas
 		&mongodbatlas.ListOptions{
 			PageNum:      0,
 			ItemsPerPage: 0,
-	})
+		},
+	)
 	Expect(err).ShouldNot(HaveOccurred())
 	return users
 }

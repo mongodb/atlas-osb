@@ -179,6 +179,9 @@ func (t *Test) SetDefaultEnv() {
 	Eventually(cfc.Cf("set-env", t.BrokerApp, "BROKER_APIKEYS", string(cKey))).Should(Exit(0))
 	Eventually(cfc.Cf("set-env", t.BrokerApp, "ATLAS_BROKER_TEMPLATEDIR", config.TestPath)).Should(Exit(0))
 	Eventually(cfc.Cf("set-env", t.BrokerApp, "BROKER_OSB_SERVICE_NAME", config.MarketPlaceName)).Should(Exit(0))
+	// cloud-qa
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "ATLAS_BASE_URL", config.CloudQAHost)).Should(Exit(0))
+	Eventually(cfc.Cf("set-env", t.BrokerApp, "REALM_BASE_URL", config.CloudQARealm)).Should(Exit(0))
 }
 
 func (t *Test) SetAzureEnv() {
@@ -214,12 +217,31 @@ func (t *Test) CreateService() {
 // CreateServiceKey - create-service-key command with -c key
 // config samples:
 // '{"user" : {"roles" : [ { "roleName" : "atlasAdmin", "databaseName" : "admin" } ] } }'
-// '{"user" : {"roles" : [ { "roleName" : "readAnyDatabase", "databaseName" : "admin"} ] } }'
-func (t *Test) CreateServiceKey(config string) {
+// '{"user" : {"roles" : [ { "roleName" : "read", "databaseName" : "admin"} ] } }'
+func (t *Test) CreateServiceKey(config, keyName string) {
 	if config == "" {
 		config = "{}"
 	}
-	Eventually(cfc.Cf("create-service-key", t.ServiceIns, "atlasKey", "-c", config)).Should(Say("OK"))
+	Eventually(cfc.Cf("create-service-key", t.ServiceIns, keyName, "-c", config)).Should(Say("OK"))
+}
+
+func (t *Test) DeleteServiceKey(keyName string) {
+	s := cfc.Cf("delete-service-key", t.ServiceIns, keyName, "-f")
+	Eventually(s).Should(Exit(0))
+}
+
+func (t *Test) DeleteServiceKeys() {
+	s := cfc.Cf("service-keys", t.ServiceIns)
+	Eventually(s).Should(Exit(0))
+	re := regexp.MustCompile("name\n(.+){0,1}\n{0,1}(.+){0,1}\n{0,1}(.+){0,1}\n{0,1}(.+){0,1}")
+	serviceKeys := re.FindStringSubmatch(string(s.Out.Contents()))
+	if len(serviceKeys) > 1 {
+		for _, key := range serviceKeys[1:] {
+			if (len(key) > 0) && (key != "name") {
+				t.DeleteServiceKey(key)
+			}
+		}
+	}
 }
 
 func (t *Test) UpgradeClusterConfig() {
