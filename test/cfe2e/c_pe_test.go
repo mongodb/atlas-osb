@@ -50,10 +50,6 @@ var _ = Describe("Feature: Atlas broker supports basic template[pe-flow]", func(
 				testFlow.CreateService()
 			})
 
-			By("Possible to create service-key", func() {
-				testFlow.CreateServiceKey()
-			})
-
 			By("Check PE status", func() {
 				AC := atlasclient.AClient(testFlow.APIKeys.Keys[config.TKey])
 				Expect(AC.GetAzurePrivateEndpointStatus(testFlow)).Should(Equal("AVAILABLE"))

@@ -33,8 +33,8 @@ SERVICE_ATLAS
 */
 
 const (
-	CFEventuallyTimeoutDefault   = 60 * time.Second
-	CFConsistentlyTimeoutDefault = 60 * time.Millisecond
+	CFEventuallyTimeoutDefault   = 120 * time.Second
+	CFConsistentlyTimeoutDefault = 120 * time.Millisecond
 	CFEventuallyTimeoutMiddle    = 10 * time.Minute
 	IntervalMiddle               = 10 * time.Second
 

@@ -5,10 +5,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"go.mongodb.org/atlas/mongodbatlas"
 
 	"github.com/mongodb/atlas-osb/test/cfe2e/config"
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/atlasclient"
 	"github.com/mongodb/atlas-osb/test/cfe2e/model/test"
+	"github.com/mongodb/atlas-osb/test/cfe2e/utils"
 	apptest "github.com/mongodb/atlas-osb/test/cfe2e/utils/apptest"
 )
 
@@ -25,6 +27,7 @@ var _ = Describe("Feature: Atlas broker supports basic template[standart-flow]",
 	_ = AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
 			testFlow.SaveLogs()
+			testFlow.DeleteServiceKeys()
 			testFlow.DeleteApplicationResources()
 			testFlow.DeleteResources()
 		}
@@ -59,7 +62,37 @@ var _ = Describe("Feature: Atlas broker supports basic template[standart-flow]",
 				Expect(app.Get("/service/mongo/test")).Should(Equal(data))
 			})
 			By("Possible to create service-key", func() {
-				testFlow.CreateServiceKey()
+				role := mongodbatlas.Role{
+					DatabaseName: "admin",
+					RoleName:     "readAnyDatabase",
+				}
+				labelValue := "test-service-key"
+				labels := fmt.Sprintf(", \"labels\": [{ \"key\": \"%s\", \"value\": \"%s\" }]", "name", labelValue)
+				c := fmt.Sprintf("{\"user\" : {\"roles\" : [ { \"roleName\" : \"%s\", \"databaseName\" : \"%s\"} ] %s } }",
+					role.RoleName, role.DatabaseName, labels,
+				)
+				testFlow.CreateServiceKey(c, labelValue)
+
+				// check atlas
+				ac := atlasclient.AClient(testFlow.APIKeys.Keys[config.TKey])
+				users := ac.GetDatabaseUsersList(testFlow)
+				user := FindUserWithLabel(users, labelValue)
+				Expect(user.Roles).Should(HaveLen(1))
+				Expect(user.Roles).Should(ContainElement(role))
+			})
+			By("Possible to create default service-key", func() {
+				role := getDefaultRole(testFlow)
+				labelValue := "test-service-key-default"
+				labels := fmt.Sprintf("{ \"labels\": [{ \"key\": \"%s\", \"value\": \"%s\" }] }", "name", labelValue)
+				c := fmt.Sprintf("{\"user\" : %s }", labels)
+				testFlow.CreateServiceKey(c, labelValue)
+
+				// check atlas
+				ac := atlasclient.AClient(testFlow.APIKeys.Keys[config.TKey])
+				users := ac.GetDatabaseUsersList(testFlow)
+				user := FindUserWithLabel(users, labelValue)
+				Expect(user.Roles).Should(HaveLen(1))
+				Expect(user.Roles).Should(ContainElement(role))
 			})
 			By("Backup is active as default", func() {
 				path := fmt.Sprintf("data/%s.yml.tpl", testFlow.PlanName)
@@ -85,9 +118,40 @@ var _ = Describe("Feature: Atlas broker supports basic template[standart-flow]",
 				Expect(app.PutData("/service/mongo/test2", data)).ShouldNot(HaveOccurred())
 				Expect(app.Get("/service/mongo/test2")).Should(Equal(data))
 			})
-
+			testFlow.DeleteServiceKeys()
 			testFlow.DeleteApplicationResources()
 			testFlow.DeleteResources()
 		})
 	})
 })
+
+func FindUserWithLabel(users []mongodbatlas.DatabaseUser, label string) mongodbatlas.DatabaseUser {
+	for _, user := range users {
+		if len(user.Labels) > 0 {
+			for _, l := range user.Labels {
+				if l.Key == "name" && l.Value == label {
+					return user
+				}
+			}
+		}
+	}
+	return mongodbatlas.DatabaseUser{}
+}
+
+func getDefaultRole(testFlow test.Test) mongodbatlas.Role {
+	pathToFile := "data/" + testFlow.PlanName + ".yml.tpl"
+	roleFromFile, _ := utils.GetFieldFromFile(pathToFile, "overrideBindDBRole")
+	dbFromFile, _ := utils.GetFieldFromFile(pathToFile, "overrideBindDB")
+	role := mongodbatlas.Role{
+		RoleName:     roleFromFile,
+		DatabaseName: dbFromFile,
+	}
+	// if no override - get default
+	if role.RoleName == "" {
+		role.RoleName = "readWriteAnyDatabase"
+	}
+	if role.DatabaseName == "" {
+		role.DatabaseName = "admin"
+	}
+	return role
+}

@@ -237,11 +237,11 @@ func (b *Broker) userFromParams(bindingID string, password string, rawParams []b
 	params.User.Username = bindingID
 	params.User.Password = password
 	if len(params.User.DatabaseName) == 0 {
-		logger.Warn(`No "databaseName" in User, setting to "admin" for Atlas.`)
+		logger.Warn(`No auth "databaseName" in User, setting to "admin" for Atlas.`)
 		params.User.DatabaseName = "admin"
 	}
 
-	if plan.Settings != nil {
+	if plan.Settings != nil && len(params.User.Roles) == 0 {
 		if overrideDBName, ok := plan.Settings[overrideBindDB].(string); ok {
 			overrideDBRole, ok := plan.Settings[overrideBindDBRole].(string)
 			if !ok {
@@ -254,10 +254,6 @@ func (b *Broker) userFromParams(bindingID string, password string, rawParams []b
 			logger.Warnw("DEPRECATED: Overriding bind DB settings", "overrideRole", overrideRole)
 			params.User.Roles = append(params.User.Roles, overrideRole)
 		}
-	}
-
-	if len(params.User.DatabaseName) == 0 {
-		params.User.DatabaseName = "admin"
 	}
 
 	if len(params.User.Scopes) == 0 {

@@ -52,7 +52,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - plan: "override-bind-db-plan"
+          - plan: "plan-without-override"
             update: "{\"instance_size\":\"M20\"}"
             test: "standart-flow"
           - plan: "multiregion-override-bind-db-plan"
