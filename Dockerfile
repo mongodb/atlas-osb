@@ -12,7 +12,7 @@ COPY . .
 RUN ./dev/scripts/build-production-binary.sh bin/atlas-service-broker
 
 # Run stage uses a much smaller base image to run the prebuilt binary
-FROM alpine:3.10
+FROM alpine:3.14
 RUN apk --no-cache add ca-certificates
 
 # Copy binary from build stage
