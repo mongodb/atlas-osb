@@ -1,6 +1,11 @@
-atlas-osb 
- 
-This project is currently in sunset mode. Check out (https://www.mongodb.com/kubernetes) and (https://github.com/mongodb/helm-charts) for the latest and best source for cloud native MongoDB.
+Unsupported 
+====
+This project is Unsuppoted by MongoDB. 
+Alternative supported products for managing MongoDB Atlas clusters include: 
+
+  * https://github.com/mongodb/mongodb-atlas-kubernetes 
+  * https://github.com/mongodb/terraform-provider-mongodbatlas 
+  * https://github.com/mongodb/mongocli  
 
 ~~ For Reference Only ~~
 
